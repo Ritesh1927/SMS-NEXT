@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     // from the class list) — exact and typo-proof. Only fall back to
     // parsing the free-text classes[] labels for teachers assigned before
     // that existed.
-    type PopulatedClass = { name: string; section: string };
+    type PopulatedClass = { _id: unknown; name: string; section: string };
     const assigned = teacher.assignedClasses as unknown as PopulatedClass[];
 
     const classBreakdown =
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
               const count = await Student.countDocuments({
                 school: teacher.school, isActive: true, class: c.name, section: c.section,
               });
-              return { label: formatClassName(c.name, c.section), studentCount: count };
+              return { classId: String(c._id), label: formatClassName(c.name, c.section), studentCount: count };
             }),
           )
         : await Promise.all(

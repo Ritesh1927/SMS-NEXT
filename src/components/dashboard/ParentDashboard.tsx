@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 
@@ -102,10 +102,48 @@ export function ParentDashboard() {
               {child.admissionNo && (
                 <p className="mt-1 text-xs text-[#94A3B8]">Admission No: {child.admissionNo}</p>
               )}
+              <ChildAttendance studentId={child._id} />
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface AttendanceSummaryResponse {
+  success: boolean;
+  data: { summary: { total: number; percentage: number } };
+}
+
+function ChildAttendance({ studentId }: { studentId: string }) {
+  const [percentage, setPercentage] = useState<number | null>(null);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const now = new Date();
+    apiGet<AttendanceSummaryResponse>(
+      `/attendance/student/${studentId}?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+      token,
+    )
+      .then((res) => {
+        setPercentage(res.data.summary.percentage);
+        setTotal(res.data.summary.total);
+      })
+      .catch(() => {});
+  }, [studentId]);
+
+  if (percentage === null || total === 0) return null;
+
+  const color = percentage >= 90 ? "text-green-600" : percentage >= 75 ? "text-amber-600" : "text-red-600";
+
+  return (
+    <div className="mt-2 flex items-center gap-1.5 text-xs">
+      <CalendarCheck className={`h-3.5 w-3.5 ${color}`} />
+      <span className={`font-semibold ${color}`}>{percentage}% attendance</span>
+      <span className="text-[#94A3B8]">this month</span>
     </div>
   );
 }

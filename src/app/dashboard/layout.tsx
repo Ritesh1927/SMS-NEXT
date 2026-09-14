@@ -7,12 +7,19 @@ import { GraduationCap, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/students", label: "Students" },
-  { href: "/dashboard/teachers", label: "Teachers" },
-  { href: "/dashboard/classes", label: "Classes" },
-];
+const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
+  schooladmin: [
+    { href: "/dashboard", label: "Overview" },
+    { href: "/dashboard/students", label: "Students" },
+    { href: "/dashboard/teachers", label: "Teachers" },
+    { href: "/dashboard/classes", label: "Classes" },
+    { href: "/dashboard/attendance", label: "Attendance" },
+  ],
+  teacher: [
+    { href: "/dashboard", label: "Overview" },
+    { href: "/dashboard/attendance", label: "Attendance" },
+  ],
+};
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -50,9 +57,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <LogOut className="h-3.5 w-3.5" /> Logout
           </Button>
         </div>
-        {user.role === "schooladmin" && (
+        {NAV_ITEMS_BY_ROLE[user.role] && (
           <nav className="flex gap-1 -mb-px">
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS_BY_ROLE[user.role].map((item) => {
               const active = pathname === item.href;
               return (
                 <Link
