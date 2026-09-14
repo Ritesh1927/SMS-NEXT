@@ -1,0 +1,64 @@
+import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import { connectDB } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth-server";
+import { FeePayment } from "@/models/FeePayment";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// GET /api/fees/analytics — admin-only, for the Reports page's Overview and
+// Finance tabs: collected vs. pending totalled per calendar month this
+// year, plus an overall summary. sms-next's FeePayment has no separate
+// late-fee tracking (no lateFee field on the model), so — unlike
+// SMS-BACKEND's feeSummary.totalLateFees — that figure is left out
+// entirely rather than faked; the client only ever shows that card when
+// the field is present and > 0, so omitting it is a clean degradation.
+export async function GET(req: Request) {
+  const auth = getAuthUser(req);
+  if (!auth || auth.role !== "schooladmin") {
+    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    await connectDB();
+    const schoolId = new mongoose.Types.ObjectId(auth.schoolId);
+    const year = new Date().getFullYear();
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    const [monthlyCollected, monthlyPending, allPayments] = await Promise.all([
+      FeePayment.aggregate([
+        { $match: { school: schoolId, status: "paid", paidDate: { $gte: yearStart, $lte: yearEnd } } },
+        { $group: { _id: { $month: "$paidDate" }, total: { $sum: "$paidAmount" } } },
+      ]),
+      FeePayment.aggregate([
+        { $match: { school: schoolId, status: { $ne: "paid" }, dueDate: { $gte: yearStart, $lte: yearEnd } } },
+        { $group: { _id: { $month: "$dueDate" }, total: { $sum: { $subtract: ["$amount", "$paidAmount"] } } } },
+      ]),
+      FeePayment.find({ school: schoolId }).select("status amount paidAmount"),
+    ]);
+
+    const collectedByMonth = new Map(monthlyCollected.map((m) => [m._id, m.total]));
+    const pendingByMonth = new Map(monthlyPending.map((m) => [m._id, m.total]));
+
+    const data = MONTHS.map((month, i) => ({
+      month,
+      collected: Math.round(collectedByMonth.get(i + 1) || 0),
+      pending: Math.round(pendingByMonth.get(i + 1) || 0),
+    }));
+
+    const totalCollected = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.paidAmount, 0);
+    const totalPending = allPayments.filter((p) => p.status !== "paid").reduce((s, p) => s + (p.amount - p.paidAmount), 0);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      summary: { totalCollected: Math.round(totalCollected), totalPending: Math.round(totalPending) },
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, message: err instanceof Error ? err.message : "Failed to load fee analytics." },
+      { status: 500 },
+    );
+  }
+}
