@@ -9,6 +9,13 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
 
 interface StudentRow {
   _id: string;
@@ -28,6 +35,13 @@ interface StudentsResponse {
   count: number;
   data: StudentRow[];
 }
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
+}
+
+const classKey = (name: string, section: string) => `${name}::${section}`;
 
 interface ApiMessageResponse {
   success: boolean;
@@ -57,6 +71,7 @@ const EMPTY_EDIT_FORM = { name: "", phone: "", class: "", section: "", rollNumbe
 export default function StudentsPage() {
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -73,6 +88,9 @@ export default function StudentsPage() {
     apiGet<StudentsResponse>("/students", token)
       .then((res) => setStudents(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClasses(res.data))
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -267,14 +285,35 @@ export default function StudentsPage() {
                 <Field label="Full Name" required>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
+                {classes.length > 0 ? (
                   <Field label="Class" required>
-                    <Input value={form.studentClass} onChange={(e) => setForm((f) => ({ ...f, studentClass: e.target.value }))} required />
+                    <Select
+                      value={form.studentClass ? classKey(form.studentClass, form.section) : ""}
+                      onValueChange={(v) => {
+                        const cls = classes.find((c) => classKey(c.name, c.section) === v);
+                        if (cls) setForm((f) => ({ ...f, studentClass: cls.name, section: cls.section }));
+                      }}
+                    >
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                      <SelectContent>
+                        {classes.map((c) => (
+                          <SelectItem key={c._id} value={classKey(c.name, c.section)}>
+                            Class {c.name}-{c.section}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
-                  <Field label="Section">
-                    <Input value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} />
-                  </Field>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Class" required>
+                      <Input value={form.studentClass} onChange={(e) => setForm((f) => ({ ...f, studentClass: e.target.value }))} required />
+                    </Field>
+                    <Field label="Section">
+                      <Input value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} />
+                    </Field>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Roll Number" required>
                     <Input value={form.rollNumber} onChange={(e) => setForm((f) => ({ ...f, rollNumber: e.target.value }))} required />
@@ -331,14 +370,35 @@ export default function StudentsPage() {
             <Field label="Full Name" required>
               <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} required />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            {classes.length > 0 ? (
               <Field label="Class" required>
-                <Input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} required />
+                <Select
+                  value={editForm.class ? classKey(editForm.class, editForm.section) : ""}
+                  onValueChange={(v) => {
+                    const cls = classes.find((c) => classKey(c.name, c.section) === v);
+                    if (cls) setEditForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                  }}
+                >
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c._id} value={classKey(c.name, c.section)}>
+                        Class {c.name}-{c.section}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
-              <Field label="Section">
-                <Input value={editForm.section} onChange={(e) => setEditForm((f) => ({ ...f, section: e.target.value }))} />
-              </Field>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Class" required>
+                  <Input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} required />
+                </Field>
+                <Field label="Section">
+                  <Input value={editForm.section} onChange={(e) => setEditForm((f) => ({ ...f, section: e.target.value }))} />
+                </Field>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Roll Number">
                 <Input value={editForm.rollNumber} onChange={(e) => setEditForm((f) => ({ ...f, rollNumber: e.target.value }))} />

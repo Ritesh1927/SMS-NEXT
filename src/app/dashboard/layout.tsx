@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/students", label: "Students" },
   { href: "/dashboard/teachers", label: "Teachers" },
+  { href: "/dashboard/classes", label: "Classes" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
