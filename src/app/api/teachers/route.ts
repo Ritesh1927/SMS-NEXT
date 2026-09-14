@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
+import { Class } from "@/models/Class";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
 
@@ -26,7 +27,10 @@ export async function GET(req: Request) {
       query.$or = [{ name: rx }, { email: rx }, { teacherId: rx }];
     }
 
-    const teachers = await Teacher.find(query).select("-password").sort({ createdAt: -1 });
+    const teachers = await Teacher.find(query)
+      .select("-password")
+      .populate("assignedClasses", "name section")
+      .sort({ createdAt: -1 });
     return NextResponse.json({ success: true, count: teachers.length, data: teachers });
   } catch (err) {
     return NextResponse.json(
@@ -43,7 +47,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      name, email, phone, subjects, classes, qualification, experience, designation,
+      name, email, phone, subjects, classes, classIds, qualification, experience, designation,
       gender, dateOfBirth, address, bloodGroup, joiningDate, salary, employmentType,
       staffType, department,
     } = body;
@@ -63,6 +67,18 @@ export async function POST(req: Request) {
     const isTeaching = !staffType || staffType === "teaching";
     const rawPassword = generatePassword();
 
+    // classIds (real Class records) take priority over free-text classes —
+    // resolving them here gives both the ObjectId refs (assignedClasses)
+    // and consistent "<name>-<section>" labels (classes) instead of trusting
+    // whatever string the admin typed.
+    let assignedClasses: string[] = [];
+    let classLabels: string[] = classes || [];
+    if (isTeaching && Array.isArray(classIds) && classIds.length > 0) {
+      const clsDocs = await Class.find({ _id: { $in: classIds }, school: auth.schoolId });
+      assignedClasses = clsDocs.map((c) => String(c._id));
+      classLabels = clsDocs.map((c) => `${c.name}-${c.section}`);
+    }
+
     const teacher = await Teacher.create({
       name,
       email,
@@ -70,7 +86,8 @@ export async function POST(req: Request) {
       staffType: isTeaching ? "teaching" : "non-teaching",
       department: department || "",
       subjects: isTeaching ? subjects || [] : [],
-      classes: isTeaching ? classes || [] : [],
+      classes: isTeaching ? classLabels : [],
+      assignedClasses: isTeaching ? assignedClasses : [],
       qualification: qualification || "",
       experience: experience || "",
       designation: designation || (isTeaching ? "Teacher" : "Staff"),

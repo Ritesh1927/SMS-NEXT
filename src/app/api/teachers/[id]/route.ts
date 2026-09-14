@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
+import { Class } from "@/models/Class";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -28,9 +29,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     await connectDB();
+
+    // Same classIds -> assignedClasses/classes resolution as create. An
+    // explicit empty array clears assignments; omitting classIds entirely
+    // leaves assignedClasses/classes untouched.
+    if (Array.isArray(body.classIds)) {
+      if (body.classIds.length === 0) {
+        updates.assignedClasses = [];
+        updates.classes = [];
+      } else {
+        const clsDocs = await Class.find({ _id: { $in: body.classIds }, school: auth.schoolId });
+        updates.assignedClasses = clsDocs.map((c) => c._id);
+        updates.classes = clsDocs.map((c) => `${c.name}-${c.section}`);
+      }
+    }
+
     const teacher = await Teacher.findOneAndUpdate({ _id: id, school: auth.schoolId }, updates, {
       returnDocument: "after",
-    }).select("-password");
+    })
+      .select("-password")
+      .populate("assignedClasses", "name section");
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, message: "Teacher updated.", data: teacher });

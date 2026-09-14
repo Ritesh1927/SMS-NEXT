@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
+
 interface TeacherRow {
   _id: string;
   name: string;
@@ -20,6 +26,7 @@ interface TeacherRow {
   designation?: string;
   subjects?: string[];
   classes?: string[];
+  assignedClasses?: ClassOption[];
   qualification?: string;
   staffType: string;
   employmentType?: string;
@@ -31,6 +38,11 @@ interface TeachersResponse {
   success: boolean;
   count: number;
   data: TeacherRow[];
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
 }
 
 interface ApiMessageResponse {
@@ -46,6 +58,7 @@ const EMPTY_FORM = {
   designation: "",
   subjects: "",
   classes: "",
+  classIds: [] as string[],
   qualification: "",
   employmentType: "full-time",
   gender: "male",
@@ -54,6 +67,7 @@ const EMPTY_FORM = {
 export default function TeachersPage() {
   const { user } = useAuth();
   const [teachers, setTeachers] = useState<TeacherRow[] | null>(null);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -67,6 +81,9 @@ export default function TeachersPage() {
     apiGet<TeachersResponse>("/teachers", token)
       .then((res) => setTeachers(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load teachers."));
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClasses(res.data))
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -89,11 +106,19 @@ export default function TeachersPage() {
       designation: t.designation || "",
       subjects: (t.subjects || []).join(", "),
       classes: (t.classes || []).join(", "),
+      classIds: (t.assignedClasses || []).map((c) => c._id),
       qualification: t.qualification || "",
       employmentType: t.employmentType || "full-time",
       gender: t.gender || "male",
     });
     setOpen(true);
+  };
+
+  const toggleClassId = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      classIds: f.classIds.includes(id) ? f.classIds.filter((c) => c !== id) : [...f.classIds, id],
+    }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -102,14 +127,19 @@ export default function TeachersPage() {
     if (!token) return;
     setSubmitting(true);
     const subjects = form.subjects.split(",").map((s) => s.trim()).filter(Boolean);
-    const classes = form.classes.split(",").map((s) => s.trim()).filter(Boolean);
+    // classIds (real Class records) take priority; the free-text classes
+    // field is only sent when no classes exist yet to pick from.
+    const classLabels =
+      classes.length === 0 ? form.classes.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
+    const classPayload = classLabels ? { classes: classLabels } : { classIds: form.classIds };
     try {
       if (editingId) {
         const res = await fetch(`/api/teachers/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
-            name: form.name, phone: form.phone, designation: form.designation, subjects, classes,
+            name: form.name, phone: form.phone, designation: form.designation, subjects,
+            ...classPayload,
             qualification: form.qualification, employmentType: form.employmentType, gender: form.gender,
           }),
         });
@@ -120,7 +150,7 @@ export default function TeachersPage() {
         const res = await fetch("/api/teachers", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ...form, subjects, classes }),
+          body: JSON.stringify({ ...form, subjects, ...classPayload }),
         });
         const json: ApiMessageResponse = await res.json();
         if (!res.ok || !json.success) throw new Error(json.message || "Failed to create teacher.");
@@ -300,13 +330,37 @@ export default function TeachersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, subjects: e.target.value }))}
               />
             </Field>
-            <Field label="Assigned Classes (comma-separated, e.g. 5-A, 6-B)">
-              <Input
-                placeholder="5-A, 6-B"
-                value={form.classes}
-                onChange={(e) => setForm((f) => ({ ...f, classes: e.target.value }))}
-              />
-            </Field>
+            {classes.length > 0 ? (
+              <Field label="Assigned Classes">
+                <div className="flex flex-wrap gap-2 rounded-lg border border-input p-2">
+                  {classes.map((c) => {
+                    const active = form.classIds.includes(c._id);
+                    return (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => toggleClassId(c._id)}
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                          active
+                            ? "bg-[#2563EB] text-white border-[#2563EB]"
+                            : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#2563EB]"
+                        }`}
+                      >
+                        {c.name}-{c.section}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+            ) : (
+              <Field label="Assigned Classes (comma-separated, e.g. 5-A, 6-B)">
+                <Input
+                  placeholder="5-A, 6-B"
+                  value={form.classes}
+                  onChange={(e) => setForm((f) => ({ ...f, classes: e.target.value }))}
+                />
+              </Field>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Gender">
                 <Select value={form.gender} onValueChange={(v) => setForm((f) => ({ ...f, gender: v || f.gender }))}>
