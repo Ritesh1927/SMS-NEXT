@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
+import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -10,12 +11,27 @@ function requireSchoolAdmin(req: Request) {
   return auth;
 }
 
+// Admin sees every class; a teacher sees only their own (classTeacher or
+// assignedClasses) — the same class pickers Homework and Study Materials use
+// to restrict what a teacher can assign/upload to.
 export async function GET(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  const auth = getAuthUser(req);
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  }
 
   try {
     await connectDB();
+
+    if (auth.role === "teacher") {
+      const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
+      const classes = await Class.find({
+        school: auth.schoolId,
+        $or: accessible.length > 0 ? accessible.map((c) => ({ name: c.name, section: c.section })) : [{ _id: null }],
+      }).sort({ name: 1, section: 1 });
+      return NextResponse.json({ success: true, count: classes.length, data: classes });
+    }
+
     const classes = await Class.find({ school: auth.schoolId })
       .populate("classTeacher", "name teacherId")
       .sort({ name: 1, section: 1 });
