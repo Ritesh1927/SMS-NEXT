@@ -18,6 +18,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/attendance", label: "Attendance" },
     { href: "/dashboard/exams", label: "Exams" },
     { href: "/dashboard/homework", label: "Homework" },
+    { href: "/dashboard/timetable", label: "Timetable" },
     { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/leaderboard", label: "Leaderboard" },
     { href: "/dashboard/notices", label: "Notices" },
@@ -29,6 +30,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/attendance", label: "Attendance" },
     { href: "/dashboard/exams", label: "Exams" },
     { href: "/dashboard/homework", label: "Homework" },
+    { href: "/dashboard/timetable", label: "Timetable" },
     { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/leaderboard", label: "Leaderboard" },
     { href: "/dashboard/notices", label: "Notices" },
@@ -36,6 +38,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
   ],
   parent: [
     { href: "/dashboard", label: "Overview" },
+    { href: "/dashboard/timetable", label: "Timetable" },
     { href: "/dashboard/leaderboard", label: "Leaderboard" },
     { href: "/dashboard/notices", label: "Notices" },
     { href: "/dashboard/chat", label: "Messages" },
