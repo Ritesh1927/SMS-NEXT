@@ -1,5 +1,6 @@
 import { UAParser } from "ua-parser-js";
 import { LoginLog, type LoginRole } from "@/models/LoginLog";
+import { getClientIp } from "@/lib/rateLimit";
 
 // Fire-and-forget login audit entry, ported from SMS-BACKEND's inline
 // "LOG LOGIN" blocks in auth.controller.js. Never awaited by the caller —
@@ -7,7 +8,7 @@ import { LoginLog, type LoginRole } from "@/models/LoginLog";
 export function logLogin(req: Request, entry: { school: string; userId: string; userName: string; email: string; role: LoginRole }) {
   try {
     const ua = new UAParser(req.headers.get("user-agent") || "").getResult();
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+    const ip = getClientIp(req);
     const browser = ua.browser.name ? `${ua.browser.name}${ua.browser.version ? " " + ua.browser.version : ""}` : "";
     const os = ua.os.name || "";
     const deviceType = ua.device.type === "mobile" ? "Mobile" : ua.device.type === "tablet" ? "Tablet" : "Desktop";

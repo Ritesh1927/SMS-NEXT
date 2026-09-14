@@ -4,6 +4,7 @@ import { Admin } from "@/models/Admin";
 import { Teacher } from "@/models/Teacher";
 import { Parent } from "@/models/Parent";
 import { Student } from "@/models/Student";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 async function findUserByEmail(email: string) {
   return (
@@ -15,6 +16,9 @@ async function findUserByEmail(email: string) {
 }
 
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email, otp } = await req.json();
     if (!email || !otp) {

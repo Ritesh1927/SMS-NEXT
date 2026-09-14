@@ -6,6 +6,7 @@ import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { generateToken } from "@/lib/helpers";
 import { logLogin } from "@/lib/loginLog";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 // Simplified port of SMS-BACKEND's resolveSchools: the same email+password
 // can match a schooladmin, teacher and/or parent account across schools, so
@@ -28,6 +29,9 @@ interface ResolvedAccount {
 }
 
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email, password, role, schoolId } = await req.json();
     if (!email || !password) {

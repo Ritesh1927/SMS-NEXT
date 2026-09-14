@@ -3,12 +3,16 @@ import { connectDB } from "@/lib/db";
 import { Admin } from "@/models/Admin";
 import { generateOTP, hashPassword } from "@/lib/helpers";
 import { sendOTPMail } from "@/lib/mail";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 // School signup: the school's Admin account doubles as the school record
 // itself (mirrors SMS-BACKEND, which keeps school profile fields directly on
 // Admin). An unverified record from a previous attempt is reused instead of
 // blocked, so a failed OTP send doesn't permanently trap that email address.
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { schoolName, schoolAddress, schoolPhone, name, email, password, phone } = await req.json();
     if (!schoolName || !name || !email || !password) {

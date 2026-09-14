@@ -3,8 +3,12 @@ import { connectDB } from "@/lib/db";
 import { Admin } from "@/models/Admin";
 import { generateOTP } from "@/lib/helpers";
 import { sendOTPMail } from "@/lib/mail";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email } = await req.json();
     if (!email) {

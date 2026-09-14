@@ -5,6 +5,7 @@ import { Teacher } from "@/models/Teacher";
 import { Parent } from "@/models/Parent";
 import { Student } from "@/models/Student";
 import { hashPassword } from "@/lib/helpers";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 async function findUserByRole(email: string, role?: string) {
   if (role === "schooladmin") return Admin.findOne({ email });
@@ -20,6 +21,9 @@ async function findUserByRole(email: string, role?: string) {
 }
 
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email, otp, newPassword, role } = await req.json();
     if (!email || !otp || !newPassword) {
