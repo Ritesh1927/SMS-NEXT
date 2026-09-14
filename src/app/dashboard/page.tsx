@@ -6,6 +6,7 @@ import { GraduationCap, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SchoolAdminDashboard } from "@/components/dashboard/SchoolAdminDashboard";
 
 const ROLE_LABELS: Record<string, string> = {
   schooladmin: "School Admin",
@@ -50,32 +51,37 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 px-6 py-10">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="text-2xl font-bold text-[#172554]">Welcome, {user.name}</h1>
-          <p className="text-sm text-[#64748B] mt-1">
-            You&apos;re signed in as {ROLE_LABELS[user.role] || user.role}
-            {user.schoolName ? ` at ${user.schoolName}` : ""}.
-          </p>
+        {user.role === "schooladmin" ? (
+          <div className="mx-auto max-w-5xl">
+            <SchoolAdminDashboard schoolName={user.schoolName} />
+          </div>
+        ) : (
+          <div className="mx-auto max-w-2xl">
+            <h1 className="text-2xl font-bold text-[#172554]">Welcome, {user.name}</h1>
+            <p className="text-sm text-[#64748B] mt-1">
+              You&apos;re signed in as {ROLE_LABELS[user.role] || user.role}
+              {user.schoolName ? ` at ${user.schoolName}` : ""}.
+            </p>
 
-          <Card className="mt-6 rounded-2xl border-[#E2E8F0]">
-            <CardHeader>
-              <CardTitle className="text-base text-[#172554]">Account</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <Row label="Name" value={user.name} />
-              <Row label="Email" value={user.email} />
-              <Row label="Role" value={ROLE_LABELS[user.role] || user.role} />
-              {user.schoolName && <Row label="School" value={user.schoolName} />}
-              {user.schoolCode && <Row label="School Code" value={user.schoolCode} />}
-              {user.teacherId && <Row label="Teacher ID" value={user.teacherId} />}
-            </CardContent>
-          </Card>
+            <Card className="mt-6 rounded-2xl border-[#E2E8F0]">
+              <CardHeader>
+                <CardTitle className="text-base text-[#172554]">Account</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <Row label="Name" value={user.name} />
+                <Row label="Email" value={user.email} />
+                <Row label="Role" value={ROLE_LABELS[user.role] || user.role} />
+                {user.schoolName && <Row label="School" value={user.schoolName} />}
+                {user.schoolCode && <Row label="School Code" value={user.schoolCode} />}
+                {user.teacherId && <Row label="Teacher ID" value={user.teacherId} />}
+              </CardContent>
+            </Card>
 
-          <p className="mt-6 text-xs text-[#94A3B8]">
-            This is a minimal protected shell proving the login → session → guarded-route flow works.
-            Role-specific dashboards come next.
-          </p>
-        </div>
+            <p className="mt-6 text-xs text-[#94A3B8]">
+              A full dashboard for this role hasn&apos;t been built yet — school admin is first.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

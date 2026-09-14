@@ -19,3 +19,23 @@ export async function apiPost<T = unknown>(path: string, body: unknown): Promise
   }
   return json as T;
 }
+
+// GET for our own authenticated API routes — token goes in the Authorization
+// header rather than a cookie since there's no server session to attach it
+// to; the caller reads it from AuthContext/localStorage.
+export async function apiGet<T = unknown>(path: string, token: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error("Could not reach the server. Please check your connection and try again.");
+  }
+
+  const json = await res.json().catch(() => ({}) as Record<string, unknown>);
+  if (!res.ok || json.success === false) {
+    throw new Error((json.message as string) || "Something went wrong.");
+  }
+  return json as T;
+}
