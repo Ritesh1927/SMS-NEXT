@@ -64,7 +64,6 @@ export default function ParentsPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openEdit = (p: ParentRow) => {

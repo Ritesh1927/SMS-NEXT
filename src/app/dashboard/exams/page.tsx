@@ -118,7 +118,6 @@ export default function ExamsPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {

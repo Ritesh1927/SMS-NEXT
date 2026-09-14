@@ -66,6 +66,7 @@ export default function LoginPage() {
   const [matchedSchools, setMatchedSchools] = useState<MatchedSchool[]>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: false on the SSR pass, flips true client-side to trigger the entrance transition.
     setMounted(true);
   }, []);
 

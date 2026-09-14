@@ -92,6 +92,7 @@ export default function AttendancePage() {
   }, [classId, date]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch the roster whenever class or date changes.
     if (classId) loadRoster();
   }, [classId, date, loadRoster]);
 

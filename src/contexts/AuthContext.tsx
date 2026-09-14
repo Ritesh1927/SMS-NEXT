@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(USER_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: see the `loading` comment above, this must run post-hydration.
       if (stored) setUser(JSON.parse(stored));
     } catch {
       // Corrupt or inaccessible storage — treat as logged out.
