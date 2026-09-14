@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash, CalendarCheck, Award } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 
@@ -104,6 +104,7 @@ export function ParentDashboard() {
               )}
               <ChildAttendance studentId={child._id} />
               <ChildResults studentId={child._id} />
+              <ChildFees studentId={child._id} />
             </div>
           ))}
         </div>
@@ -190,6 +191,37 @@ function ChildResults({ studentId }: { studentId: string }) {
           </p>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface FeesSummaryResponse {
+  success: boolean;
+  data: { summary: { paid: number; pending: number; total: number } };
+}
+
+function ChildFees({ studentId }: { studentId: string }) {
+  const [summary, setSummary] = useState<{ paid: number; pending: number; total: number } | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<FeesSummaryResponse>(`/fees/student/${studentId}`, token)
+      .then((res) => setSummary(res.data.summary))
+      .catch(() => {});
+  }, [studentId]);
+
+  if (!summary || summary.total === 0) return null;
+
+  const color = summary.pending === 0 ? "text-green-600" : "text-amber-600";
+
+  return (
+    <div className="mt-2 flex items-center gap-1.5 text-xs">
+      <Wallet className={`h-3.5 w-3.5 ${color}`} />
+      <span className={`font-semibold ${color}`}>
+        {summary.pending === 0 ? "Fully paid" : `₹${summary.pending.toLocaleString()} pending`}
+      </span>
+      <span className="text-[#94A3B8]">of ₹{summary.total.toLocaleString()}</span>
     </div>
   );
 }

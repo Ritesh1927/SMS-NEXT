@@ -16,6 +16,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/classes", label: "Classes" },
     { href: "/dashboard/attendance", label: "Attendance" },
     { href: "/dashboard/exams", label: "Exams" },
+    { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/notices", label: "Notices" },
     { href: "/dashboard/settings", label: "Settings" },
   ],
@@ -23,6 +24,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard", label: "Overview" },
     { href: "/dashboard/attendance", label: "Attendance" },
     { href: "/dashboard/exams", label: "Exams" },
+    { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/notices", label: "Notices" },
   ],
   parent: [

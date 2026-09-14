@@ -1,4 +1,6 @@
+import { NextResponse } from "next/server";
 import { verifyToken, type TokenPayload } from "@/lib/helpers";
+import { Teacher } from "@/models/Teacher";
 
 // Reads the "Authorization: Bearer <token>" header on an API route request
 // and returns the decoded payload, or null if missing/invalid — callers
@@ -13,4 +15,30 @@ export function getAuthUser(req: Request): TokenPayload | null {
   } catch {
     return null;
   }
+}
+
+type FeeManagerResult = { auth: TokenPayload } | { error: NextResponse };
+
+// Shared by every /api/fees write route: schooladmin is always allowed,
+// teacher only with permissions.canManageFees. Distinguishes "not logged
+// in" (401) from "logged in but not permitted" (403) so callers don't have
+// to collapse both into one generic "Unauthorized" — the caller must have
+// already called connectDB() since this queries Teacher.
+export async function requireFeeManager(req: Request): Promise<FeeManagerResult> {
+  const auth = getAuthUser(req);
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+    return { error: NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 }) };
+  }
+  if (auth.role === "teacher") {
+    const teacher = await Teacher.findById(auth.id).select("permissions");
+    if (!teacher?.permissions?.canManageFees) {
+      return {
+        error: NextResponse.json(
+          { success: false, message: "You don't have permission to manage fees." },
+          { status: 403 },
+        ),
+      };
+    }
+  }
+  return { auth };
 }
