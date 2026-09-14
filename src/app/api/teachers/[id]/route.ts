@@ -13,7 +13,7 @@ function requireSchoolAdmin(req: Request) {
 const ALLOWED_FIELDS = [
   "name", "phone", "subjects", "classes", "qualification", "experience", "designation", "isActive",
   "gender", "dateOfBirth", "address", "bloodGroup", "joiningDate", "salary", "employmentType",
-  "staffType", "department",
+  "staffType", "department", "permissions",
 ] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
