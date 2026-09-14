@@ -5,13 +5,14 @@ import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { generateToken } from "@/lib/helpers";
+import { logLogin } from "@/lib/loginLog";
 
 // Simplified port of SMS-BACKEND's resolveSchools: the same email+password
 // can match a schooladmin, teacher and/or parent account across schools, so
 // every matching role is checked and the caller either gets a single
 // auto-login or a list of accounts to choose from. The School/Plan
-// license-gating subsystem and login-activity logging from the original are
-// deliberately left out of this initial pass.
+// license-gating subsystem from the original is deliberately left out of
+// this initial pass.
 interface ResolvedAccount {
   schoolId: string;
   schoolName: string;
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Parent account is deactivated." }, { status: 403 });
       }
       const token = generateToken(parent.id, "parent", String(parent.school));
+      logLogin(req, { school: String(parent.school), userId: parent.id, userName: parent.name, email: parent.email, role: "parent" });
       return NextResponse.json({
         success: true,
         single: true,
@@ -171,6 +173,7 @@ export async function POST(req: Request) {
     if (results.length === 1) {
       const r = results[0];
       const token = generateToken(r.userId, r.role, r.schoolId);
+      logLogin(req, { school: r.schoolId, userId: r.userId, userName: r.userName, email: r.email || identifier.toLowerCase(), role: r.role });
       return NextResponse.json({
         success: true,
         single: true,
