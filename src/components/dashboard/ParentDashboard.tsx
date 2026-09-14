@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -108,6 +108,7 @@ export function ParentDashboard() {
               <ChildAttendance studentId={child._id} />
               <ChildResults studentId={child._id} />
               <ChildFees studentId={child._id} childName={child.name} />
+              <ChildHomework studentId={child._id} />
             </div>
           ))}
         </div>
@@ -318,6 +319,88 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
               >
                 {payingId === f._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
                 Pay
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface HomeworkItem {
+  _id: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  submission: { status: "submitted" | "late" | "graded"; marks: number | null } | null;
+}
+
+interface HomeworkResponse {
+  success: boolean;
+  data: HomeworkItem[];
+}
+
+function ChildHomework({ studentId }: { studentId: string }) {
+  const [items, setItems] = useState<HomeworkItem[] | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+
+  const load = () => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<HomeworkResponse>(`/homework/student/${studentId}`, token)
+      .then((res) => setItems(res.data))
+      .catch(() => {});
+  };
+
+  useEffect(load, [studentId]);
+
+  const handleSubmit = async (hw: HomeworkItem) => {
+    const token = getToken();
+    if (!token) return;
+    setSubmittingId(hw._id);
+    try {
+      const res = await fetch(`/api/homework/${hw._id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId }),
+      });
+      const json: ApiMessageResponse = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to submit.");
+      toast.success(json.message || "Submitted");
+      load();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to submit." });
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  if (!items || items.length === 0) return null;
+  const pending = items.filter((h) => !h.submission);
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1.5 text-xs">
+        <BookOpen className={`h-3.5 w-3.5 ${pending.length === 0 ? "text-green-600" : "text-amber-600"}`} />
+        <span className={`font-semibold ${pending.length === 0 ? "text-green-600" : "text-amber-600"}`}>
+          {pending.length === 0 ? "All homework submitted" : `${pending.length} homework pending`}
+        </span>
+      </div>
+      {pending.length > 0 && (
+        <div className="mt-1.5 space-y-1.5">
+          {pending.slice(0, 3).map((hw) => (
+            <div key={hw._id} className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-[#64748B] truncate">
+                {hw.subject}: {hw.title} — due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+              <Button
+                size="xs"
+                onClick={() => handleSubmit(hw)}
+                disabled={submittingId === hw._id}
+                className="gap-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6 shrink-0"
+              >
+                {submittingId === hw._id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mark Done"}
               </Button>
             </div>
           ))}
