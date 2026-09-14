@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { GraduationCap, LogOut, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, getToken } from "@/contexts/AuthContext";
+import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
@@ -18,6 +19,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/exams", label: "Exams" },
     { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/notices", label: "Notices" },
+    { href: "/dashboard/chat", label: "Messages" },
     { href: "/dashboard/settings", label: "Settings" },
   ],
   teacher: [
@@ -26,21 +28,45 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/exams", label: "Exams" },
     { href: "/dashboard/fees", label: "Fees" },
     { href: "/dashboard/notices", label: "Notices" },
+    { href: "/dashboard/chat", label: "Messages" },
   ],
   parent: [
     { href: "/dashboard", label: "Overview" },
     { href: "/dashboard/notices", label: "Notices" },
+    { href: "/dashboard/chat", label: "Messages" },
   ],
 };
+
+const UNREAD_POLL_MS = 15000;
+
+interface UnreadResponse {
+  success: boolean;
+  total: number;
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.replace("/login");
   }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const token = getToken();
+    if (!token) return;
+    const poll = () => {
+      apiGet<UnreadResponse>("/chat/unread", token)
+        .then((res) => setUnread(res.total))
+        .catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, UNREAD_POLL_MS);
+    return () => clearInterval(interval);
+  }, [user, pathname]);
 
   if (loading || !user) {
     return (
@@ -73,17 +99,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <nav className="flex gap-1 -mb-px">
             {NAV_ITEMS_BY_ROLE[user.role].map((item) => {
               const active = pathname === item.href;
+              const isChat = item.href === "/dashboard/chat";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`relative px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                     active
                       ? "border-[#2563EB] text-[#2563EB]"
                       : "border-transparent text-[#64748B] hover:text-[#172554]"
                   }`}
                 >
                   {item.label}
+                  {isChat && unread > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full h-4 min-w-4 px-1">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
                 </Link>
               );
             })}
