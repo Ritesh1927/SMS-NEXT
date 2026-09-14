@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash, CalendarCheck } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck, Award } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 
@@ -103,6 +103,7 @@ export function ParentDashboard() {
                 <p className="mt-1 text-xs text-[#94A3B8]">Admission No: {child.admissionNo}</p>
               )}
               <ChildAttendance studentId={child._id} />
+              <ChildResults studentId={child._id} />
             </div>
           ))}
         </div>
@@ -144,6 +145,51 @@ function ChildAttendance({ studentId }: { studentId: string }) {
       <CalendarCheck className={`h-3.5 w-3.5 ${color}`} />
       <span className={`font-semibold ${color}`}>{percentage}% attendance</span>
       <span className="text-[#94A3B8]">this month</span>
+    </div>
+  );
+}
+
+interface ResultRow {
+  exam?: { title: string; subject: string } | null;
+  marksObtained: number;
+  totalMarks: number;
+  grade: string;
+}
+
+interface ResultsSummaryResponse {
+  success: boolean;
+  data: { results: ResultRow[]; averagePercentage: number };
+}
+
+function ChildResults({ studentId }: { studentId: string }) {
+  const [data, setData] = useState<{ results: ResultRow[]; averagePercentage: number } | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ResultsSummaryResponse>(`/results/student/${studentId}`, token)
+      .then((res) => setData(res.data))
+      .catch(() => {});
+  }, [studentId]);
+
+  if (!data || data.results.length === 0) return null;
+
+  const color = data.averagePercentage >= 75 ? "text-green-600" : data.averagePercentage >= 50 ? "text-amber-600" : "text-red-600";
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1.5 text-xs">
+        <Award className={`h-3.5 w-3.5 ${color}`} />
+        <span className={`font-semibold ${color}`}>{data.averagePercentage}% average</span>
+        <span className="text-[#94A3B8]">across {data.results.length} result{data.results.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="mt-1.5 space-y-0.5">
+        {data.results.slice(0, 3).map((r, i) => (
+          <p key={i} className="text-[11px] text-[#64748B]">
+            {r.exam?.subject || r.exam?.title || "Exam"}: {r.marksObtained}/{r.totalMarks} ({r.grade})
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
