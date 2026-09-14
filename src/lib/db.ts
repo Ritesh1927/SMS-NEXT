@@ -1,15 +1,6 @@
 import mongoose from "mongoose";
 import dns from "dns";
 
-// Some local/ISP DNS resolvers fail to resolve the SRV records that
-// `mongodb+srv://` connection strings depend on (surfaces as
-// `querySrv ECONNREFUSED`), even though the connection string and Atlas
-// config are both fine. Point SRV lookups at public resolvers instead —
-// same fix used in the SMS backend for the same symptom.
-if (process.env.MONGO_URI?.startsWith("mongodb+srv://")) {
-  dns.setServers(["8.8.8.8", "1.1.1.1"]);
-}
-
 // Next.js API routes run as separate function invocations rather than one
 // long-lived process, so a naive `mongoose.connect()` per request would open
 // a new connection every time. Caching the connection (and the in-flight
@@ -38,6 +29,17 @@ export async function connectDB(): Promise<typeof mongoose> {
   const MONGO_URI = process.env.MONGO_URI;
   if (!MONGO_URI) {
     throw new Error("MONGO_URI is not set. Add it to .env.local");
+  }
+
+  // Some local/ISP DNS resolvers fail to resolve the SRV records that
+  // `mongodb+srv://` connection strings depend on (surfaces as
+  // `querySrv ECONNREFUSED`), even though the connection string and Atlas
+  // config are both fine. Point SRV lookups at public resolvers instead.
+  // Set here (not at module scope) since Turbopack's dev server appears to
+  // run route modules in isolates that don't share that global DNS override
+  // reliably across requests.
+  if (MONGO_URI.startsWith("mongodb+srv://")) {
+    dns.setServers(["8.8.8.8", "1.1.1.1"]);
   }
 
   if (!cache.promise) {
