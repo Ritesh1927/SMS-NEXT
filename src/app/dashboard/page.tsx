@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SchoolAdminDashboard } from "@/components/dashboard/SchoolAdminDashboard";
 import { ParentDashboard } from "@/components/dashboard/ParentDashboard";
+import { TeacherDashboard } from "@/components/dashboard/TeacherDashboard";
 
 const ROLE_LABELS: Record<string, string> = {
   schooladmin: "School Admin",
@@ -22,6 +23,10 @@ export default function DashboardPage() {
 
   if (user.role === "parent") {
     return <ParentDashboard />;
+  }
+
+  if (user.role === "teacher") {
+    return <TeacherDashboard />;
   }
 
   return (

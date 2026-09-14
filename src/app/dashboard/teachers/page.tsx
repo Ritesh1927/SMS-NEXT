@@ -19,6 +19,7 @@ interface TeacherRow {
   teacherId: string;
   designation?: string;
   subjects?: string[];
+  classes?: string[];
   qualification?: string;
   staffType: string;
   employmentType?: string;
@@ -44,6 +45,7 @@ const EMPTY_FORM = {
   phone: "",
   designation: "",
   subjects: "",
+  classes: "",
   qualification: "",
   employmentType: "full-time",
   gender: "male",
@@ -86,6 +88,7 @@ export default function TeachersPage() {
       phone: t.phone || "",
       designation: t.designation || "",
       subjects: (t.subjects || []).join(", "),
+      classes: (t.classes || []).join(", "),
       qualification: t.qualification || "",
       employmentType: t.employmentType || "full-time",
       gender: t.gender || "male",
@@ -99,13 +102,14 @@ export default function TeachersPage() {
     if (!token) return;
     setSubmitting(true);
     const subjects = form.subjects.split(",").map((s) => s.trim()).filter(Boolean);
+    const classes = form.classes.split(",").map((s) => s.trim()).filter(Boolean);
     try {
       if (editingId) {
         const res = await fetch(`/api/teachers/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
-            name: form.name, phone: form.phone, designation: form.designation, subjects,
+            name: form.name, phone: form.phone, designation: form.designation, subjects, classes,
             qualification: form.qualification, employmentType: form.employmentType, gender: form.gender,
           }),
         });
@@ -116,7 +120,7 @@ export default function TeachersPage() {
         const res = await fetch("/api/teachers", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ...form, subjects }),
+          body: JSON.stringify({ ...form, subjects, classes }),
         });
         const json: ApiMessageResponse = await res.json();
         if (!res.ok || !json.success) throw new Error(json.message || "Failed to create teacher.");
@@ -215,6 +219,7 @@ export default function TeachersPage() {
                 <p className="text-xs text-[#64748B] mt-0.5">
                   {t.teacherId} · {t.designation || (t.staffType === "teaching" ? "Teacher" : "Staff")}
                   {t.subjects && t.subjects.length > 0 ? ` · ${t.subjects.join(", ")}` : ""}
+                  {t.classes && t.classes.length > 0 ? ` · Classes: ${t.classes.join(", ")}` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-4 text-xs text-[#64748B] shrink-0">
@@ -293,6 +298,13 @@ export default function TeachersPage() {
                 placeholder="Math, Science"
                 value={form.subjects}
                 onChange={(e) => setForm((f) => ({ ...f, subjects: e.target.value }))}
+              />
+            </Field>
+            <Field label="Assigned Classes (comma-separated, e.g. 5-A, 6-B)">
+              <Input
+                placeholder="5-A, 6-B"
+                value={form.classes}
+                onChange={(e) => setForm((f) => ({ ...f, classes: e.target.value }))}
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
