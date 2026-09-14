@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
+import "@/models/Subject";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -34,6 +35,7 @@ export async function GET(req: Request) {
 
     const classes = await Class.find({ school: auth.schoolId })
       .populate("classTeacher", "name teacherId")
+      .populate("assignedSubjects", "name code")
       .sort({ name: 1, section: 1 });
 
     const withCounts = await Promise.all(
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
   if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
 
   try {
-    const { name, section, classTeacher, room, subjects } = await req.json();
+    const { name, section, classTeacher, room } = await req.json();
     if (!name || !section) {
       return NextResponse.json({ success: false, message: "Class name and section required." }, { status: 400 });
     }
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     }
 
     const cls = await Class.create({
-      name, section, classTeacher: classTeacher || null, room: room || "", subjects: subjects || [], school: auth.schoolId,
+      name, section, classTeacher: classTeacher || null, room: room || "", school: auth.schoolId,
     });
     await cls.populate("classTeacher", "name teacherId");
 

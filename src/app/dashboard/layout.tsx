@@ -15,6 +15,7 @@ const NAV_ITEMS_BY_ROLE: Record<string, { href: string; label: string }[]> = {
     { href: "/dashboard/teachers", label: "Teachers" },
     { href: "/dashboard/parents", label: "Parents" },
     { href: "/dashboard/classes", label: "Classes" },
+    { href: "/dashboard/subjects", label: "Subjects" },
     { href: "/dashboard/attendance", label: "Attendance" },
     { href: "/dashboard/exams", label: "Exams" },
     { href: "/dashboard/homework", label: "Homework" },

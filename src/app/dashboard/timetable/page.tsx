@@ -53,6 +53,12 @@ interface TeacherOption {
   name: string;
 }
 
+interface SubjectOption {
+  _id: string;
+  name: string;
+  code: string;
+}
+
 interface TTEntry {
   _id: string;
   classId: { _id: string; name: string; section: string } | null;
@@ -96,6 +102,7 @@ export default function TimetablePage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
 
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
@@ -161,6 +168,19 @@ export default function TimetablePage() {
       .then((res) => setTeachers(res.data))
       .catch(() => {});
   }, [isAdmin]);
+
+  useEffect(() => {
+    const token = getToken();
+    const run = async () => {
+      if (!selectedClassId || !token) {
+        setSubjectOptions([]);
+        return;
+      }
+      const res = await apiGet<{ success: boolean; data: SubjectOption[] }>(`/subjects/class/${selectedClassId}`, token);
+      setSubjectOptions(res.data);
+    };
+    run().catch(() => setSubjectOptions([]));
+  }, [selectedClassId]);
 
   useEffect(() => {
     if (!isParent) return;
@@ -506,7 +526,22 @@ export default function TimetablePage() {
                 <Label>
                   Subject <span className="text-red-500">*</span>
                 </Label>
-                <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} placeholder="e.g. Mathematics" maxLength={60} />
+                {subjectOptions.length > 0 ? (
+                  <Select value={editSubject} onValueChange={(v) => setEditSubject(v || "")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map((s) => (
+                        <SelectItem key={s._id} value={s.name}>
+                          {s.name} ({s.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} placeholder="e.g. Mathematics" maxLength={60} />
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Teacher (optional)</Label>

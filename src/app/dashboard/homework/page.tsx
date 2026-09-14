@@ -18,6 +18,12 @@ interface ClassOption {
   section: string;
 }
 
+interface SubjectOption {
+  _id: string;
+  name: string;
+  code: string;
+}
+
 interface Submission {
   student: { _id: string; name: string; studentId: string } | string;
   submittedAt: string;
@@ -55,7 +61,7 @@ interface ApiMessageResponse {
   message?: string;
 }
 
-const EMPTY_FORM = { title: "", description: "", subject: "", class: "", section: "", dueDate: "", maxMarks: "" };
+const EMPTY_FORM = { title: "", description: "", subject: "", class: "", section: "", classId: "", dueDate: "", maxMarks: "" };
 
 export default function HomeworkPage() {
   const { user } = useAuth();
@@ -69,6 +75,7 @@ export default function HomeworkPage() {
   const [gradingHw, setGradingHw] = useState<HomeworkRow | null>(null);
   const [gradeDrafts, setGradeDrafts] = useState<Record<string, { marks: string; feedback: string }>>({});
   const [savingGradeFor, setSavingGradeFor] = useState<string | null>(null);
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
 
   const load = () => {
     const token = getToken();
@@ -84,6 +91,19 @@ export default function HomeworkPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const token = getToken();
+    const run = async () => {
+      if (!form.classId || !token) {
+        setSubjectOptions([]);
+        return;
+      }
+      const res = await apiGet<{ success: boolean; data: SubjectOption[] }>(`/subjects/class/${form.classId}`, token);
+      setSubjectOptions(res.data);
+    };
+    run().catch(() => setSubjectOptions([]));
+  }, [form.classId]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -231,16 +251,13 @@ export default function HomeworkPage() {
               <Textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} required rows={3} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Subject" required>
-                <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} required />
-              </Field>
               <Field label="Class" required>
                 {classes.length > 0 ? (
                   <Select
                     value={form.class && form.section ? `${form.class}::${form.section}` : ""}
                     onValueChange={(v) => {
                       const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                      if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                      if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, classId: cls._id, subject: "" }));
                     }}
                   >
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
@@ -252,6 +269,20 @@ export default function HomeworkPage() {
                   </Select>
                 ) : (
                   <Input value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value }))} required />
+                )}
+              </Field>
+              <Field label="Subject" required>
+                {subjectOptions.length > 0 ? (
+                  <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map((s) => (
+                        <SelectItem key={s._id} value={s.name}>{s.name} ({s.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder="Type subject name" required />
                 )}
               </Field>
             </div>

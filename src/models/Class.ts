@@ -6,7 +6,7 @@ export interface IClass extends Document {
   classTeacher: mongoose.Types.ObjectId | null;
   school: mongoose.Types.ObjectId;
   room: string;
-  subjects: string[];
+  assignedSubjects: mongoose.Types.ObjectId[];
 }
 
 const classSchema = new Schema<IClass>(
@@ -16,7 +16,11 @@ const classSchema = new Schema<IClass>(
     classTeacher: { type: Schema.Types.ObjectId, ref: "Teacher", default: null },
     school: { type: Schema.Types.ObjectId, ref: "Admin", required: true },
     room: { type: String, default: "" },
-    subjects: [{ type: String }],
+    // Real Subject docs (name/code/description), assigned via the
+    // Subject & Class Assignment feature — replaces the earlier plain
+    // subjects: string[] field, which duplicated the same relationship
+    // with none of the reuse/code/description that feature needs.
+    assignedSubjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
   },
   { timestamps: true },
 );

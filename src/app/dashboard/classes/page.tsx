@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Pencil, Trash2, Users, Home } from "lucide-react";
+import Link from "next/link";
+import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +17,7 @@ interface ClassRow {
   name: string;
   section: string;
   room?: string;
-  subjects?: string[];
+  assignedSubjects?: { _id: string; name: string; code: string }[];
   studentCount: number;
   classTeacher?: { _id: string; name: string; teacherId: string } | null;
 }
@@ -45,7 +46,7 @@ interface ApiMessageResponse {
 
 const NO_TEACHER = "__none__";
 
-const EMPTY_FORM = { name: "", section: "", room: "", subjects: "", classTeacher: NO_TEACHER };
+const EMPTY_FORM = { name: "", section: "", room: "", classTeacher: NO_TEACHER };
 
 export default function ClassesPage() {
   const { user } = useAuth();
@@ -85,7 +86,6 @@ export default function ClassesPage() {
       name: c.name,
       section: c.section,
       room: c.room || "",
-      subjects: (c.subjects || []).join(", "),
       classTeacher: c.classTeacher?._id || NO_TEACHER,
     });
     setOpen(true);
@@ -100,7 +100,6 @@ export default function ClassesPage() {
       name: form.name,
       section: form.section,
       room: form.room,
-      subjects: form.subjects.split(",").map((s) => s.trim()).filter(Boolean),
       classTeacher: form.classTeacher === NO_TEACHER ? null : form.classTeacher,
     };
     try {
@@ -150,9 +149,14 @@ export default function ClassesPage() {
           <h1 className="text-2xl font-bold text-[#172554]">Classes</h1>
           <p className="text-sm text-[#64748B] mt-1">Manage class sections and assign class teachers.</p>
         </div>
-        <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-          <Plus className="h-4 w-4" /> Add Class
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
+            <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
+          </Link>
+          <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+            <Plus className="h-4 w-4" /> Add Class
+          </Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -196,6 +200,15 @@ export default function ClassesPage() {
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.studentCount} students</span>
                 {c.room && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" /> {c.room}</span>}
               </div>
+              {c.assignedSubjects && c.assignedSubjects.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {c.assignedSubjects.map((s) => (
+                    <span key={s._id} className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155] font-medium">
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -217,13 +230,6 @@ export default function ClassesPage() {
             </div>
             <Field label="Room">
               <Input value={form.room} onChange={(e) => setForm((f) => ({ ...f, room: e.target.value }))} />
-            </Field>
-            <Field label="Subjects (comma-separated)">
-              <Input
-                placeholder="Math, Science, English"
-                value={form.subjects}
-                onChange={(e) => setForm((f) => ({ ...f, subjects: e.target.value }))}
-              />
             </Field>
             <Field label="Class Teacher">
               <Select value={form.classTeacher} onValueChange={(v) => setForm((f) => ({ ...f, classTeacher: v || NO_TEACHER }))}>

@@ -38,6 +38,12 @@ interface ClassOption {
   section: string;
 }
 
+interface SubjectOption {
+  _id: string;
+  name: string;
+  code: string;
+}
+
 interface Child {
   _id: string;
   name: string;
@@ -72,6 +78,7 @@ export default function StudyMaterialsPage() {
   const [uploading, setUploading] = useState(false);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -114,6 +121,19 @@ export default function StudyMaterialsPage() {
       })
       .catch(() => {});
   }, [isParent]);
+
+  useEffect(() => {
+    const token = getToken();
+    const run = async () => {
+      if (!form.classId || !token) {
+        setSubjectOptions([]);
+        return;
+      }
+      const res = await apiGet<{ success: boolean; data: SubjectOption[] }>(`/subjects/class/${form.classId}`, token);
+      setSubjectOptions(res.data);
+    };
+    run().catch(() => setSubjectOptions([]));
+  }, [form.classId]);
 
   const openModal = () => {
     setShowModal(true);
@@ -371,7 +391,7 @@ export default function StudyMaterialsPage() {
                 ) : classes.length === 0 ? (
                   <div className="text-xs text-red-600 h-9 flex items-center">No classes available to you.</div>
                 ) : (
-                  <Select value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v || "" }))}>
+                  <Select value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v || "", subject: "" }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select class…" />
                     </SelectTrigger>
@@ -391,7 +411,22 @@ export default function StudyMaterialsPage() {
                 <Label>
                   Subject <span className="text-red-500">*</span>
                 </Label>
-                <Input placeholder="e.g. Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} maxLength={60} />
+                {subjectOptions.length > 0 ? (
+                  <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map((s) => (
+                        <SelectItem key={s._id} value={s.name}>
+                          {s.name} ({s.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input placeholder="e.g. Mathematics" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} maxLength={60} />
+                )}
               </div>
 
               <div className="space-y-1.5">
