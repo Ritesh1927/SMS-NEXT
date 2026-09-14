@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard } from "lucide-react";
+import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from "@/lib/razorpay-client";
 
 interface Child {
   _id: string;
@@ -104,7 +107,7 @@ export function ParentDashboard() {
               )}
               <ChildAttendance studentId={child._id} />
               <ChildResults studentId={child._id} />
-              <ChildFees studentId={child._id} />
+              <ChildFees studentId={child._id} childName={child.name} />
             </div>
           ))}
         </div>
@@ -195,33 +198,131 @@ function ChildResults({ studentId }: { studentId: string }) {
   );
 }
 
-interface FeesSummaryResponse {
-  success: boolean;
-  data: { summary: { paid: number; pending: number; total: number } };
+interface FeeLine {
+  _id: string;
+  title: string;
+  amount: number;
+  paidAmount: number;
+  status: "paid" | "pending" | "partial" | "overdue";
 }
 
-function ChildFees({ studentId }: { studentId: string }) {
-  const [summary, setSummary] = useState<{ paid: number; pending: number; total: number } | null>(null);
+interface FeesResponse {
+  success: boolean;
+  data: { fees: FeeLine[]; summary: { paid: number; pending: number; total: number } };
+}
 
-  useEffect(() => {
+interface ApiMessageResponse {
+  success: boolean;
+  message?: string;
+}
+
+function ChildFees({ studentId, childName }: { studentId: string; childName: string }) {
+  const [fees, setFees] = useState<FeeLine[] | null>(null);
+  const [summary, setSummary] = useState<{ paid: number; pending: number; total: number } | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const load = () => {
     const token = getToken();
     if (!token) return;
-    apiGet<FeesSummaryResponse>(`/fees/student/${studentId}`, token)
-      .then((res) => setSummary(res.data.summary))
+    apiGet<FeesResponse>(`/fees/student/${studentId}`, token)
+      .then((res) => {
+        setFees(res.data.fees);
+        setSummary(res.data.summary);
+      })
       .catch(() => {});
-  }, [studentId]);
+  };
+
+  useEffect(load, [studentId]);
+
+  const handlePay = async (fee: FeeLine) => {
+    const token = getToken();
+    if (!token) return;
+    setPayingId(fee._id);
+    try {
+      await loadRazorpayScript();
+
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feePaymentId: fee._id, amount: fee.amount - fee.paidAmount }),
+      });
+      const orderJson: RazorpayOrderResponse & { message?: string } = await orderRes.json();
+      if (!orderRes.ok || !orderJson.success) throw new Error(orderJson.message || "Failed to start payment.");
+
+      const { orderId, amount, currency, keyId } = orderJson.data;
+
+      const rzp = openRazorpayCheckout({
+        key: keyId,
+        amount: Math.round(amount * 100),
+        currency,
+        name: childName,
+        description: fee.title,
+        order_id: orderId,
+        theme: { color: "#2563EB" },
+        prefill: { name: childName },
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ ...response, feePaymentId: fee._id }),
+            });
+            const verifyJson: ApiMessageResponse = await verifyRes.json();
+            if (!verifyRes.ok || !verifyJson.success) throw new Error(verifyJson.message || "Verification failed.");
+            toast.success("Payment successful!");
+            load();
+          } catch (err) {
+            toast.error("Payment verification failed", { description: err instanceof Error ? err.message : "Contact the school." });
+          } finally {
+            setPayingId(null);
+          }
+        },
+      });
+      rzp.on("payment.failed", (response) => {
+        toast.error("Payment failed", { description: response.error?.description || "Please try again." });
+        setPayingId(null);
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to start payment." });
+      setPayingId(null);
+    }
+  };
 
   if (!summary || summary.total === 0) return null;
 
   const color = summary.pending === 0 ? "text-green-600" : "text-amber-600";
+  const pendingFees = (fees || []).filter((f) => f.status !== "paid");
 
   return (
-    <div className="mt-2 flex items-center gap-1.5 text-xs">
-      <Wallet className={`h-3.5 w-3.5 ${color}`} />
-      <span className={`font-semibold ${color}`}>
-        {summary.pending === 0 ? "Fully paid" : `₹${summary.pending.toLocaleString()} pending`}
-      </span>
-      <span className="text-[#94A3B8]">of ₹{summary.total.toLocaleString()}</span>
+    <div className="mt-2">
+      <div className="flex items-center gap-1.5 text-xs">
+        <Wallet className={`h-3.5 w-3.5 ${color}`} />
+        <span className={`font-semibold ${color}`}>
+          {summary.pending === 0 ? "Fully paid" : `₹${summary.pending.toLocaleString()} pending`}
+        </span>
+        <span className="text-[#94A3B8]">of ₹{summary.total.toLocaleString()}</span>
+      </div>
+      {pendingFees.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {pendingFees.map((f) => (
+            <div key={f._id} className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-[#64748B]">
+                {f.title} — ₹{(f.amount - f.paidAmount).toLocaleString()}
+              </span>
+              <Button
+                size="xs"
+                onClick={() => handlePay(f)}
+                disabled={payingId === f._id}
+                className="gap-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6"
+              >
+                {payingId === f._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
+                Pay
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
