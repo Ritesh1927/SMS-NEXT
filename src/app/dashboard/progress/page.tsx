@@ -70,7 +70,11 @@ export default function ProgressPage() {
           <p className="text-sm text-[#64748B]">Detailed insights into academic performance and growth.</p>
         </div>
         {children.length > 1 && (
-          <Select value={selectedChildId} onValueChange={(v) => setSelectedChildId(v || "")}>
+          <Select
+            items={children.map((c) => ({ value: c._id, label: c.name }))}
+            value={selectedChildId}
+            onValueChange={(v) => setSelectedChildId(v || "")}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select child" />
             </SelectTrigger>

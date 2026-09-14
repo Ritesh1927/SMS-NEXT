@@ -273,7 +273,11 @@ export default function ReportsPage() {
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
               <p className="text-xs font-medium text-[#64748B]">Month</p>
-              <Select value={String(attMonth)} onValueChange={(v) => setAttMonth(Number(v))}>
+              <Select
+                items={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                value={String(attMonth)}
+                onValueChange={(v) => setAttMonth(Number(v))}
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -303,7 +307,11 @@ export default function ReportsPage() {
             </div>
             <div className="space-y-1">
               <p className="text-xs font-medium text-[#64748B]">Class</p>
-              <Select value={attClassId} onValueChange={(v) => setAttClassId(v || "all")}>
+              <Select
+                items={[{ value: "all", label: "All Classes" }, ...classes.map((c) => ({ value: c._id, label: `${c.name}-${c.section}` }))]}
+                value={attClassId}
+                onValueChange={(v) => setAttClassId(v || "all")}
+              >
                 <SelectTrigger className="w-36">
                   <SelectValue />
                 </SelectTrigger>

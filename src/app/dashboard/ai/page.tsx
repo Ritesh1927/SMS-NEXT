@@ -502,7 +502,16 @@ Format with clear headings and bullet points.`;
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input placeholder="Attendance %" value={rcAttendance} onChange={(e) => setRcAttendance(e.target.value)} />
-                  <Select value={rcBehavior} onValueChange={(v) => setRcBehavior(v || "good")}>
+                  <Select
+                    items={[
+                      { value: "excellent", label: "Excellent" },
+                      { value: "good", label: "Good" },
+                      { value: "average", label: "Average" },
+                      { value: "needsImprovement", label: "Needs Improvement" },
+                    ]}
+                    value={rcBehavior}
+                    onValueChange={(v) => setRcBehavior(v || "good")}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -561,7 +570,15 @@ Format with clear headings and bullet points.`;
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input type="date" value={flDueDate} onChange={(e) => setFlDueDate(e.target.value)} />
-                  <Select value={flTone} onValueChange={(v) => setFlTone(v || "polite")}>
+                  <Select
+                    items={[
+                      { value: "polite", label: "Polite" },
+                      { value: "firm", label: "Firm" },
+                      { value: "final", label: "Final Notice" },
+                    ]}
+                    value={flTone}
+                    onValueChange={(v) => setFlTone(v || "polite")}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

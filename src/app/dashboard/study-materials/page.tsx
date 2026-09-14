@@ -236,7 +236,11 @@ export default function StudyMaterialsPage() {
         </div>
         <div className="flex items-center gap-2">
           {isParent && children.length > 1 && (
-            <Select value={selectedChildId} onValueChange={(v) => setSelectedChildId(v || "")}>
+            <Select
+              items={children.map((c) => ({ value: c._id, label: c.name }))}
+              value={selectedChildId}
+              onValueChange={(v) => setSelectedChildId(v || "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select child" />
               </SelectTrigger>

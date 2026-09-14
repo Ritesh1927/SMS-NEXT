@@ -137,7 +137,16 @@ export default function LoginActivityPage() {
             </div>
             <div className="min-w-[140px]">
               <label className="text-xs font-medium text-[#64748B] mb-1 block">Role</label>
-              <Select value={roleFilter || "__all__"} onValueChange={(v) => setRoleFilter(v === "__all__" ? "" : v || "")}>
+              <Select
+                items={[
+                  { value: "__all__", label: "All Roles" },
+                  { value: "schooladmin", label: "Admin" },
+                  { value: "teacher", label: "Teacher" },
+                  { value: "parent", label: "Parent" },
+                ]}
+                value={roleFilter || "__all__"}
+                onValueChange={(v) => setRoleFilter(v === "__all__" ? "" : v || "")}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>

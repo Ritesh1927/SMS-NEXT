@@ -374,7 +374,11 @@ export default function TimetablePage() {
         <div className="flex items-center gap-2">
           {isAdmin && (
             <>
-              <Select value={selectedClassId} onValueChange={(v) => setSelectedClassId(v || "")}>
+              <Select
+                items={classes.map((c) => ({ value: c._id, label: `${c.name}${c.section ? `-${c.section}` : ""}` }))}
+                value={selectedClassId}
+                onValueChange={(v) => setSelectedClassId(v || "")}
+              >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
@@ -393,7 +397,11 @@ export default function TimetablePage() {
             </>
           )}
           {isParent && children.length > 1 && (
-            <Select value={selectedChildId} onValueChange={(v) => setSelectedChildId(v || "")}>
+            <Select
+              items={children.map((c) => ({ value: c._id, label: c.name }))}
+              value={selectedChildId}
+              onValueChange={(v) => setSelectedChildId(v || "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select child" />
               </SelectTrigger>
@@ -545,7 +553,11 @@ export default function TimetablePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Teacher (optional)</Label>
-                <Select value={editTeacherId || "__none__"} onValueChange={(v) => setEditTeacherId(!v || v === "__none__" ? "" : v)}>
+                <Select
+                  items={[{ value: "__none__", label: "— None —" }, ...teachers.map((t) => ({ value: t._id, label: t.name }))]}
+                  value={editTeacherId || "__none__"}
+                  onValueChange={(v) => setEditTeacherId(!v || v === "__none__" ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>

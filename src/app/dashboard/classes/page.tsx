@@ -232,7 +232,11 @@ export default function ClassesPage() {
               <Input value={form.room} onChange={(e) => setForm((f) => ({ ...f, room: e.target.value }))} />
             </Field>
             <Field label="Class Teacher">
-              <Select value={form.classTeacher} onValueChange={(v) => setForm((f) => ({ ...f, classTeacher: v || NO_TEACHER }))}>
+              <Select
+                items={[{ value: NO_TEACHER, label: "None" }, ...teachers.map((t) => ({ value: t._id, label: `${t.name} (${t.teacherId})` }))]}
+                value={form.classTeacher}
+                onValueChange={(v) => setForm((f) => ({ ...f, classTeacher: v || NO_TEACHER }))}
+              >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_TEACHER}>None</SelectItem>

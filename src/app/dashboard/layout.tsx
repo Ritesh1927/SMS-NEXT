@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Button>
         </div>
         {NAV_ITEMS_BY_ROLE[user.role] && (
-          <nav className="flex gap-1 -mb-px">
+          <nav className="flex gap-1 -mb-px overflow-x-auto">
             {NAV_ITEMS_BY_ROLE[user.role].map((item) => {
               const active = pathname === item.href;
               const isChat = item.href === "/dashboard/chat";
@@ -122,7 +122,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`relative shrink-0 whitespace-nowrap px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                     active
                       ? "border-[#2563EB] text-[#2563EB]"
                       : "border-transparent text-[#64748B] hover:text-[#172554]"

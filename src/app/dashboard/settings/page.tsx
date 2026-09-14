@@ -204,6 +204,11 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Grading Scale">
               <Select
+                items={[
+                  { value: "percentage", label: "Percentage" },
+                  { value: "gpa", label: "GPA" },
+                  { value: "letter", label: "Letter" },
+                ]}
                 value={profile.settings.gradingScale}
                 onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, gradingScale: (v || p.settings.gradingScale) as SchoolProfile["settings"]["gradingScale"] } })}
               >
@@ -217,6 +222,11 @@ export default function SettingsPage() {
             </Field>
             <Field label="Term Structure">
               <Select
+                items={[
+                  { value: "semester", label: "Semester" },
+                  { value: "trimester", label: "Trimester" },
+                  { value: "quarterly", label: "Quarterly" },
+                ]}
                 value={profile.settings.termStructure}
                 onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, termStructure: (v || p.settings.termStructure) as SchoolProfile["settings"]["termStructure"] } })}
               >
