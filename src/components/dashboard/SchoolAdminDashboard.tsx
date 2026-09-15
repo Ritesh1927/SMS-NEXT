@@ -227,10 +227,15 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
   return (
     <div className="space-y-6">
       {/* Hero banner */}
-      <div className="relative overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-gradient-to-br from-[#EEF2FF] via-[#F5F3FF] to-white">
+      <div className="relative overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-gradient-to-br from-[#EEF2FF] via-[#F5F3FF] to-white min-h-[200px] sm:min-h-[220px]">
         <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
+
+        <div className="hidden sm:block pointer-events-none absolute right-0 bottom-0 h-[85%] w-[52%]">
+          <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
+        </div>
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-6 sm:p-7">
           <div className="max-w-xl">
             <h1 className="text-2xl sm:text-[26px] font-bold text-[#172554]">
               {getGreeting()}, <span className="text-[#4F46E5]">{adminName || "Admin"}</span>
@@ -243,16 +248,11 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
             </p>
           </div>
-          <div className="flex flex-col items-end gap-4 shrink-0 self-stretch sm:self-auto">
-            <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm self-start sm:self-auto">
-              <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
-              <span className="text-sm font-semibold text-[#172554]">
-                {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              </span>
-            </div>
-            <div className="hidden sm:block relative h-28 w-40 self-end">
-              <Image src="/school-illustration.png" alt="" fill className="object-contain" priority />
-            </div>
+          <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm shrink-0 self-start">
+            <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
+            <span className="text-sm font-semibold text-[#172554]">
+              {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </span>
           </div>
         </div>
       </div>
