@@ -33,7 +33,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
     { href: "/dashboard/students", label: "Students", icon: Users, section: "People", featureKey: "students" },
-    { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, section: "People", featureKey: "teachers" },
+    { href: "/dashboard/teachers", label: "Staff", icon: GraduationCap, section: "People", featureKey: "teachers" },
     { href: "/dashboard/parents", label: "Parents", icon: UserRound, section: "People" },
     { href: "/dashboard/classes", label: "Classes", icon: School, section: "People", featureKey: "classes" },
 
@@ -47,7 +47,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", featureKey: "fees" },
 
     { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", featureKey: "notices" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
+    { href: "/dashboard/chat", label: "Communication", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
 
     { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", featureKey: "reports" },
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
@@ -73,7 +73,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", pageKey: "pageFees", featureKey: "fees" },
 
     { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", pageKey: "pageNotices", featureKey: "notices" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication", featureKey: "chat" },
+    { href: "/dashboard/chat", label: "Communication", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication", featureKey: "chat" },
 
     { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", pageKey: "pageReports", featureKey: "reports" },
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
@@ -91,7 +91,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", featureKey: "fees" },
 
     { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", featureKey: "notices" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
+    { href: "/dashboard/chat", label: "Communication", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
 
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
   ],

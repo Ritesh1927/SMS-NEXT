@@ -180,7 +180,7 @@ export default function ChatPage() {
     <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden flex h-[70vh]">
       <div className="w-64 shrink-0 border-r border-[#F1F5F9] overflow-y-auto">
         <div className="px-4 py-3 border-b border-[#F1F5F9]">
-          <h1 className="text-sm font-semibold text-[#172554]">Messages</h1>
+          <h1 className="text-sm font-semibold text-[#172554]">Communication</h1>
         </div>
         {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
         {!contacts ? (
