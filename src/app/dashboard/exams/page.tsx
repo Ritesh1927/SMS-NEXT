@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Trash2, ClipboardList, BarChart3, CheckCircle2 } from "lucide-react";
+import { Plus, Loader2, Trash2, ClipboardList, BarChart3, CheckCircle2, FileText, CalendarClock, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -104,6 +104,10 @@ export default function ExamsPage() {
   const [resultsExam, setResultsExam] = useState<ExamRow | null>(null);
   const [results, setResults] = useState<ResultsResponse["data"] | null>(null);
   const [publishing, setPublishing] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+  const [subjectFilter, setSubjectFilter] = useState("all");
 
   const load = () => {
     const token = getToken();
@@ -244,6 +248,16 @@ export default function ExamsPage() {
 
   if (!user) return null;
 
+  const subjects = Array.from(new Set((exams ?? []).map((e) => e.subject))).sort();
+  const filteredExams = (exams ?? []).filter((exam) => {
+    if (search && !exam.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (classFilter !== "all" && exam.class !== classFilter) return false;
+    if (subjectFilter !== "all" && exam.subject !== subjectFilter) return false;
+    return true;
+  });
+  const upcomingCount = (exams ?? []).filter((e) => e.status === "upcoming").length;
+  const completedCount = (exams ?? []).filter((e) => e.status === "completed").length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -258,6 +272,43 @@ export default function ExamsPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
+      {exams && exams.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+          <StatCard icon={<FileText className="h-4 w-4" />} label="Total Exams" value={exams.length} />
+          <StatCard icon={<CalendarClock className="h-4 w-4" />} label="Upcoming" value={upcomingCount} />
+          <StatCard icon={<CheckSquare className="h-4 w-4" />} label="Completed" value={completedCount} />
+        </div>
+      )}
+
+      {exams && exams.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <Input
+            placeholder="Search by title..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "all")}>
+            <SelectTrigger className="sm:w-40"><SelectValue placeholder="All classes" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All classes</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c._id} value={c.name}>Class {c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={subjectFilter} onValueChange={(v) => setSubjectFilter(v || "all")}>
+            <SelectTrigger className="sm:w-40"><SelectValue placeholder="All subjects" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All subjects</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {!exams ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
@@ -266,9 +317,13 @@ export default function ExamsPage() {
         <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <p className="text-sm text-[#64748B]">No exams yet. Create your first one to get started.</p>
         </div>
+      ) : filteredExams.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No exams match your filters.</p>
+        </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {exams.map((exam) => (
+          {filteredExams.map((exam) => (
             <div key={exam._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#172554]">{exam.title}</p>
@@ -458,6 +513,20 @@ export default function ExamsPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
+      <div className="h-9 w-9 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+      <div>
+        <p className="text-lg font-bold text-[#172554] leading-none">{value}</p>
+        <p className="text-xs text-[#64748B] mt-1">{label}</p>
+      </div>
     </div>
   );
 }
