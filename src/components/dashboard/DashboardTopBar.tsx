@@ -100,7 +100,7 @@ export function DashboardTopBar({ user, licenseWarning }: { user: AuthUser; lice
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-[#E2E8F0] bg-white/80 backdrop-blur px-4 sm:px-6">
-      <SidebarTrigger className="text-[#475569] hover:text-[#2563EB] hover:bg-[#F1F5F9] rounded-lg" />
+      <SidebarTrigger className="text-[#475569] hover:text-[#4F46E5] hover:bg-[#F1F5F9] rounded-lg" />
 
       {canSearch && (
         <div className="relative hidden md:block" ref={boxRef}>

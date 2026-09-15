@@ -116,8 +116,8 @@ export default function LoginActivityPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#2563EB]/10 rounded-xl">
-          <Activity className="h-6 w-6 text-[#2563EB]" />
+        <div className="p-2 bg-[#4F46E5]/10 rounded-xl">
+          <Activity className="h-6 w-6 text-[#4F46E5]" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#172554]">Login Activity</h1>

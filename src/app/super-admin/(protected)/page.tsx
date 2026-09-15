@@ -289,7 +289,7 @@ export default function SuperAdminDashboardPage() {
       <div className="border-b border-white/10 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center">
               <Shield className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -351,7 +351,7 @@ export default function SuperAdminDashboardPage() {
                     <p>{plan.includedUsers} free users included</p>
                     <p>{plan.features.length} features</p>
                   </div>
-                  <Button size="sm" className="mt-auto w-full h-8 rounded-lg bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white text-xs"
+                  <Button size="sm" className="mt-auto w-full h-8 rounded-lg bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white text-xs"
                     onClick={() => openRegister(plan)}>
                     <Plus className="h-3 w-3 mr-1" /> Choose Plan
                   </Button>
@@ -417,7 +417,7 @@ export default function SuperAdminDashboardPage() {
                           <span className="text-gray-400"> / {totalU}</span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1">
-                          <div className={`h-1.5 rounded-full ${usagePercent > 90 ? "bg-red-500" : usagePercent > 70 ? "bg-amber-500" : "bg-[#2563EB]"}`}
+                          <div className={`h-1.5 rounded-full ${usagePercent > 90 ? "bg-red-500" : usagePercent > 70 ? "bg-amber-500" : "bg-[#4F46E5]"}`}
                             style={{ width: `${Math.min(usagePercent, 100)}%` }} />
                         </div>
                         <p className="text-[10px] text-gray-400 mt-0.5">
@@ -458,7 +458,7 @@ export default function SuperAdminDashboardPage() {
                             title="Renew License" onClick={() => openRenew(s)}>
                             <Calendar className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-[#2563EB] hover:bg-[#2563EB]/10"
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4F46E5] hover:bg-[#4F46E5]/10"
                             title="Edit" onClick={() => { setEditSchool(s); setEditForm({ name: s.name, address: s.address, phone: s.phone, email: s.email, adminName: s.adminName, adminPhone: s.adminPhone }); setEditOpen(true); }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -490,7 +490,7 @@ export default function SuperAdminDashboardPage() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <School className="h-5 w-5 text-[#2563EB]" /> Register New School
+              <School className="h-5 w-5 text-[#4F46E5]" /> Register New School
             </DialogTitle>
           </DialogHeader>
           {createdResult ? (
@@ -595,7 +595,7 @@ export default function SuperAdminDashboardPage() {
 
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={() => setRegisterOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
-                <Button type="submit" disabled={creating} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white">
+                <Button type="submit" disabled={creating} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white">
                   {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   {creating ? "Creating..." : "Register School"}
                 </Button>
@@ -610,7 +610,7 @@ export default function SuperAdminDashboardPage() {
         <DialogContent className="sm:max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-[#2563EB]" /> Edit School
+              <Pencil className="h-5 w-5 text-[#4F46E5]" /> Edit School
             </DialogTitle>
           </DialogHeader>
           {editSchool && (
@@ -645,7 +645,7 @@ export default function SuperAdminDashboardPage() {
               </div>
               <div className="flex gap-2 justify-end pt-2">
                 <Button type="button" variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">Cancel</Button>
-                <Button type="submit" disabled={saving} className="rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white">
+                <Button type="submit" disabled={saving} className="rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
                 </Button>
               </div>

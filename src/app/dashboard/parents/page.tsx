@@ -235,7 +235,7 @@ export default function ParentsPage() {
             <Field label="Mother's Phone">
               <Input value={editForm.motherPhone} onChange={(e) => setEditForm((f) => ({ ...f, motherPhone: e.target.value }))} maxLength={10} />
             </Field>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={editSubmitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={editSubmitting}>
               {editSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
             </Button>
           </form>

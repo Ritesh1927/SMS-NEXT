@@ -106,8 +106,8 @@ export default function RolesPermissionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-[#2563EB]" />
+        <div className="h-10 w-10 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center">
+          <Shield className="h-5 w-5 text-[#4F46E5]" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-[#172554]">Roles & Permissions</h1>
@@ -123,7 +123,7 @@ export default function RolesPermissionsPage() {
           </div>
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" />
+              <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
             </div>
           ) : teachers.length === 0 ? (
             <p className="text-sm text-[#64748B] text-center py-8">No teachers found.</p>
@@ -134,11 +134,11 @@ export default function RolesPermissionsPage() {
                   key={t._id}
                   onClick={() => selectTeacher(t)}
                   className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F8FAFC] transition-colors text-left ${
-                    selected?._id === t._id ? "bg-[#F1F5F9] border-l-[3px] border-l-[#2563EB]" : ""
+                    selected?._id === t._id ? "bg-[#F1F5F9] border-l-[3px] border-l-[#4F46E5]" : ""
                   }`}
                 >
                   <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="bg-[#2563EB]/10 text-[#2563EB] text-xs">
+                    <AvatarFallback className="bg-[#4F46E5]/10 text-[#4F46E5] text-xs">
                       {t.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
@@ -173,7 +173,7 @@ export default function RolesPermissionsPage() {
                   <Badge variant="secondary" className="text-xs">
                     {perms.length} perms · {pages.length} pages
                   </Badge>
-                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white" onClick={save} disabled={saving}>
+                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white" onClick={save} disabled={saving}>
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save
                   </Button>
@@ -182,13 +182,13 @@ export default function RolesPermissionsPage() {
               <div className="p-4">
                 {loadingPerms ? (
                   <div className="flex justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" />
+                    <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
                   </div>
                 ) : (
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Layout className="h-4 w-4 text-[#2563EB]" />
+                        <Layout className="h-4 w-4 text-[#4F46E5]" />
                         <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Page Access</p>
                       </div>
                       <p className="text-xs text-[#64748B] mb-3">Control which pages appear in the teacher&apos;s sidebar navigation. Leave everything off to allow all pages.</p>
@@ -208,7 +208,7 @@ export default function RolesPermissionsPage() {
 
                     <div className="border-t border-[#F1F5F9] pt-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <Shield className="h-4 w-4 text-[#2563EB]" />
+                        <Shield className="h-4 w-4 text-[#4F46E5]" />
                         <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Data Permissions</p>
                       </div>
                       <p className="text-xs text-[#64748B] mb-3">Control what actions the teacher can perform on each page.</p>
@@ -238,13 +238,13 @@ export default function RolesPermissionsPage() {
 
 function PermissionRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   return (
-    <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-colors ${checked ? "border-[#2563EB]/30 bg-[#2563EB]/5" : "border-[#E2E8F0] bg-white"}`}>
+    <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-colors ${checked ? "border-[#4F46E5]/30 bg-[#4F46E5]/5" : "border-[#E2E8F0] bg-white"}`}>
       <span className="text-sm font-medium text-[#172554]">{label}</span>
       <input
         type="checkbox"
         checked={checked}
         onChange={onToggle}
-        className="h-5 w-9 shrink-0 appearance-none rounded-full bg-[#E2E8F0] checked:bg-[#2563EB] transition-colors relative cursor-pointer before:absolute before:h-4 before:w-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-4"
+        className="h-5 w-9 shrink-0 appearance-none rounded-full bg-[#E2E8F0] checked:bg-[#4F46E5] transition-colors relative cursor-pointer before:absolute before:h-4 before:w-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-4"
       />
     </div>
   );

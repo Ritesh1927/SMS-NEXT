@@ -59,7 +59,7 @@ export default function SuperAdminLoginPage() {
     >
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shadow-lg shadow-[#2563EB]/30">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center shadow-lg shadow-[#4F46E5]/30">
             <Shield className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -83,7 +83,7 @@ export default function SuperAdminLoginPage() {
                       placeholder="superadmin@edunivo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/20"
+                      className="pl-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#4F46E5] focus-visible:ring-[#4F46E5]/20"
                       required
                     />
                   </div>
@@ -97,7 +97,7 @@ export default function SuperAdminLoginPage() {
                       placeholder="Enter password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 pr-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/20"
+                      className="pl-10 pr-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#4F46E5] focus-visible:ring-[#4F46E5]/20"
                       required
                     />
                     <button
@@ -111,7 +111,7 @@ export default function SuperAdminLoginPage() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-11 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white shadow-lg shadow-[#2563EB]/20 transition-all duration-300"
+                  className="w-full h-11 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white shadow-lg shadow-[#4F46E5]/20 transition-all duration-300"
                   disabled={loading}
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
@@ -140,7 +140,7 @@ export default function SuperAdminLoginPage() {
                       placeholder="Enter 6-digit OTP"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="pl-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/20 tracking-[8px] text-center text-lg"
+                      className="pl-10 h-11 rounded-xl bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:border-[#4F46E5] focus-visible:ring-[#4F46E5]/20 tracking-[8px] text-center text-lg"
                       maxLength={6}
                       required
                     />
@@ -148,7 +148,7 @@ export default function SuperAdminLoginPage() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-11 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white shadow-lg shadow-[#2563EB]/20 transition-all duration-300"
+                  className="w-full h-11 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white shadow-lg shadow-[#4F46E5]/20 transition-all duration-300"
                   disabled={loading}
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}

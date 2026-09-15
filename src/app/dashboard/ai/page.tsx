@@ -411,7 +411,7 @@ Format with clear headings and bullet points.`;
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#172554] flex items-center gap-2">
-          AI Assistant <Sparkles className="h-5 w-5 text-[#2563EB]" />
+          AI Assistant <Sparkles className="h-5 w-5 text-[#4F46E5]" />
         </h1>
         <p className="text-sm text-[#64748B]">AI-powered tools to help you run the school.</p>
       </div>
@@ -425,13 +425,13 @@ Format with clear headings and bullet points.`;
                 key={tool.id}
                 onClick={() => setSelectedTool(tool.id)}
                 className={`w-full text-left rounded-xl p-3.5 border transition-all flex items-center gap-3 ${
-                  isActive ? "border-[#2563EB] bg-[#2563EB]/5" : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
+                  isActive ? "border-[#4F46E5] bg-[#4F46E5]/5" : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
                 }`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#2563EB]" : "bg-[#2563EB]/10"}`}>
-                  <tool.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-[#2563EB]"}`} />
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#4F46E5]" : "bg-[#4F46E5]/10"}`}>
+                  <tool.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-[#4F46E5]"}`} />
                 </div>
-                <span className={`text-sm font-medium ${isActive ? "text-[#2563EB]" : "text-[#172554]"}`}>{tool.label}</span>
+                <span className={`text-sm font-medium ${isActive ? "text-[#4F46E5]" : "text-[#172554]"}`}>{tool.label}</span>
               </button>
             );
           })}
@@ -451,7 +451,7 @@ Format with clear headings and bullet points.`;
                       <button
                         key={p}
                         onClick={() => handleInsightSend(p)}
-                        className="text-xs px-3 py-1.5 rounded-full border border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB]/40 hover:text-[#2563EB]"
+                        className="text-xs px-3 py-1.5 rounded-full border border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]/40 hover:text-[#4F46E5]"
                       >
                         {p}
                       </button>
@@ -462,7 +462,7 @@ Format with clear headings and bullet points.`;
                   <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm ${
-                        m.role === "user" ? "bg-[#2563EB] text-white" : "bg-[#F8FAFC] text-[#172554]"
+                        m.role === "user" ? "bg-[#4F46E5] text-white" : "bg-[#F8FAFC] text-[#172554]"
                       }`}
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }}
                     />
@@ -470,7 +470,7 @@ Format with clear headings and bullet points.`;
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#2563EB]" />
+                    <Loader2 className="h-4 w-4 animate-spin text-[#4F46E5]" />
                   </div>
                 )}
                 <div ref={endRef} />

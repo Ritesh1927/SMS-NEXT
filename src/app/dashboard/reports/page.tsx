@@ -176,7 +176,7 @@ export default function ReportsPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-              tab === t.id ? "border-[#2563EB] text-[#2563EB]" : "border-transparent text-[#64748B] hover:text-[#172554]"
+              tab === t.id ? "border-[#4F46E5] text-[#4F46E5]" : "border-transparent text-[#64748B] hover:text-[#172554]"
             }`}
           >
             <t.icon className="h-4 w-4" />
@@ -189,13 +189,13 @@ export default function ReportsPage() {
         <div className="space-y-6">
           {loadingInit ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "Total Students", value: stats?.totalStudents ?? "—", icon: Users, bg: "bg-[#2563EB]" },
+                  { label: "Total Students", value: stats?.totalStudents ?? "—", icon: Users, bg: "bg-[#4F46E5]" },
                   { label: "Total Teachers", value: stats?.totalTeachers ?? "—", icon: BookOpen, bg: "bg-blue-500" },
                   { label: "Total Collected", value: feeSummary ? `₹${(feeSummary.totalCollected / 1000).toFixed(1)}k` : "—", icon: DollarSign, bg: "bg-green-500" },
                   { label: "Fee Pending", value: feeSummary ? `₹${(feeSummary.totalPending / 1000).toFixed(1)}k` : "—", icon: AlertCircle, bg: "bg-amber-500" },
@@ -217,7 +217,7 @@ export default function ReportsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-[#2563EB]" /> Monthly Fee Overview
+                        <DollarSign className="h-4 w-4 text-[#4F46E5]" /> Monthly Fee Overview
                       </CardTitle>
                       <Button
                         size="sm"
@@ -249,7 +249,7 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-[#2563EB]" /> Classes ({classes.length})
+                      <FileText className="h-4 w-4 text-[#4F46E5]" /> Classes ({classes.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -343,7 +343,7 @@ export default function ReportsPage() {
 
           {loadingAtt ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
             </div>
           ) : attData.length === 0 ? (
             <div className="text-center py-16 text-[#64748B]">
@@ -357,7 +357,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-[#2563EB]" /> Attendance by Class — {MONTHS[attMonth - 1]} {attYear}
+                    <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Attendance by Class — {MONTHS[attMonth - 1]} {attYear}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -367,7 +367,7 @@ export default function ReportsPage() {
                       <XAxis dataKey="class" tick={{ fill: "#64748B", fontSize: 12 }} />
                       <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} unit="%" />
                       <Tooltip formatter={(v) => [`${v}%`, "Attendance"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                      <Bar dataKey="rate" name="Attendance %" fill="#2563EB" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="rate" name="Attendance %" fill="#4F46E5" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -450,7 +450,7 @@ export default function ReportsPage() {
 
           {loadingResults && (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
             </div>
           )}
 
@@ -461,7 +461,7 @@ export default function ReportsPage() {
                   { label: "Total Students", value: examResults.summary.total, color: "" },
                   { label: "Passed", value: examResults.summary.passed, color: "text-green-600" },
                   { label: "Failed", value: examResults.summary.failed, color: "text-red-600" },
-                  { label: "Average Score", value: `${examResults.summary.avgPercentage}%`, color: "text-[#2563EB]" },
+                  { label: "Average Score", value: `${examResults.summary.avgPercentage}%`, color: "text-[#4F46E5]" },
                 ].map((s) => (
                   <Card key={s.label}>
                     <CardContent className="p-4 text-center">
@@ -484,7 +484,7 @@ export default function ReportsPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-[#2563EB]" /> Grade Distribution
+                        <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Grade Distribution
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -494,7 +494,7 @@ export default function ReportsPage() {
                           <XAxis dataKey="grade" tick={{ fill: "#64748B", fontSize: 12 }} />
                           <YAxis allowDecimals={false} tick={{ fill: "#64748B", fontSize: 12 }} />
                           <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                          <Bar dataKey="count" name="Students" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="count" name="Students" fill="#4F46E5" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
@@ -584,7 +584,7 @@ export default function ReportsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-[#2563EB]" /> Monthly Collection vs Pending
+                    <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Monthly Collection vs Pending
                   </CardTitle>
                   <Button
                     size="sm"
@@ -637,7 +637,7 @@ export default function ReportsPage() {
             <CardContent className="p-0">
               {loadingPending ? (
                 <div className="flex items-center justify-center h-24">
-                  <Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" />
+                  <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
                 </div>
               ) : pendingFees.length === 0 ? (
                 <p className="text-center text-sm text-[#64748B] py-10">No pending fees.</p>

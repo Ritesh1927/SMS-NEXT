@@ -321,7 +321,7 @@ export default function SubjectsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <School className="h-5 w-5 text-[#2563EB]" /> Single Assignment
+                <School className="h-5 w-5 text-[#4F46E5]" /> Single Assignment
               </CardTitle>
               <CardDescription>Select one class and assign subjects to it.</CardDescription>
             </CardHeader>
@@ -366,7 +366,7 @@ export default function SubjectsPage() {
                           <label
                             key={s._id}
                             className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${
-                              assigned ? "opacity-50 cursor-not-allowed bg-[#F8FAFC] border-[#E2E8F0]" : singleSubjectIds.has(s._id) ? "border-[#2563EB] bg-[#2563EB]/5 cursor-pointer" : "border-[#E2E8F0] hover:bg-[#F8FAFC] cursor-pointer"
+                              assigned ? "opacity-50 cursor-not-allowed bg-[#F8FAFC] border-[#E2E8F0]" : singleSubjectIds.has(s._id) ? "border-[#4F46E5] bg-[#4F46E5]/5 cursor-pointer" : "border-[#E2E8F0] hover:bg-[#F8FAFC] cursor-pointer"
                             }`}
                           >
                             <input type="checkbox" className="h-4 w-4" checked={singleSubjectIds.has(s._id)} disabled={assigned} onChange={(e) => toggleSingleSubject(s._id, e.target.checked)} />
@@ -389,7 +389,7 @@ export default function SubjectsPage() {
                   {singleClassId && getAssignedSubjects(singleClassId).length > 0 && (
                     <div className="pt-4 border-t border-[#E2E8F0] space-y-2">
                       <p className="text-sm font-medium text-[#172554]">
-                        Currently assigned to <span className="text-[#2563EB]">{getClassById(singleClassId)?.name}</span>:
+                        Currently assigned to <span className="text-[#4F46E5]">{getClassById(singleClassId)?.name}</span>:
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {getAssignedSubjects(singleClassId).map((subj) => (
@@ -412,7 +412,7 @@ export default function SubjectsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Copy className="h-5 w-5 text-[#2563EB]" /> Bulk Assignment
+                <Copy className="h-5 w-5 text-[#4F46E5]" /> Bulk Assignment
               </CardTitle>
               <CardDescription>Select multiple classes and subjects, then assign them all at once.</CardDescription>
             </CardHeader>
@@ -433,7 +433,7 @@ export default function SubjectsPage() {
                       </div>
                       <div className="border border-[#E2E8F0] rounded-lg divide-y divide-[#E2E8F0] max-h-56 overflow-y-auto">
                         {classes.map((c) => (
-                          <label key={c._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkClassIds.has(c._id) ? "bg-[#2563EB]/5" : "hover:bg-[#F8FAFC]"}`}>
+                          <label key={c._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkClassIds.has(c._id) ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"}`}>
                             <input
                               type="checkbox"
                               className="h-4 w-4"
@@ -463,7 +463,7 @@ export default function SubjectsPage() {
                       </div>
                       <div className="border border-[#E2E8F0] rounded-lg divide-y divide-[#E2E8F0] max-h-56 overflow-y-auto">
                         {subjects.map((s) => (
-                          <label key={s._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkSubjectIds.has(s._id) ? "bg-[#2563EB]/5" : "hover:bg-[#F8FAFC]"}`}>
+                          <label key={s._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkSubjectIds.has(s._id) ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"}`}>
                             <input
                               type="checkbox"
                               className="h-4 w-4"
@@ -500,7 +500,7 @@ export default function SubjectsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-5 w-5 text-[#2563EB]" /> Per-Class Assignment Overview
+                  <Users className="h-5 w-5 text-[#4F46E5]" /> Per-Class Assignment Overview
                 </CardTitle>
                 <CardDescription>Expand a class to view or remove its assigned subjects.</CardDescription>
               </CardHeader>
@@ -616,8 +616,8 @@ export default function SubjectsPage() {
                             {subjects.map((s) => (
                               <TableCell key={s._id} className="text-center">
                                 {assignedSet.has(s._id) ? (
-                                  <div className="h-6 w-6 rounded-full bg-[#2563EB]/10 flex items-center justify-center mx-auto">
-                                    <Check className="h-3.5 w-3.5 text-[#2563EB]" />
+                                  <div className="h-6 w-6 rounded-full bg-[#4F46E5]/10 flex items-center justify-center mx-auto">
+                                    <Check className="h-3.5 w-3.5 text-[#4F46E5]" />
                                   </div>
                                 ) : (
                                   <span className="text-[#94A3B8]/40 text-lg leading-none">—</span>
@@ -625,7 +625,7 @@ export default function SubjectsPage() {
                               </TableCell>
                             ))}
                             <TableCell className="text-center">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${assignedSet.size === subjects.length ? "bg-[#2563EB] text-white" : "bg-[#F1F5F9] text-[#334155]"}`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${assignedSet.size === subjects.length ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#334155]"}`}>
                                 {assignedSet.size}/{subjects.length}
                               </span>
                             </TableCell>

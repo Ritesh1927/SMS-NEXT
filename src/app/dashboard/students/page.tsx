@@ -215,7 +215,7 @@ export default function StudentsPage() {
           </p>
         </div>
         {!isTeacher && (
-          <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+          <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
             <Plus className="h-4 w-4" /> Add Student
           </Button>
         )}
@@ -368,7 +368,7 @@ export default function StudentsPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full mt-5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full mt-5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Student"}
             </Button>
           </form>
@@ -421,7 +421,7 @@ export default function StudentsPage() {
                 <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} maxLength={10} />
               </Field>
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={editSubmitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={editSubmitting}>
               {editSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
             </Button>
           </form>

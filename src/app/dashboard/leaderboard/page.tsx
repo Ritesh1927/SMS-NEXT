@@ -51,7 +51,7 @@ export default function LeaderboardPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function LeaderboardPage() {
                       <Flame className="h-3.5 w-3.5" /> {r.streakDays}
                     </div>
                   )}
-                  <div className="text-sm font-bold text-[#2563EB] w-16 text-right">{r.points} pts</div>
+                  <div className="text-sm font-bold text-[#4F46E5] w-16 text-right">{r.points} pts</div>
                 </div>
               ))}
             </div>

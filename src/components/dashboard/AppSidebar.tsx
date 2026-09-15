@@ -109,15 +109,14 @@ function groupBySection(items: NavItem[]) {
 }
 
 type SectionTheme = { icon: string; activeBg: string; activeText: string; label: string };
-const SECTION_THEMES: Record<string, SectionTheme> = {
-  Overview: { icon: "text-[#2563EB]/60", activeBg: "bg-[#2563EB]/10", activeText: "text-[#2563EB]", label: "text-[#2563EB]/60" },
-  People: { icon: "text-blue-500/60", activeBg: "bg-blue-500/10", activeText: "text-blue-600", label: "text-blue-500/60" },
-  "My Classes": { icon: "text-blue-500/60", activeBg: "bg-blue-500/10", activeText: "text-blue-600", label: "text-blue-500/60" },
-  Academics: { icon: "text-violet-500/60", activeBg: "bg-violet-500/10", activeText: "text-violet-600", label: "text-violet-500/60" },
-  Finance: { icon: "text-emerald-500/60", activeBg: "bg-emerald-500/10", activeText: "text-emerald-600", label: "text-emerald-500/60" },
-  Communication: { icon: "text-amber-500/60", activeBg: "bg-amber-500/10", activeText: "text-amber-600", label: "text-amber-500/60" },
-  Insights: { icon: "text-fuchsia-500/60", activeBg: "bg-fuchsia-500/10", activeText: "text-fuchsia-600", label: "text-fuchsia-500/60" },
-  Administration: { icon: "text-slate-500/60", activeBg: "bg-slate-500/10", activeText: "text-slate-600", label: "text-slate-500/60" },
+// A single consistent indigo/purple brand theme for every section, matching
+// the original app's sidebar (one active-item highlight color throughout,
+// not a different color per section).
+const DEFAULT_THEME: SectionTheme = {
+  icon: "text-[#4F46E5]/60",
+  activeBg: "bg-[#4F46E5]/10",
+  activeText: "text-[#4F46E5]",
+  label: "text-[#64748B]",
 };
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -174,7 +173,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
   return (
     <Sidebar collapsible="icon" className="border-r border-[#E2E8F0]">
       <div className="flex h-16 items-center gap-3 px-4 border-b border-[#E2E8F0] overflow-hidden">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
           <Logo className="h-5 w-5 text-white" />
         </div>
         <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
@@ -186,7 +185,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
       <SidebarContent className="px-3 py-4 flex flex-col justify-between">
         <div>
           {sections.map(({ section, items }) => {
-            const theme = SECTION_THEMES[section] || SECTION_THEMES.Overview;
+            const theme = DEFAULT_THEME;
             return (
               <SidebarGroup key={section} className="py-1.5">
                 <SidebarGroupLabel className={`text-[10px] uppercase tracking-wider font-semibold ${theme.label}`}>
@@ -231,7 +230,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
         <div className="mt-auto pt-4 border-t border-[#E2E8F0]">
           <div className="flex items-center gap-2 px-1 py-2 mb-1 group-data-[collapsible=icon]:justify-center">
             <Avatar className="h-8 w-8 shrink-0">
-              <AvatarFallback className="bg-[#2563EB]/10 text-[#2563EB] text-xs font-semibold">
+              <AvatarFallback className="bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold">
                 {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

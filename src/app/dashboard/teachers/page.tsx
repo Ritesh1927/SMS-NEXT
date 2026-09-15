@@ -327,7 +327,7 @@ export default function TeachersPage() {
             {counts.total} staff member{counts.total === 1 ? "" : "s"} ({counts.teaching} teaching, {counts.nonTeaching} non-teaching).
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+        <Button onClick={openAdd} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
           <Plus className="h-4 w-4" /> Add Staff
         </Button>
       </div>
@@ -342,7 +342,7 @@ export default function TeachersPage() {
               <p className="text-xs text-[#64748B]">Total Staff</p>
             </div>
             <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-xl font-bold text-[#2563EB]">{counts.teaching}</p>
+              <p className="text-xl font-bold text-[#4F46E5]">{counts.teaching}</p>
               <p className="text-xs text-[#64748B]">Teaching</p>
             </div>
             <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
@@ -363,7 +363,7 @@ export default function TeachersPage() {
                   variant={staffFilter === tab.key ? "default" : "outline"}
                   size="sm"
                   onClick={() => setStaffFilter(tab.key)}
-                  className={staffFilter === tab.key ? "bg-[#2563EB] hover:bg-[#1D4ED8]" : ""}
+                  className={staffFilter === tab.key ? "bg-[#4F46E5] hover:bg-[#4338CA]" : ""}
                 >
                   {tab.label}
                 </Button>
@@ -498,8 +498,8 @@ export default function TeachersPage() {
                         onClick={() => toggleClassId(c._id)}
                         className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                           active
-                            ? "bg-[#2563EB] text-white border-[#2563EB]"
-                            : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#2563EB]"
+                            ? "bg-[#4F46E5] text-white border-[#4F46E5]"
+                            : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#4F46E5]"
                         }`}
                       >
                         {c.name}-{c.section}
@@ -539,7 +539,7 @@ export default function TeachersPage() {
                 </Select>
               </Field>
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Add Teacher"}
             </Button>
           </form>
@@ -572,7 +572,7 @@ export default function TeachersPage() {
                   </div>
                 </div>
               ))}
-              <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={permSubmitting}>
+              <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={permSubmitting}>
                 {permSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Permissions"}
               </Button>
             </form>

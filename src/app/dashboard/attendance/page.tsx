@@ -181,7 +181,7 @@ export default function AttendancePage() {
             <Button variant="outline" onClick={() => markAll("absent")} className="text-red-700 border-red-300 hover:bg-red-50">
               Mark All Absent
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] ml-auto">
+            <Button onClick={handleSave} disabled={saving} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] ml-auto">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
             </Button>
           </>
@@ -450,7 +450,7 @@ function ParentAttendance() {
 
           <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-[#F1F5F9]">
-              <CalendarCheck className="h-4 w-4 text-[#2563EB]" />
+              <CalendarCheck className="h-4 w-4 text-[#4F46E5]" />
               <p className="text-sm font-semibold text-[#172554]">Daily Records</p>
             </div>
             {!data || data.records.length === 0 ? (

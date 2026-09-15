@@ -195,13 +195,13 @@ export default function ChatPage() {
               key={`${c.targetUserId}-${c.childId || ""}`}
               onClick={() => openContact(c)}
               className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
-                active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#2563EB]/5" : "hover:bg-[#F8FAFC]"
+                active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-[#172554] truncate">{c.name}</p>
                 {c.unread > 0 && (
-                  <span className="text-[10px] font-bold text-white bg-[#2563EB] rounded-full px-1.5 py-0.5 shrink-0">
+                  <span className="text-[10px] font-bold text-white bg-[#4F46E5] rounded-full px-1.5 py-0.5 shrink-0">
                     {c.unread}
                   </span>
                 )}
@@ -238,7 +238,7 @@ export default function ChatPage() {
                     <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div
                         className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
-                          mine ? "bg-[#2563EB] text-white" : "bg-[#F1F5F9] text-[#172554]"
+                          mine ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#172554]"
                         }`}
                       >
                         <p className="whitespace-pre-wrap break-words">{m.text}</p>
@@ -265,7 +265,7 @@ export default function ChatPage() {
                 className="flex-1"
                 maxLength={2000}
               />
-              <Button type="submit" size="icon" disabled={sending || !draft.trim()} className="bg-[#2563EB] hover:bg-[#1D4ED8]">
+              <Button type="submit" size="icon" disabled={sending || !draft.trim()} className="bg-[#4F46E5] hover:bg-[#4338CA]">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>

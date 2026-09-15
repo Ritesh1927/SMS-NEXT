@@ -424,14 +424,14 @@ export default function TimetablePage() {
               <tr className="bg-[#F8FAFC]">
                 <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider w-[140px] border-b border-[#E2E8F0]">
                   <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-[#2563EB]" /> Time
+                    <Clock className="h-3.5 w-3.5 text-[#4F46E5]" /> Time
                   </div>
                 </th>
                 {DAYS.map((day) => (
                   <th
                     key={day}
                     className={`p-3 text-center text-xs font-semibold uppercase tracking-wider border-b border-[#E2E8F0] ${
-                      day === today ? "text-[#2563EB] bg-[#2563EB]/5" : "text-[#64748B]"
+                      day === today ? "text-[#4F46E5] bg-[#4F46E5]/5" : "text-[#64748B]"
                     }`}
                   >
                     {day}
@@ -480,14 +480,14 @@ export default function TimetablePage() {
                       const isToday = day === today;
                       const isCurrent = isToday && pNum === currentPeriod;
                       return (
-                        <td key={day} className={`p-1.5 border-b border-[#E2E8F0] ${isToday ? "bg-[#2563EB]/[0.02]" : ""}`}>
+                        <td key={day} className={`p-1.5 border-b border-[#E2E8F0] ${isToday ? "bg-[#4F46E5]/[0.02]" : ""}`}>
                           {entry ? (
                             <div
                               onClick={() => openEditModal(day, pNum)}
                               className={`rounded-xl p-2.5 border text-center transition-all ${
                                 isAdmin ? "cursor-pointer hover:scale-[1.03]" : "cursor-default"
                               } ${subjectColor(entry.subject, uniqueSubjects)} ${
-                                isCurrent ? "ring-2 ring-[#2563EB] ring-offset-1 shadow-md" : ""
+                                isCurrent ? "ring-2 ring-[#4F46E5] ring-offset-1 shadow-md" : ""
                               }`}
                             >
                               <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
@@ -498,13 +498,13 @@ export default function TimetablePage() {
                                   {entry.classId.section ? `-${entry.classId.section}` : ""}
                                 </p>
                               )}
-                              {isCurrent && <span className="mt-1 inline-block text-[9px] font-bold bg-[#2563EB] text-white px-1.5 py-0 rounded">NOW</span>}
+                              {isCurrent && <span className="mt-1 inline-block text-[9px] font-bold bg-[#4F46E5] text-white px-1.5 py-0 rounded">NOW</span>}
                             </div>
                           ) : (
                             <div
                               onClick={() => openEditModal(day, pNum)}
                               className={`h-full min-h-[48px] flex items-center justify-center rounded-xl transition-colors ${
-                                isAdmin ? "cursor-pointer hover:bg-[#2563EB]/5" : ""
+                                isAdmin ? "cursor-pointer hover:bg-[#4F46E5]/5" : ""
                               }`}
                             >
                               <span className="text-[#94A3B8]/50 text-xs">—</span>
@@ -528,11 +528,11 @@ export default function TimetablePage() {
             <p className="text-xs text-[#64748B]">Total Periods</p>
           </div>
           <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-[#2563EB]">{uniqueSubjects.length}</p>
+            <p className="text-xl font-bold text-[#4F46E5]">{uniqueSubjects.length}</p>
             <p className="text-xs text-[#64748B]">Subjects</p>
           </div>
           <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-[#7C3AED]">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
+            <p className="text-xl font-bold text-[#8B5CF6]">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
             <p className="text-xs text-[#64748B]">Teachers</p>
           </div>
           <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
@@ -669,7 +669,7 @@ export default function TimetablePage() {
 
             <div className="border-t border-[#E2E8F0] pt-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-[#2563EB]" />
+                <Zap className="h-4 w-4 text-[#4F46E5]" />
                 <p className="text-sm font-semibold text-[#172554]">Quick Generate</p>
               </div>
               <p className="text-xs text-[#64748B]">Auto-create all periods with correct timings in one click.</p>

@@ -103,16 +103,16 @@ const QUOTES: { text: string; author: string }[] = [
 function SchoolIllustration() {
   return (
     <svg viewBox="0 0 220 140" className="h-full w-full" aria-hidden="true">
-      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#2563EB" opacity="0.06" />
-      <rect x="16" y="112" width="30" height="16" rx="2" fill="#7C3AED" opacity="0.18" />
+      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#4F46E5" opacity="0.06" />
+      <rect x="16" y="112" width="30" height="16" rx="2" fill="#8B5CF6" opacity="0.18" />
       <circle cx="31" cy="98" r="16" fill="#22C55E" opacity="0.22" />
-      <rect x="174" y="108" width="26" height="20" rx="2" fill="#2563EB" opacity="0.14" />
+      <rect x="174" y="108" width="26" height="20" rx="2" fill="#4F46E5" opacity="0.14" />
       <circle cx="187" cy="96" r="14" fill="#22C55E" opacity="0.18" />
       <rect x="55" y="60" width="110" height="68" rx="4" fill="#EEF2FF" stroke="#C7D2FE" strokeWidth="1.5" />
-      <polygon points="48,62 110,26 172,62" fill="#7C3AED" opacity="0.85" />
+      <polygon points="48,62 110,26 172,62" fill="#8B5CF6" opacity="0.85" />
       <rect x="106" y="10" width="3" height="20" fill="#94A3B8" />
-      <polygon points="109,10 128,15 109,20" fill="#2563EB" />
-      <rect x="94" y="94" width="32" height="34" rx="2" fill="#2563EB" opacity="0.85" />
+      <polygon points="109,10 128,15 109,20" fill="#4F46E5" />
+      <rect x="94" y="94" width="32" height="34" rx="2" fill="#4F46E5" opacity="0.85" />
       <circle cx="121" cy="111" r="1.6" fill="#EEF2FF" />
       {[70, 143].map((x) => (
         <g key={x}>
@@ -182,24 +182,24 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
     <div className="space-y-6">
       {/* Hero banner */}
       <div className="relative overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-gradient-to-br from-[#EEF2FF] via-[#F5F3FF] to-white">
-        <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#7C3AED]/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#2563EB]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
           <div className="max-w-xl">
             <h1 className="text-2xl sm:text-[26px] font-bold text-[#172554]">
-              {getGreeting()}, <span className="text-[#2563EB]">{adminName || "Admin"}</span>
+              {getGreeting()}, <span className="text-[#4F46E5]">{adminName || "Admin"}</span>
             </h1>
             <p className="text-sm text-[#475569] mt-1.5">
               Here&apos;s what&apos;s happening at {schoolName || "your school"} today.
             </p>
-            <p className="text-sm text-[#334155] mt-4 italic border-l-2 border-[#7C3AED]/40 pl-3">
+            <p className="text-sm text-[#334155] mt-4 italic border-l-2 border-[#8B5CF6]/40 pl-3">
               &ldquo;{quote.text}&rdquo;
               <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
             </p>
           </div>
           <div className="flex flex-col items-end gap-4 shrink-0 self-stretch sm:self-auto">
             <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm self-start sm:self-auto">
-              <CalendarDays className="h-4 w-4 text-[#2563EB]" />
+              <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
               <span className="text-sm font-semibold text-[#172554]">
                 {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </span>
@@ -216,16 +216,16 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
           title="Total Students"
           value={String(stats.totalStudents)}
           trend={stats.newStudentsThisMonth > 0 ? `+${stats.newStudentsThisMonth} this month` : undefined}
-          color="#2563EB"
-          colorDark="#1D4ED8"
+          color="#4F46E5"
+          colorDark="#4338CA"
           icon={GraduationCap}
         />
         <StatCard
           title="Total Teachers"
           value={String(stats.totalTeachers)}
           trend={stats.newTeachersThisMonth > 0 ? `+${stats.newTeachersThisMonth} this month` : undefined}
-          color="#7C3AED"
-          colorDark="#6D28D9"
+          color="#8B5CF6"
+          colorDark="#7C3AED"
           icon={Users}
         />
         <StatCard
@@ -262,7 +262,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#2563EB]" />
+            <TrendingUp className="h-4 w-4 text-[#4F46E5]" />
             <h2 className="text-sm font-semibold text-[#172554]">Attendance — Last 7 Days</h2>
           </div>
           {attendanceTrend.every((d) => d.present === 0 && d.absent === 0) ? (
@@ -306,7 +306,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#2563EB]" />
+            <TrendingUp className="h-4 w-4 text-[#4F46E5]" />
             <h2 className="text-sm font-semibold text-[#172554]">Students by Class</h2>
           </div>
           {studentsByClass.length === 0 ? (
@@ -318,7 +318,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                   <span className="w-24 shrink-0 text-xs font-medium text-[#475569]">{c.name}</span>
                   <div className="flex-1 h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                      className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]"
                       style={{ width: `${(c.count / maxClassCount) * 100}%` }}
                     />
                   </div>
@@ -353,7 +353,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="h-4 w-4 text-[#2563EB]" />
+            <ClipboardList className="h-4 w-4 text-[#4F46E5]" />
             <h2 className="text-sm font-semibold text-[#172554]">Upcoming Exams</h2>
           </div>
           {upcomingExams.length === 0 ? (
@@ -366,7 +366,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                     <p className="text-sm font-medium text-[#172554] truncate">{e.title}</p>
                     <p className="text-xs text-[#64748B]">{e.class}</p>
                   </div>
-                  <span className="text-xs font-semibold text-[#2563EB] shrink-0">
+                  <span className="text-xs font-semibold text-[#4F46E5] shrink-0">
                     {new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                   </span>
                 </div>
@@ -402,7 +402,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
       <div className={panelClass}>
         <div className="flex items-center gap-2 mb-4">
-          <BellRing className="h-4 w-4 text-[#7C3AED]" />
+          <BellRing className="h-4 w-4 text-[#8B5CF6]" />
           <h2 className="text-sm font-semibold text-[#172554]">Recent Activity</h2>
         </div>
         {recentActivity.length === 0 ? (

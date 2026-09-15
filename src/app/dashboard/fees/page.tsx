@@ -387,7 +387,7 @@ export default function FeesPage() {
             </div>
             <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <p className="text-xs text-[#64748B]">This Month</p>
-              <p className="text-xl font-bold text-[#2563EB]">₹{(analytics?.data[new Date().getMonth()]?.collected ?? 0).toLocaleString()}</p>
+              <p className="text-xl font-bold text-[#4F46E5]">₹{(analytics?.data[new Date().getMonth()]?.collected ?? 0).toLocaleString()}</p>
               <p className="text-[10px] text-[#94A3B8] mt-0.5">{analytics?.data[new Date().getMonth()]?.month ?? ""}</p>
             </div>
             <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
@@ -400,7 +400,7 @@ export default function FeesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-4 w-4 text-[#7C3AED]" />
+                <TrendingUp className="h-4 w-4 text-[#8B5CF6]" />
                 <h2 className="text-sm font-semibold text-[#172554]">Monthly Collection Trend</h2>
               </div>
               {!analytics || analytics.data.every((a) => a.collected === 0 && a.pending === 0) ? (
@@ -412,7 +412,7 @@ export default function FeesPage() {
                     <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
                     <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v) => [`₹${Number(v).toLocaleString()}`, ""]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                    <Bar dataKey="collected" name="Collected" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" name="Collected" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="pending" name="Pending" fill="#33C6E7" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -421,7 +421,7 @@ export default function FeesPage() {
 
             <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="h-4 w-4 text-[#2563EB]" />
+                <AlertCircle className="h-4 w-4 text-[#4F46E5]" />
                 <h2 className="text-sm font-semibold text-[#172554]">Class-wise Collection</h2>
               </div>
               {!analytics || analytics.classWise.length === 0 ? (
@@ -488,7 +488,7 @@ export default function FeesPage() {
 
         <TabsContent value="structures" className="mt-4">
           <div className="flex justify-end mb-4">
-            <Button onClick={() => setStructureOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+            <Button onClick={() => setStructureOpen(true)} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
               <Plus className="h-4 w-4" /> New Fee Structure
             </Button>
           </div>
@@ -530,7 +530,7 @@ export default function FeesPage() {
         <TabsContent value="concessions" className="mt-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-[#64748B]">Apply % or flat discounts per student per fee head.</p>
-            <Button onClick={openAddConcession} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+            <Button onClick={openAddConcession} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
               <Plus className="h-4 w-4" /> Add Concession
             </Button>
           </div>
@@ -552,7 +552,7 @@ export default function FeesPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-[#172554]">{c.student?.name || "Unknown student"}</p>
-                        <span className="text-[10px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-2 py-0.5 rounded-full">{c.type}</span>
+                        <span className="text-[10px] font-semibold text-[#4F46E5] bg-[#4F46E5]/10 px-2 py-0.5 rounded-full">{c.type}</span>
                       </div>
                       <p className="text-xs text-[#64748B] mt-0.5">
                         {c.feeStructure?.title || "All fee structures"}
@@ -626,7 +626,7 @@ export default function FeesPage() {
             <Field label="Due Date">
               <Input type="date" value={structureForm.dueDate} onChange={(e) => setStructureForm((f) => ({ ...f, dueDate: e.target.value }))} />
             </Field>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={structureSubmitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={structureSubmitting}>
               {structureSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Fee Structure"}
             </Button>
           </form>
@@ -665,7 +665,7 @@ export default function FeesPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={collecting}>
+              <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={collecting}>
                 {collecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Record Payment"}
               </Button>
             </form>
@@ -677,7 +677,7 @@ export default function FeesPage() {
         <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg text-[#172554] flex items-center gap-2">
-              <Tag className="h-4 w-4 text-[#2563EB]" /> {editingCon ? "Edit Concession" : "Add Concession"}
+              <Tag className="h-4 w-4 text-[#4F46E5]" /> {editingCon ? "Edit Concession" : "Add Concession"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleConcessionSubmit} className="space-y-3 mt-2">
@@ -728,7 +728,7 @@ export default function FeesPage() {
                       key={opt.l}
                       type="button"
                       onClick={() => setConForm((f) => ({ ...f, isPct: opt.v }))}
-                      className={`flex-1 h-10 rounded-lg border text-xs font-medium transition-all ${conForm.isPct === opt.v ? "bg-[#2563EB] text-white border-transparent" : "border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB]"}`}
+                      className={`flex-1 h-10 rounded-lg border text-xs font-medium transition-all ${conForm.isPct === opt.v ? "bg-[#4F46E5] text-white border-transparent" : "border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]"}`}
                     >
                       {opt.l}
                     </button>
@@ -756,7 +756,7 @@ export default function FeesPage() {
                 </Field>
               )}
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={conSubmitting || !conForm.studentId}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={conSubmitting || !conForm.studentId}>
               {conSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingCon ? "Update Concession" : "Add Concession"}
             </Button>
           </form>
@@ -880,7 +880,7 @@ function ParentFees() {
         name: childName,
         description: fee.title,
         order_id: orderId,
-        theme: { color: "#2563EB" },
+        theme: { color: "#4F46E5" },
         prefill: { name: childName },
         handler: async (response) => {
           try {
@@ -1019,7 +1019,7 @@ function ParentFees() {
                         <p className="text-sm font-semibold text-[#172554]">{title}</p>
                         <div className="flex items-center gap-2">
                           {structure && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#2563EB]">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#4F46E5]">
                               ₹{structure.amount.toLocaleString()}{structure.frequency !== "one-time" ? `/${structure.frequency === "monthly" ? "month" : structure.frequency}` : ""}
                             </span>
                           )}
@@ -1050,7 +1050,7 @@ function ParentFees() {
                                   size="xs"
                                   onClick={() => handlePay(l)}
                                   disabled={payingId === l._id}
-                                  className="gap-1 mt-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6 w-full"
+                                  className="gap-1 mt-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6 w-full"
                                 >
                                   {payingId === l._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
                                   Pay
@@ -1068,7 +1068,7 @@ function ParentFees() {
           ) : (
             <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-4 border-b border-[#F1F5F9]">
-                <Receipt className="h-4 w-4 text-[#2563EB]" />
+                <Receipt className="h-4 w-4 text-[#4F46E5]" />
                 <p className="text-sm font-semibold text-[#172554]">Payment History</p>
               </div>
               {paidHistory.length === 0 ? (

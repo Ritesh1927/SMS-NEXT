@@ -98,8 +98,8 @@ export function TeacherDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="My Classes" value={String(stats.classCount)} color="#2563EB" colorDark="#1D4ED8" icon={Layers} />
-        <StatCard title="Total Students" value={String(stats.myStudentCount)} color="#7C3AED" colorDark="#6D28D9" icon={Users} />
+        <StatCard title="My Classes" value={String(stats.classCount)} color="#4F46E5" colorDark="#4338CA" icon={Layers} />
+        <StatCard title="Total Students" value={String(stats.myStudentCount)} color="#8B5CF6" colorDark="#7C3AED" icon={Users} />
         <StatCard
           title="Today's Attendance"
           value={stats.todayAttendancePct != null ? `${stats.todayAttendancePct}%` : "—"}
@@ -142,7 +142,7 @@ export function TeacherDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#7C3AED]" />
+            <TrendingUp className="h-4 w-4 text-[#8B5CF6]" />
             <h2 className="text-sm font-semibold text-[#172554]">
               Weekly Attendance Trend{weeklyTrendMonth ? ` — ${weeklyTrendMonth}` : ""}
             </h2>
@@ -156,7 +156,7 @@ export function TeacherDashboard() {
                 <XAxis dataKey="label" tick={{ fill: "#64748B", fontSize: 11 }} />
                 <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} />
                 <Tooltip formatter={(v) => [`${v}%`, "Attendance"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                <Line type="monotone" dataKey="rate" stroke="#7C3AED" strokeWidth={2.5} dot={{ r: 4, fill: "#7C3AED" }} />
+                <Line type="monotone" dataKey="rate" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 4, fill: "#8B5CF6" }} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -188,7 +188,7 @@ export function TeacherDashboard() {
           <h2 className="text-sm font-semibold text-[#172554] mb-2">Subjects</h2>
           <div className="flex flex-wrap gap-2">
             {teacher.subjects.map((s) => (
-              <span key={s} className="text-xs font-medium text-[#2563EB] bg-[#2563EB]/10 px-2.5 py-1 rounded-full">
+              <span key={s} className="text-xs font-medium text-[#4F46E5] bg-[#4F46E5]/10 px-2.5 py-1 rounded-full">
                 {s}
               </span>
             ))}
@@ -198,7 +198,7 @@ export function TeacherDashboard() {
 
       <div className={panelClass}>
         <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-[#2563EB]" /> My Classes
+          <BookOpen className="h-4 w-4 text-[#4F46E5]" /> My Classes
         </h2>
         {classBreakdown.length === 0 ? (
           <p className="text-sm text-[#64748B]">
@@ -219,7 +219,7 @@ export function TeacherDashboard() {
       {fees && fees.data.length > 0 && (
         <div className={panelClass}>
           <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
-            <IndianRupee className="h-4 w-4 text-[#2563EB]" /> Student Fee Details
+            <IndianRupee className="h-4 w-4 text-[#4F46E5]" /> Student Fee Details
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -175,8 +175,8 @@ export default function UserMasterPage() {
           { label: "Parents", value: counts.parents, icon: Heart },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-white p-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-[#2563EB]/10 flex items-center justify-center shrink-0">
-              <s.icon className="h-4 w-4 text-[#2563EB]" />
+            <div className="h-9 w-9 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
+              <s.icon className="h-4 w-4 text-[#4F46E5]" />
             </div>
             <div>
               <p className="text-lg font-bold text-[#172554]">{s.value}</p>
@@ -193,7 +193,7 @@ export default function UserMasterPage() {
               key={tab.key}
               variant={roleFilter === tab.key ? "default" : "outline"}
               size="sm"
-              className={`gap-1.5 ${roleFilter === tab.key ? "bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white" : ""}`}
+              className={`gap-1.5 ${roleFilter === tab.key ? "bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white" : ""}`}
               onClick={() => setRoleFilter(tab.key)}
             >
               <tab.icon className="h-3.5 w-3.5" />
@@ -234,8 +234,8 @@ export default function UserMasterPage() {
                   <tr key={`${u.role}-${u.userId}`} className="hover:bg-[#F8FAFC]/60 transition-colors">
                     <td className="p-3 border-b border-[#F1F5F9]">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[#2563EB]/10 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-[#2563EB]">{u.name.split(" ").map((w) => w[0]).join("")}</span>
+                        <div className="h-8 w-8 rounded-full bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-[#4F46E5]">{u.name.split(" ").map((w) => w[0]).join("")}</span>
                         </div>
                         <span className="text-sm font-medium text-[#172554]">{u.name}</span>
                       </div>
@@ -253,7 +253,7 @@ export default function UserMasterPage() {
                     </td>
                     <td className="p-3 border-b border-[#F1F5F9]">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#2563EB] hover:bg-[#2563EB]/10" title="Change Password"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4F46E5] hover:bg-[#4F46E5]/10" title="Change Password"
                           onClick={() => { setPwDialog({ open: true, user: u }); setNewPassword(""); setShowPw(false); }}>
                           <Key className="h-3.5 w-3.5" />
                         </Button>
@@ -279,7 +279,7 @@ export default function UserMasterPage() {
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-[#2563EB]" /> Change Password
+              <Key className="h-5 w-5 text-[#4F46E5]" /> Change Password
             </DialogTitle>
           </DialogHeader>
           {pwDialog.user && (
@@ -306,7 +306,7 @@ export default function UserMasterPage() {
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => { setPwDialog({ open: false, user: null }); setNewPassword(""); }} disabled={saving}>Cancel</Button>
-                <Button className="gap-2 bg-gradient-to-r from-[#2563EB] to-[#7C3AED] border-0 text-white" onClick={handlePasswordChange} disabled={saving || !newPassword.trim()}>
+                <Button className="gap-2 bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white" onClick={handlePasswordChange} disabled={saving || !newPassword.trim()}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
                   {saving ? "Updating..." : "Update Password"}
                 </Button>

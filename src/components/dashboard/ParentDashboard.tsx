@@ -77,7 +77,7 @@ export function ParentDashboard() {
               className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center overflow-hidden">
+                <div className="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center overflow-hidden">
                   {child.photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={child.photo} alt={child.name} className="h-full w-full object-cover" />
@@ -98,7 +98,7 @@ export function ParentDashboard() {
                 )}
               </div>
               <div className="mt-4 flex items-center gap-2 text-xs text-[#475569] border-t border-[#F1F5F9] pt-3">
-                <GraduationCap className="h-3.5 w-3.5 text-[#2563EB]" />
+                <GraduationCap className="h-3.5 w-3.5 text-[#4F46E5]" />
                 Class {child.class}
                 {child.section ? `-${child.section}` : ""} · Roll {child.rollNumber || "—"}
               </div>
@@ -238,8 +238,8 @@ function ChildUpcomingExams({ studentClass, studentSection }: { studentClass: st
   return (
     <div className="mt-2">
       <div className="flex items-center gap-1.5 text-xs">
-        <ClipboardList className="h-3.5 w-3.5 text-[#2563EB]" />
-        <span className="font-semibold text-[#2563EB]">{exams.length} upcoming exam{exams.length === 1 ? "" : "s"}</span>
+        <ClipboardList className="h-3.5 w-3.5 text-[#4F46E5]" />
+        <span className="font-semibold text-[#4F46E5]">{exams.length} upcoming exam{exams.length === 1 ? "" : "s"}</span>
       </div>
       <div className="mt-1.5 space-y-0.5">
         {exams.map((e) => (
@@ -312,7 +312,7 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
         name: childName,
         description: fee.title,
         order_id: orderId,
-        theme: { color: "#2563EB" },
+        theme: { color: "#4F46E5" },
         prefill: { name: childName },
         handler: async (response) => {
           try {
@@ -368,7 +368,7 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
                 size="xs"
                 onClick={() => handlePay(f)}
                 disabled={payingId === f._id}
-                className="gap-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6"
+                className="gap-1 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6"
               >
                 {payingId === f._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
                 Pay
@@ -451,7 +451,7 @@ function ChildHomework({ studentId }: { studentId: string }) {
                 size="xs"
                 onClick={() => handleSubmit(hw)}
                 disabled={submittingId === hw._id}
-                className="gap-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6 shrink-0"
+                className="gap-1 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6 shrink-0"
               >
                 {submittingId === hw._id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mark Done"}
               </Button>

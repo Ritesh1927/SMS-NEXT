@@ -163,7 +163,7 @@ export default function ClassesPage() {
             <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
               <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
             </Link>
-            <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+            <Button onClick={openAdd} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
               <Plus className="h-4 w-4" /> Add Class
             </Button>
           </div>
@@ -259,7 +259,7 @@ export default function ClassesPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Add Class"}
             </Button>
           </form>

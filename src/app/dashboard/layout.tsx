@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center bg-[#F8FAFC] min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
       </div>
     );
   }

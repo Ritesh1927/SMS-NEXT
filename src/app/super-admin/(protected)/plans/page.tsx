@@ -157,7 +157,7 @@ export default function PlansManagementPage() {
           <Button variant="ghost" size="sm" onClick={() => router.push("/super-admin")} className="gap-1.5 text-gray-500 hover:text-gray-700">
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -166,7 +166,7 @@ export default function PlansManagementPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={openCreate} className="gap-2 bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white border-0 rounded-xl">
+          <Button onClick={openCreate} className="gap-2 bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] text-white border-0 rounded-xl">
             <Plus className="h-4 w-4" /> Create Plan
           </Button>
           <Button variant="outline" onClick={handleLogout} className="rounded-xl">Logout</Button>
@@ -176,7 +176,7 @@ export default function PlansManagementPage() {
       <div className="max-w-6xl mx-auto p-6">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#2563EB]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
           </div>
         ) : plans.length === 0 ? (
           <div className="text-center py-20">
@@ -193,8 +193,8 @@ export default function PlansManagementPage() {
                 <div key={plan._id} className="bg-white rounded-2xl border border-[#E2E8F0] p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center">
-                        <Icon className="h-5 w-5 text-[#2563EB]" />
+                      <div className="h-10 w-10 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center">
+                        <Icon className="h-5 w-5 text-[#4F46E5]" />
                       </div>
                       <h3 className="font-bold text-[#172554]">{plan.name}</h3>
                     </div>
@@ -225,7 +225,7 @@ export default function PlansManagementPage() {
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {plan.features.slice(0, 6).map((f) => (
-                        <span key={f} className="text-[10px] bg-[#2563EB]/10 text-[#2563EB] px-2 py-0.5 rounded-full">
+                        <span key={f} className="text-[10px] bg-[#4F46E5]/10 text-[#4F46E5] px-2 py-0.5 rounded-full">
                           {ALL_FEATURES.find((af) => af.key === f)?.label || f}
                         </span>
                       ))}
@@ -290,7 +290,7 @@ export default function PlansManagementPage() {
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                className="h-5 w-5 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]"
+                className="h-5 w-5 rounded border-gray-300 text-[#4F46E5] focus:ring-[#4F46E5]"
               />
             </div>
 
@@ -306,8 +306,8 @@ export default function PlansManagementPage() {
                     onClick={() => toggleFeature(f.key)}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-left transition-all ${
                       form.features.includes(f.key)
-                        ? "border-[#2563EB] bg-[#2563EB]/5 text-[#2563EB]"
-                        : "border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB]/30"
+                        ? "border-[#4F46E5] bg-[#4F46E5]/5 text-[#4F46E5]"
+                        : "border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]/30"
                     }`}
                   >
                     {form.features.includes(f.key) ? (
@@ -324,7 +324,7 @@ export default function PlansManagementPage() {
 
           <div className="pt-3 border-t border-gray-200 flex gap-3">
             <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white border-0">
+            <Button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] text-white border-0">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               {editingPlan ? "Update Plan" : "Create Plan"}
             </Button>

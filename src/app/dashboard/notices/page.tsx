@@ -166,7 +166,7 @@ export default function NoticesPage() {
           <p className="text-sm text-[#64748B] mt-1">School-wide announcements.</p>
         </div>
         {canPost && (
-          <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+          <Button onClick={openAdd} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
             <Plus className="h-4 w-4" /> New Notice
           </Button>
         )}
@@ -189,7 +189,7 @@ export default function NoticesPage() {
             <div key={n._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {n.isPinned && <Pin className="h-3.5 w-3.5 text-[#2563EB]" />}
+                  {n.isPinned && <Pin className="h-3.5 w-3.5 text-[#4F46E5]" />}
                   {n.isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-red-600" />}
                   <p className="text-sm font-semibold text-[#172554]">{n.title}</p>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[n.category]}`}>
@@ -262,8 +262,8 @@ export default function NoticesPage() {
                       onClick={() => toggleRole(r.value)}
                       className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                         active
-                          ? "bg-[#2563EB] text-white border-[#2563EB]"
-                          : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#2563EB]"
+                          ? "bg-[#4F46E5] text-white border-[#4F46E5]"
+                          : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#4F46E5]"
                       }`}
                     >
                       {r.label}
@@ -290,7 +290,7 @@ export default function NoticesPage() {
                 Pin to top
               </label>
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Post Notice"}
             </Button>
           </form>

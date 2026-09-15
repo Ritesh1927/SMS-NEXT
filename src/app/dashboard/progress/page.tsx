@@ -107,8 +107,8 @@ export default function ProgressPage() {
             ].map((s) => (
               <Card key={s.title}>
                 <CardContent className="p-5 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-lg bg-[#2563EB]/10 flex items-center justify-center shrink-0">
-                    <s.icon className="h-5 w-5 text-[#2563EB]" />
+                  <div className="h-11 w-11 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
+                    <s.icon className="h-5 w-5 text-[#4F46E5]" />
                   </div>
                   <div>
                     <p className="text-xs text-[#64748B]">{s.title}</p>
@@ -121,7 +121,7 @@ export default function ProgressPage() {
 
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-[#2563EB]" />
+              <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
             </div>
           ) : !data?.hasResults ? (
             <Card>
@@ -143,7 +143,7 @@ export default function ProgressPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-[#2563EB]" /> Attendance Trend
+                        <TrendingUp className="h-4 w-4 text-[#4F46E5]" /> Attendance Trend
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -156,7 +156,7 @@ export default function ProgressPage() {
                             <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
                             <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} />
                             <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                            <Line type="monotone" dataKey="score" stroke="#2563EB" strokeWidth={3} dot={{ fill: "#2563EB", r: 5 }} />
+                            <Line type="monotone" dataKey="score" stroke="#4F46E5" strokeWidth={3} dot={{ fill: "#4F46E5", r: 5 }} />
                           </LineChart>
                         </ResponsiveContainer>
                       )}
@@ -166,7 +166,7 @@ export default function ProgressPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-[#2563EB]" /> Student vs Class Average
+                        <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Student vs Class Average
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -178,8 +178,8 @@ export default function ProgressPage() {
                             <PolarGrid stroke="#E2E8F0" />
                             <PolarAngleAxis dataKey="subject" tick={{ fill: "#64748B", fontSize: 11 }} />
                             <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                            <Radar name="Student" dataKey="student" stroke="#2563EB" fill="#2563EB" fillOpacity={0.3} />
-                            <Radar name="Class Avg" dataKey="classAvg" stroke="#7C3AED" fill="#7C3AED" fillOpacity={0.15} />
+                            <Radar name="Student" dataKey="student" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
+                            <Radar name="Class Avg" dataKey="classAvg" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.15} />
                             <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
                           </RadarChart>
                         </ResponsiveContainer>
@@ -205,8 +205,8 @@ export default function ProgressPage() {
                             <XAxis dataKey="subject" tick={{ fill: "#64748B", fontSize: 12 }} />
                             <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} />
                             <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                            <Bar dataKey="score" fill="#2563EB" radius={[6, 6, 0, 0]} name="Score" />
-                            <Bar dataKey="classAvg" fill="#7C3AED" radius={[6, 6, 0, 0]} name="Class Average" />
+                            <Bar dataKey="score" fill="#4F46E5" radius={[6, 6, 0, 0]} name="Score" />
+                            <Bar dataKey="classAvg" fill="#8B5CF6" radius={[6, 6, 0, 0]} name="Class Average" />
                           </BarChart>
                         </ResponsiveContainer>
                         <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

@@ -420,7 +420,7 @@ export default function SettingsPage() {
           )}
         </Section>
 
-        <Button type="submit" className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={saving}>
+        <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Settings
         </Button>
       </form>
@@ -456,7 +456,7 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
-          <Button type="submit" className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={changingPassword}>
+          <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={changingPassword}>
             {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
           </Button>
         </Section>

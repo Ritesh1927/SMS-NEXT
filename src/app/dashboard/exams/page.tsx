@@ -265,7 +265,7 @@ export default function ExamsPage() {
           <h1 className="text-2xl font-bold text-[#172554]">Exams</h1>
           <p className="text-sm text-[#64748B] mt-1">Create exams, enter marks, and publish results.</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+        <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
           <Plus className="h-4 w-4" /> New Exam
         </Button>
       </div>
@@ -421,7 +421,7 @@ export default function ExamsPage() {
                 <Input type="number" min={0} value={form.passingMarks} onChange={(e) => setForm((f) => ({ ...f, passingMarks: e.target.value }))} required />
               </Field>
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Exam"}
             </Button>
           </form>
@@ -462,7 +462,7 @@ export default function ExamsPage() {
                   </div>
                 ))}
               </div>
-              <Button onClick={saveMarks} className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={savingMarks}>
+              <Button onClick={saveMarks} className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={savingMarks}>
                 {savingMarks ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Marks"}
               </Button>
             </div>
@@ -503,7 +503,7 @@ export default function ExamsPage() {
               </div>
               <Button
                 onClick={() => togglePublish(!results.results[0]?.isPublished)}
-                className="w-full gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]"
+                className="w-full gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]"
                 disabled={publishing}
               >
                 {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -520,7 +520,7 @@ export default function ExamsPage() {
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
-      <div className="h-9 w-9 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+      <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div>

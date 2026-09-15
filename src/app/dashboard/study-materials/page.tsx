@@ -53,7 +53,7 @@ interface Child {
 
 const TYPE_ICON: Record<MaterialType, typeof FileText> = { pdf: FileText, notes: BookMarked, paper: File, worksheet: BookOpen };
 const TYPE_COLOR: Record<MaterialType, string> = {
-  pdf: "bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]/20",
+  pdf: "bg-[#4F46E5]/10 text-[#4F46E5] border-[#4F46E5]/20",
   notes: "bg-blue-50 text-blue-700 border-blue-200",
   paper: "bg-amber-50 text-amber-700 border-amber-200",
   worksheet: "bg-green-50 text-green-700 border-green-200",
@@ -277,7 +277,7 @@ export default function StudyMaterialsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
         </div>
       ) : isParent && !selectedChildId ? (
         <div className="text-center py-16 text-[#64748B]">
@@ -298,8 +298,8 @@ export default function StudyMaterialsPage() {
               <Card key={mat._id}>
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-[#2563EB]/10 flex items-center justify-center shrink-0">
-                      <Icon className="h-5 w-5 text-[#2563EB]" />
+                    <div className="h-10 w-10 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-[#4F46E5]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-[#172554] truncate" title={mat.title}>
@@ -368,7 +368,7 @@ export default function StudyMaterialsPage() {
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-[#2563EB]" /> Upload Study Material
+                <Upload className="h-5 w-5 text-[#4F46E5]" /> Upload Study Material
               </DialogTitle>
             </DialogHeader>
 
@@ -464,7 +464,7 @@ export default function StudyMaterialsPage() {
                 </Label>
                 {selectedFile ? (
                   <div className="flex items-center gap-2 p-3 border border-[#E2E8F0] rounded-lg bg-[#F8FAFC]">
-                    <FileText className="h-4 w-4 text-[#2563EB] shrink-0" />
+                    <FileText className="h-4 w-4 text-[#4F46E5] shrink-0" />
                     <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
                     <button
                       onClick={() => {
@@ -477,7 +477,7 @@ export default function StudyMaterialsPage() {
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed border-[#E2E8F0] rounded-lg p-6 text-center cursor-pointer hover:border-[#2563EB]/40 hover:bg-[#F8FAFC] transition-all"
+                    className="border-2 border-dashed border-[#E2E8F0] rounded-lg p-6 text-center cursor-pointer hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all"
                     onClick={() => fileRef.current?.click()}
                   >
                     <Upload className="h-8 w-8 mx-auto mb-2 text-[#64748B] opacity-50" />

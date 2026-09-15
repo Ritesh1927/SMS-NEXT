@@ -214,7 +214,7 @@ export default function HomeworkPage() {
           <h1 className="text-2xl font-bold text-[#172554]">Homework</h1>
           <p className="text-sm text-[#64748B] mt-1">{(homework || []).length} assignment{(homework || []).length === 1 ? "" : "s"} total.</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+        <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
           <Plus className="h-4 w-4" /> New Assignment
         </Button>
       </div>
@@ -281,7 +281,7 @@ export default function HomeworkPage() {
                 {hw.totalStudents > 0 && (
                   <div className="w-full max-w-xs h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden mt-2">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                      className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]"
                       style={{ width: `${Math.min(100, (hw.submissions.length / hw.totalStudents) * 100)}%` }}
                     />
                   </div>
@@ -363,7 +363,7 @@ export default function HomeworkPage() {
                 <Input type="number" min={0} value={form.maxMarks} onChange={(e) => setForm((f) => ({ ...f, maxMarks: e.target.value }))} />
               </Field>
             </div>
-            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign Homework"}
             </Button>
           </form>
@@ -416,7 +416,7 @@ export default function HomeworkPage() {
                           size="sm"
                           onClick={() => saveGrade(student._id)}
                           disabled={savingGradeFor === student._id}
-                          className="bg-[#2563EB] hover:bg-[#1D4ED8]"
+                          className="bg-[#4F46E5] hover:bg-[#4338CA]"
                         >
                           {savingGradeFor === student._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </Button>
@@ -607,7 +607,7 @@ function ParentHomework() {
                     </p>
                     {hw.description && <p className="text-sm text-[#475569] mt-2">{hw.description}</p>}
                     {hw.submission?.status === "graded" && (
-                      <p className="text-xs text-[#2563EB] font-semibold mt-2 flex items-center gap-1">
+                      <p className="text-xs text-[#4F46E5] font-semibold mt-2 flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Scored {hw.submission.marks}{hw.maxMarks ? ` / ${hw.maxMarks}` : ""}
                         {hw.submission.feedback ? ` — ${hw.submission.feedback}` : ""}
@@ -619,7 +619,7 @@ function ParentHomework() {
                       size="sm"
                       onClick={() => handleSubmit(hw)}
                       disabled={submittingId === hw._id}
-                      className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] shrink-0"
+                      className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] shrink-0"
                     >
                       {submittingId === hw._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       Mark Submitted

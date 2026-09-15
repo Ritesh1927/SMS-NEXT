@@ -205,12 +205,12 @@ export default function LoginPage() {
           transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[#2563EB]/[0.06] blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-10 w-72 h-72 rounded-full bg-[#7C3AED]/[0.06] blur-3xl" />
+        <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[#4F46E5]/[0.06] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -right-10 w-72 h-72 rounded-full bg-[#8B5CF6]/[0.06] blur-3xl" />
 
         <div className="relative w-full max-w-[440px] bg-white border border-[#E2E8F0] rounded-[22px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_24px_48px_-24px_rgba(37,99,235,0.16)] px-6 py-6 sm:px-8 sm:py-7 lg:px-9 lg:py-7">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shadow-lg shadow-[#2563EB]/25">
+            <div className="h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center shadow-lg shadow-[#4F46E5]/25">
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div className="flex items-center gap-3">
@@ -238,7 +238,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="pl-11 h-[52px] rounded-[14px] border-[#E2E8F0] bg-white text-[#172554] placeholder:text-[#64748B] hover:border-[#CBD5E1] focus-visible:ring-[3px] focus-visible:ring-[#2563EB]/15 focus-visible:border-[#2563EB] transition-all duration-200"
+                  className="pl-11 h-[52px] rounded-[14px] border-[#E2E8F0] bg-white text-[#172554] placeholder:text-[#64748B] hover:border-[#CBD5E1] focus-visible:ring-[3px] focus-visible:ring-[#4F46E5]/15 focus-visible:border-[#4F46E5] transition-all duration-200"
                   required
                   maxLength={255}
                   autoComplete="username"
@@ -258,7 +258,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-11 pr-11 h-[52px] rounded-[14px] border-[#E2E8F0] bg-white text-[#172554] placeholder:text-[#64748B] hover:border-[#CBD5E1] focus-visible:ring-[3px] focus-visible:ring-[#2563EB]/15 focus-visible:border-[#2563EB] transition-all duration-200"
+                  className="pl-11 pr-11 h-[52px] rounded-[14px] border-[#E2E8F0] bg-white text-[#172554] placeholder:text-[#64748B] hover:border-[#CBD5E1] focus-visible:ring-[3px] focus-visible:ring-[#4F46E5]/15 focus-visible:border-[#4F46E5] transition-all duration-200"
                   required
                   maxLength={100}
                   autoComplete="current-password"
@@ -267,7 +267,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172554] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/30 rounded-sm"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172554] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/30 rounded-sm"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -288,7 +288,7 @@ export default function LoginPage() {
                   setForgotOpen(true);
                   resetForgot();
                 }}
-                className="text-sm font-medium text-[#2563EB] hover:text-[#7C3AED] transition-colors duration-200 hover:underline underline-offset-4"
+                className="text-sm font-medium text-[#4F46E5] hover:text-[#8B5CF6] transition-colors duration-200 hover:underline underline-offset-4"
               >
                 Forgot password?
               </button>
@@ -296,7 +296,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full h-[54px] rounded-[14px] font-semibold text-sm bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.45)] hover:shadow-[0_12px_28px_-6px_rgba(124,58,237,0.5)] hover:-translate-y-px transition-all duration-200 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
+              className="w-full h-[54px] rounded-[14px] font-semibold text-sm bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white shadow-[0_8px_20px_-6px_rgba(79,70,229,0.45)] hover:shadow-[0_12px_28px_-6px_rgba(124,58,237,0.5)] hover:-translate-y-px transition-all duration-200 active:translate-y-0 active:scale-[0.99] disabled:opacity-60"
               disabled={loading}
             >
               {loading ? (
@@ -315,7 +315,7 @@ export default function LoginPage() {
 
       {/* ═══ RIGHT: Visual Panel ═══ */}
       <div
-        className="w-full md:w-[46%] lg:w-[45%] md:h-full relative overflow-hidden flex flex-col justify-between px-6 py-8 sm:px-8 md:px-8 md:py-6 lg:px-12 lg:py-8 bg-gradient-to-br from-[#1D4ED8] via-[#4338CA] to-[#6D28D9] text-white"
+        className="w-full md:w-[46%] lg:w-[45%] md:h-full relative overflow-hidden flex flex-col justify-between px-6 py-8 sm:px-8 md:px-8 md:py-6 lg:px-12 lg:py-8 bg-gradient-to-br from-[#4338CA] via-[#4338CA] to-[#7C3AED] text-white"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? "translateX(0)" : "translateX(20px)",
@@ -373,17 +373,17 @@ export default function LoginPage() {
             <DialogTitle className="flex items-center gap-2 text-lg text-[#172554]">
               {forgotStep === 1 && (
                 <>
-                  <KeyRound className="h-5 w-5 text-[#2563EB]" /> Forgot Password
+                  <KeyRound className="h-5 w-5 text-[#4F46E5]" /> Forgot Password
                 </>
               )}
               {forgotStep === 2 && (
                 <>
-                  <Mail className="h-5 w-5 text-[#2563EB]" /> Enter OTP
+                  <Mail className="h-5 w-5 text-[#4F46E5]" /> Enter OTP
                 </>
               )}
               {forgotStep === 3 && (
                 <>
-                  <Lock className="h-5 w-5 text-[#2563EB]" /> New Password
+                  <Lock className="h-5 w-5 text-[#4F46E5]" /> New Password
                 </>
               )}
             </DialogTitle>
@@ -401,7 +401,7 @@ export default function LoginPage() {
                     placeholder="admin@school.com"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="pl-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                    className="pl-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                     required
                     maxLength={255}
                   />
@@ -409,7 +409,7 @@ export default function LoginPage() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white transition-all duration-300"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white transition-all duration-300"
                 disabled={forgotLoading}
               >
                 {forgotLoading ? (
@@ -436,12 +436,12 @@ export default function LoginPage() {
                   onChange={(e) => setForgotOtp(e.target.value)}
                   required
                   maxLength={6}
-                  className="text-center text-xl tracking-[0.3em] h-12 rounded-xl font-mono focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                  className="text-center text-xl tracking-[0.3em] h-12 rounded-xl font-mono focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white transition-all duration-300"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white transition-all duration-300"
                 disabled={forgotLoading || forgotOtp.length < 6}
               >
                 {forgotLoading ? (
@@ -474,7 +474,7 @@ export default function LoginPage() {
                     placeholder="Min. 6 characters"
                     value={forgotNewPw}
                     onChange={(e) => setForgotNewPw(e.target.value)}
-                    className="pl-10 pr-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                    className="pl-10 pr-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                     required
                     minLength={6}
                     maxLength={100}
@@ -497,7 +497,7 @@ export default function LoginPage() {
                     placeholder="Re-enter password"
                     value={forgotConfirmPw}
                     onChange={(e) => setForgotConfirmPw(e.target.value)}
-                    className="pl-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                    className="pl-10 h-11 rounded-xl focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                     required
                     minLength={6}
                     maxLength={100}
@@ -506,7 +506,7 @@ export default function LoginPage() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white transition-all duration-300"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white transition-all duration-300"
                 disabled={forgotLoading}
               >
                 {forgotLoading ? (
@@ -569,7 +569,7 @@ export default function LoginPage() {
                         onChange={(e) => setSignupForm((fr) => ({ ...fr, [f.key]: e.target.value }))}
                         required
                         maxLength={100}
-                        className="rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                        className="rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                       />
                     </div>
                   ))}
@@ -596,14 +596,14 @@ export default function LoginPage() {
                           required
                           maxLength={f.key === "password" ? 100 : 255}
                           minLength={f.min}
-                          className={`rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB] ${f.key === "password" ? "pr-10" : ""}`}
+                          className={`rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5] ${f.key === "password" ? "pr-10" : ""}`}
                         />
                         {f.key === "password" && (
                           <button
                             type="button"
                             onClick={() => setShowSignupPassword((v) => !v)}
                             aria-label={showSignupPassword ? "Hide password" : "Show password"}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172554] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/30 rounded-sm"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172554] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/30 rounded-sm"
                           >
                             {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -616,7 +616,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white mt-5 transition-all duration-300"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white mt-5 transition-all duration-300"
                 disabled={signupLoading}
               >
                 {signupLoading ? "Registering..." : "Register School"}
@@ -635,12 +635,12 @@ export default function LoginPage() {
                   onChange={(e) => setOtp(e.target.value)}
                   required
                   maxLength={6}
-                  className="text-center text-xl tracking-[0.3em] h-12 rounded-xl font-mono focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 focus-visible:border-[#2563EB]"
+                  className="text-center text-xl tracking-[0.3em] h-12 rounded-xl font-mono focus-visible:ring-2 focus-visible:ring-[#4F46E5]/20 focus-visible:border-[#4F46E5]"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:from-[#1D4ED8] hover:to-[#6D28D9] border-0 text-white transition-all duration-300"
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] hover:from-[#4338CA] hover:to-[#7C3AED] border-0 text-white transition-all duration-300"
                 disabled={signupLoading}
               >
                 {signupLoading ? "Verifying..." : "Verify & Activate"}
@@ -662,7 +662,7 @@ export default function LoginPage() {
         <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg text-[#172554]">
-              <Building2 className="h-5 w-5 text-[#2563EB]" /> Select School
+              <Building2 className="h-5 w-5 text-[#4F46E5]" /> Select School
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-[#64748B] mt-1">Your credentials match multiple schools. Choose one to continue:</p>
@@ -671,7 +671,7 @@ export default function LoginPage() {
               <button
                 key={i}
                 onClick={() => handleSchoolSelect(s)}
-                className="w-full rounded-xl p-4 border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#2563EB]/5 transition-all text-left"
+                className="w-full rounded-xl p-4 border border-[#E2E8F0] hover:border-[#4F46E5] hover:bg-[#4F46E5]/5 transition-all text-left"
               >
                 <p className="text-sm font-semibold text-[#172554]">{s.schoolName}</p>
                 <p className="text-xs text-[#64748B]">
