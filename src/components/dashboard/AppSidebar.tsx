@@ -172,7 +172,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
 
   return (
     <Sidebar collapsible="icon" className="border-r border-[#E2E8F0]">
-      <div className="flex h-16 items-center gap-3 px-4 border-b border-[#E2E8F0] overflow-hidden">
+      <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1.5 border-b border-[#E2E8F0] overflow-hidden">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
           <Logo className="h-5 w-5 text-white" />
         </div>
