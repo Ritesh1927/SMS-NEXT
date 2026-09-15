@@ -183,7 +183,7 @@ export default function ChatPage() {
           <h1 className="text-sm font-semibold text-[#172554]">Communication</h1>
         </div>
         {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
-        {!contacts ? (
+        {error ? null : !contacts ? (
           <div className="flex items-center gap-2 text-xs text-[#64748B] px-4 py-3">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
           </div>

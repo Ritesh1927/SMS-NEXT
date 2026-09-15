@@ -443,7 +443,7 @@ export default function FeesPage() {
         )}
 
         <TabsContent value="payments" className="mt-4">
-          {!payments ? (
+          {error ? null : !payments ? (
             <div className="flex items-center gap-2 text-sm text-[#64748B]">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading...
             </div>
@@ -492,7 +492,7 @@ export default function FeesPage() {
               <Plus className="h-4 w-4" /> New Fee Structure
             </Button>
           </div>
-          {!structures ? (
+          {error ? null : !structures ? (
             <div className="flex items-center gap-2 text-sm text-[#64748B]">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading...
             </div>
@@ -957,7 +957,7 @@ function ParentFees() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
-      {children === null || (childId && !data) ? (
+      {error ? null : children === null || (childId && !data) ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>

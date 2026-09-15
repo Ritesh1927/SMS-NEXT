@@ -174,7 +174,7 @@ export default function NoticesPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
-      {!notices ? (
+      {error ? null : !notices ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>

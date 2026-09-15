@@ -150,7 +150,7 @@ export default function AttendancePage() {
       <div className="flex flex-wrap items-end gap-3 mb-6">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-[#172554]">Class</label>
-          {classOptions === null ? (
+          {error ? null : classOptions === null ? (
             <div className="flex items-center gap-2 text-sm text-[#64748B] h-8">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
             </div>
