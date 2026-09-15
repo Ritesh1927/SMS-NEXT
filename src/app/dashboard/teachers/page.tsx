@@ -134,6 +134,9 @@ export default function TeachersPage() {
   const [permForm, setPermForm] = useState<TeacherPermissions | null>(null);
   const [permSubmitting, setPermSubmitting] = useState(false);
 
+  const [staffFilter, setStaffFilter] = useState<"" | "teaching" | "non-teaching">("");
+  const [search, setSearch] = useState("");
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -298,19 +301,78 @@ export default function TeachersPage() {
 
   if (!user) return null;
 
+  const allTeachers = teachers || [];
+  const counts = {
+    total: allTeachers.length,
+    teaching: allTeachers.filter((t) => t.staffType === "teaching").length,
+    nonTeaching: allTeachers.filter((t) => t.staffType !== "teaching").length,
+  };
+  const filteredTeachers = allTeachers.filter((t) => {
+    if (staffFilter && t.staffType !== staffFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!t.name.toLowerCase().includes(q) && !t.email.toLowerCase().includes(q) && !(t.subjects || []).some((s) => s.toLowerCase().includes(q))) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Teachers</h1>
-          <p className="text-sm text-[#64748B] mt-1">Manage teaching and non-teaching staff.</p>
+          <h1 className="text-2xl font-bold text-[#172554]">Staff</h1>
+          <p className="text-sm text-[#64748B] mt-1">
+            {counts.total} staff member{counts.total === 1 ? "" : "s"} ({counts.teaching} teaching, {counts.nonTeaching} non-teaching).
+          </p>
         </div>
         <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-          <Plus className="h-4 w-4" /> Add Teacher
+          <Plus className="h-4 w-4" /> Add Staff
         </Button>
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {teachers && teachers.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
+              <p className="text-xs text-[#64748B]">Total Staff</p>
+            </div>
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xl font-bold text-[#2563EB]">{counts.teaching}</p>
+              <p className="text-xs text-[#64748B]">Teaching</p>
+            </div>
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xl font-bold text-amber-600">{counts.nonTeaching}</p>
+              <p className="text-xs text-[#64748B]">Non-Teaching</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex gap-2">
+              {([
+                { key: "", label: "All Staff" },
+                { key: "teaching", label: "Teaching" },
+                { key: "non-teaching", label: "Non-Teaching" },
+              ] as const).map((tab) => (
+                <Button
+                  key={tab.key}
+                  variant={staffFilter === tab.key ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStaffFilter(tab.key)}
+                  className={staffFilter === tab.key ? "bg-[#2563EB] hover:bg-[#1D4ED8]" : ""}
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
+            <Input placeholder="Search by name, email, subject..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+          </div>
+        </>
+      )}
 
       {!teachers ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
@@ -320,9 +382,13 @@ export default function TeachersPage() {
         <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <p className="text-sm text-[#64748B]">No teachers yet. Add your first one to get started.</p>
         </div>
+      ) : filteredTeachers.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No staff match your filters.</p>
+        </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {teachers.map((t) => (
+          {filteredTeachers.map((t) => (
             <div key={t._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
