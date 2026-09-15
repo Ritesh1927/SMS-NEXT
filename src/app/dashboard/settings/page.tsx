@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -68,6 +68,11 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -107,6 +112,42 @@ export default function SettingsPage() {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!oldPassword || !newPassword) {
+      toast.error("Error", { description: "Enter your current and new password." });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Error", { description: "New password must be at least 6 characters." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Error", { description: "New password and confirmation don't match." });
+      return;
+    }
+    const token = getToken();
+    if (!token) return;
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+      const json: ApiMessageResponse = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to change password.");
+      toast.success("Password changed successfully");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -382,6 +423,43 @@ export default function SettingsPage() {
         <Button type="submit" className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Settings
         </Button>
+      </form>
+
+      <form onSubmit={handleChangePassword} className="max-w-3xl mt-6">
+        <Section title="Change Password">
+          <Field label="Current Password">
+            <Input
+              type="password"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              placeholder="Enter current password"
+              autoComplete="current-password"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="New Password">
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                autoComplete="new-password"
+              />
+            </Field>
+            <Field label="Confirm New Password">
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                autoComplete="new-password"
+              />
+            </Field>
+          </div>
+          <Button type="submit" className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={changingPassword}>
+            {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
+          </Button>
+        </Section>
       </form>
     </div>
   );
