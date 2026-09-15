@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { Loader2, Save, Shield } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface SchoolProfile {
   schoolName: string;
@@ -22,7 +25,6 @@ interface SchoolProfile {
   name: string;
   phone: string;
   settings: {
-    academicYear: string;
     sessionStartMonth: string;
     establishedYear: string;
     affiliation: string;
@@ -62,6 +64,22 @@ interface ApiMessageResponse {
   message?: string;
 }
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function getSessionRange(sessionStartMonth: string) {
+  const startIdx = MONTHS.indexOf(sessionStartMonth);
+  if (startIdx < 0) return { startYear: "", endYear: "", label: "" };
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const endMonthIdx = (startIdx + 11) % 12;
+  const endYear = endMonthIdx < startIdx ? currentYear + 1 : currentYear;
+  return {
+    startYear: String(currentYear),
+    endYear: String(endYear),
+    label: `${sessionStartMonth} ${currentYear} to ${MONTHS[endMonthIdx]} ${endYear}`,
+  };
+}
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<SchoolProfile | null>(null);
@@ -73,6 +91,8 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -81,9 +101,26 @@ export default function SettingsPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile."));
   }, []);
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setProfile((p) => p && { ...p, logo: reader.result as string });
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (profile.schoolEmail && !emailRegex.test(profile.schoolEmail)) {
+      toast.error("Invalid Email", { description: "Please enter a valid school email address." });
+      return;
+    }
     const token = getToken();
     if (!token) return;
     setSaving(true);
@@ -163,312 +200,371 @@ export default function SettingsPage() {
     );
   }
 
+  const sessionRange = getSessionRange(profile.settings.sessionStartMonth);
+
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#172554]">Settings</h1>
-        <p className="text-sm text-[#64748B] mt-1">Manage your school profile and preferences.</p>
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-[#172554]">Settings</h1>
+          <p className="text-sm text-[#64748B] mt-1">Manage your school configuration and preferences.</p>
+        </div>
+        <Button form="settings-form" type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Changes
+        </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
-        <Section title="School Information">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="School Name">
-              <Input value={profile.schoolName} onChange={(e) => setProfile((p) => p && { ...p, schoolName: e.target.value })} />
-            </Field>
-            <Field label="School Phone">
-              <Input value={profile.schoolPhone} onChange={(e) => setProfile((p) => p && { ...p, schoolPhone: e.target.value })} />
-            </Field>
-          </div>
-          <Field label="School Address">
-            <Input value={profile.schoolAddress} onChange={(e) => setProfile((p) => p && { ...p, schoolAddress: e.target.value })} />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="School Email">
-              <Input type="email" value={profile.schoolEmail} onChange={(e) => setProfile((p) => p && { ...p, schoolEmail: e.target.value })} />
-            </Field>
-            <Field label="Website">
-              <Input value={profile.website} onChange={(e) => setProfile((p) => p && { ...p, website: e.target.value })} />
-            </Field>
-          </div>
-          <Field label="Logo URL">
-            <Input value={profile.logo} onChange={(e) => setProfile((p) => p && { ...p, logo: e.target.value })} placeholder="https://..." />
-          </Field>
-        </Section>
+      <form id="settings-form" onSubmit={handleSubmit}>
+        <Tabs defaultValue="school" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="school" className="gap-1.5"><School className="h-3.5 w-3.5" /> School Profile</TabsTrigger>
+            <TabsTrigger value="academic" className="gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" /> Academic</TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1.5"><Bell className="h-3.5 w-3.5" /> Notifications</TabsTrigger>
+            <TabsTrigger value="security" className="gap-1.5"><Shield className="h-3.5 w-3.5" /> Security</TabsTrigger>
+            <TabsTrigger value="fees" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Fees</TabsTrigger>
+          </TabsList>
 
-        <Section title="Admin Account">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Your Name">
-              <Input value={profile.name} onChange={(e) => setProfile((p) => p && { ...p, name: e.target.value })} />
-            </Field>
-            <Field label="Your Phone">
-              <Input value={profile.phone} onChange={(e) => setProfile((p) => p && { ...p, phone: e.target.value })} />
-            </Field>
-          </div>
-        </Section>
-
-        <Section title="Branding">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Theme Color">
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={profile.themeColor}
-                  onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })}
-                  className="h-8 w-10 rounded border border-input"
-                />
-                <Input value={profile.themeColor} onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })} />
-              </div>
-            </Field>
-            <Field label="Secondary Color">
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={profile.secondaryColor}
-                  onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })}
-                  className="h-8 w-10 rounded border border-input"
-                />
-                <Input value={profile.secondaryColor} onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })} />
-              </div>
-            </Field>
-          </div>
-        </Section>
-
-        <Section title="Academic Settings">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Academic Year">
-              <Input
-                placeholder="2025-2026"
-                value={profile.settings.academicYear}
-                onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, academicYear: e.target.value } })}
-              />
-            </Field>
-            <Field label="Session Start Month">
-              <Input
-                value={profile.settings.sessionStartMonth}
-                onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, sessionStartMonth: e.target.value } })}
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Grading Scale">
-              <Select
-                items={[
-                  { value: "percentage", label: "Percentage" },
-                  { value: "gpa", label: "GPA" },
-                  { value: "letter", label: "Letter" },
-                ]}
-                value={profile.settings.gradingScale}
-                onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, gradingScale: (v || p.settings.gradingScale) as SchoolProfile["settings"]["gradingScale"] } })}
-              >
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="percentage">Percentage</SelectItem>
-                  <SelectItem value="gpa">GPA</SelectItem>
-                  <SelectItem value="letter">Letter</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Term Structure">
-              <Select
-                items={[
-                  { value: "semester", label: "Semester" },
-                  { value: "trimester", label: "Trimester" },
-                  { value: "quarterly", label: "Quarterly" },
-                ]}
-                value={profile.settings.termStructure}
-                onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, termStructure: (v || p.settings.termStructure) as SchoolProfile["settings"]["termStructure"] } })}
-              >
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semester">Semester</SelectItem>
-                  <SelectItem value="trimester">Trimester</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field label="Pass Percentage">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={profile.settings.passPercentage}
-              onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, passPercentage: Number(e.target.value) } })}
-            />
-          </Field>
-        </Section>
-
-        <Section title="Notifications">
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ["emailAlerts", "Email alerts"],
-                ["smsAlerts", "SMS alerts"],
-                ["attendanceAlerts", "Attendance alerts"],
-                ["feeReminders", "Fee reminders"],
-                ["examNotifications", "Exam notifications"],
-              ] as [keyof SchoolProfile["settings"]["notifications"], string][]
-            ).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
-                <input
-                  type="checkbox"
-                  checked={profile.settings.notifications[key]}
-                  onChange={(e) =>
-                    setProfile((p) => p && { ...p, settings: { ...p.settings, notifications: { ...p.settings.notifications, [key]: e.target.checked } } })
-                  }
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Security">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Session Timeout (minutes)">
-              <Input
-                type="number"
-                min={5}
-                value={profile.settings.security.sessionTimeout}
-                onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, sessionTimeout: Number(e.target.value) } } })}
-              />
-            </Field>
-            <Field label="Max Login Attempts">
-              <Input
-                type="number"
-                min={1}
-                value={profile.settings.security.maxLoginAttempts}
-                onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, maxLoginAttempts: Number(e.target.value) } } })}
-              />
-            </Field>
-          </div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
-            <input
-              type="checkbox"
-              checked={profile.settings.security.twoFactorAuth}
-              onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, twoFactorAuth: e.target.checked } } })}
-            />
-            Two-factor authentication
-          </label>
-        </Section>
-
-        <Section title="Late Fee Configuration">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
-            <input
-              type="checkbox"
-              checked={profile.settings.lateFee.enabled}
-              onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: e.target.checked } } })}
-            />
-            Enable late fees on overdue payments
-          </label>
-          {profile.settings.lateFee.enabled && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Grace Period (days)">
-                <Input
-                  type="number"
-                  min={0}
-                  value={profile.settings.lateFee.gracePeriod}
-                  onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, gracePeriod: Number(e.target.value) } } })}
-                />
-              </Field>
-              <Field label="Late Fee Type">
-                <Select
-                  items={[
-                    { value: "fixed", label: "Fixed Amount" },
-                    { value: "percentage", label: "Percentage" },
-                  ]}
-                  value={profile.settings.lateFee.type}
-                  onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, type: (v || p.settings.lateFee.type) as SchoolProfile["settings"]["lateFee"]["type"] } } })}
-                >
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">Fixed Amount</SelectItem>
-                    <SelectItem value="percentage">Percentage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              {profile.settings.lateFee.type === "fixed" ? (
-                <Field label="Late Fee Amount (₹)">
+          <TabsContent value="school" className="mt-4">
+            <Panel icon={School} title="School Information">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Your Name">
+                  <Input value={profile.name} onChange={(e) => setProfile((p) => p && { ...p, name: e.target.value })} placeholder="Admin's full name" />
+                </Field>
+                <Field label="School Name">
+                  <Input value={profile.schoolName} onChange={(e) => setProfile((p) => p && { ...p, schoolName: e.target.value })} />
+                </Field>
+                <Field label="Email">
+                  <Input type="email" value={profile.schoolEmail} onChange={(e) => setProfile((p) => p && { ...p, schoolEmail: e.target.value })} />
+                </Field>
+                <Field label="Phone">
                   <Input
-                    type="number"
-                    min={0}
-                    value={profile.settings.lateFee.amount}
-                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, amount: Number(e.target.value) } } })}
+                    value={profile.schoolPhone}
+                    onChange={(e) => setProfile((p) => p && { ...p, schoolPhone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="9876543210"
                   />
                 </Field>
-              ) : (
-                <Field label="Late Fee Percentage (%)">
+                <Field label="Address">
+                  <Input value={profile.schoolAddress} onChange={(e) => setProfile((p) => p && { ...p, schoolAddress: e.target.value })} />
+                </Field>
+                <Field label="Website">
+                  <Input value={profile.website} onChange={(e) => setProfile((p) => p && { ...p, website: e.target.value })} placeholder="https://..." />
+                </Field>
+              </div>
+
+              <Field label="School Logo">
+                <div className="flex items-center gap-4">
+                  {profile.logo && (
+                    // eslint-disable-next-line @next/next/no-img-element -- data-URI/arbitrary remote logo, not an optimizable static asset.
+                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-lg object-cover border border-[#E2E8F0]" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#E2E8F0] rounded-lg hover:bg-[#F8FAFC] transition-colors text-sm text-[#64748B]"
+                  >
+                    <Upload className="h-4 w-4" /> {profile.logo ? "Change Logo" : "Upload Logo"}
+                  </button>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                </div>
+              </Field>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Primary Theme Color">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={profile.themeColor}
+                      onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })}
+                      className="h-10 w-10 rounded-lg border border-[#E2E8F0] cursor-pointer"
+                    />
+                    <Input value={profile.themeColor} onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })} className="font-mono" />
+                  </div>
+                </Field>
+                <Field label="Secondary Color">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={profile.secondaryColor}
+                      onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })}
+                      className="h-10 w-10 rounded-lg border border-[#E2E8F0] cursor-pointer"
+                    />
+                    <Input value={profile.secondaryColor} onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })} className="font-mono" />
+                  </div>
+                </Field>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full" style={{ background: profile.themeColor }} />
+                <div className="h-6 w-6 rounded-full" style={{ background: profile.secondaryColor }} />
+                <span className="text-xs text-[#64748B]">Preview</span>
+              </div>
+            </Panel>
+          </TabsContent>
+
+          <TabsContent value="academic" className="mt-4">
+            <Panel icon={SlidersHorizontal} title="Academic Settings">
+              {sessionRange.label && (
+                <div className="px-4 py-2.5 rounded-lg text-white text-sm font-semibold bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
+                  {sessionRange.label}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Session Start Month">
+                  <Select
+                    value={profile.settings.sessionStartMonth}
+                    onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, sessionStartMonth: v || p.settings.sessionStartMonth } })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Current Year (Auto)">
+                  <Input value={sessionRange.startYear && sessionRange.endYear ? `${sessionRange.startYear}-${sessionRange.endYear}` : ""} disabled className="bg-[#F8FAFC] font-mono" />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Established Year">
+                  <Input
+                    value={profile.settings.establishedYear}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, establishedYear: e.target.value.replace(/\D/g, "").slice(0, 4) } })}
+                    placeholder="e.g. 2010"
+                    maxLength={4}
+                  />
+                </Field>
+                <Field label="Affiliation">
+                  <Input
+                    value={profile.settings.affiliation}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, affiliation: e.target.value } })}
+                    placeholder="CBSE / ICSE / State Board"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field label="Grading Scale">
+                  <Select
+                    value={profile.settings.gradingScale}
+                    onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, gradingScale: (v || p.settings.gradingScale) as SchoolProfile["settings"]["gradingScale"] } })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage (0-100%)</SelectItem>
+                      <SelectItem value="gpa">GPA (0-4.0)</SelectItem>
+                      <SelectItem value="letter">Letter Grade (A-F)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Term Structure">
+                  <Select
+                    value={profile.settings.termStructure}
+                    onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, termStructure: (v || p.settings.termStructure) as SchoolProfile["settings"]["termStructure"] } })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="semester">Semester (2 terms)</SelectItem>
+                      <SelectItem value="trimester">Trimester (3 terms)</SelectItem>
+                      <SelectItem value="quarterly">Quarterly (4 terms)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Pass Percentage">
                   <Input
                     type="number"
                     min={0}
                     max={100}
-                    value={profile.settings.lateFee.percent}
-                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, percent: Number(e.target.value) } } })}
+                    value={profile.settings.passPercentage}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, passPercentage: Number(e.target.value) } })}
                   />
                 </Field>
-              )}
-              <Field label="Maximum Late Fee (₹)">
-                <Input
-                  type="number"
-                  min={0}
-                  value={profile.settings.lateFee.maxAmount}
-                  onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, maxAmount: Number(e.target.value) } } })}
+              </div>
+            </Panel>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-4">
+            <Panel icon={Bell} title="Notification Preferences">
+              {(
+                [
+                  ["emailAlerts", "Email Alerts", "Receive notifications via email"],
+                  ["smsAlerts", "SMS Alerts", "Receive notifications via SMS"],
+                  ["attendanceAlerts", "Attendance Alerts", "Get notified when attendance is below threshold"],
+                  ["feeReminders", "Fee Reminders", "Send automatic fee payment reminders"],
+                  ["examNotifications", "Exam Notifications", "Notify students and parents about upcoming exams"],
+                ] as [keyof SchoolProfile["settings"]["notifications"], string, string][]
+              ).map(([key, label, desc]) => (
+                <div key={key} className="flex items-center justify-between py-2.5 border-b border-[#F1F5F9] last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-[#172554]">{label}</p>
+                    <p className="text-xs text-[#64748B]">{desc}</p>
+                  </div>
+                  <Switch
+                    checked={profile.settings.notifications[key]}
+                    onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, notifications: { ...p.settings.notifications, [key]: v } } })}
+                  />
+                </div>
+              ))}
+            </Panel>
+          </TabsContent>
+
+          <TabsContent value="security" className="mt-4 space-y-4">
+            <Panel icon={Shield} title="Security">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Session Timeout (minutes)">
+                  <Input
+                    type="number"
+                    min={5}
+                    value={profile.settings.security.sessionTimeout}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, sessionTimeout: Number(e.target.value) } } })}
+                  />
+                </Field>
+                <Field label="Max Login Attempts">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={profile.settings.security.maxLoginAttempts}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, maxLoginAttempts: Number(e.target.value) } } })}
+                  />
+                </Field>
+              </div>
+              <div className="flex items-center justify-between py-3 border-t border-[#F1F5F9]">
+                <div>
+                  <p className="text-sm font-medium text-[#172554]">Two-Factor Authentication</p>
+                  <p className="text-xs text-[#64748B]">Add an extra layer of security</p>
+                </div>
+                <Switch
+                  checked={profile.settings.security.twoFactorAuth}
+                  onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, twoFactorAuth: v } } })}
                 />
-              </Field>
-            </div>
-          )}
-        </Section>
+              </div>
+            </Panel>
 
-        <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Settings
-        </Button>
-      </form>
+            <form onSubmit={handleChangePassword}>
+              <Panel icon={Shield} title="Change Password">
+                <Field label="Current Password">
+                  <Input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    autoComplete="current-password"
+                  />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="New Password">
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min 6 characters"
+                      autoComplete="new-password"
+                    />
+                  </Field>
+                  <Field label="Confirm New Password">
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                      autoComplete="new-password"
+                    />
+                  </Field>
+                </div>
+                <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={changingPassword}>
+                  {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
+                </Button>
+              </Panel>
+            </form>
+          </TabsContent>
 
-      <form onSubmit={handleChangePassword} className="max-w-3xl mt-6">
-        <Section title="Change Password">
-          <Field label="Current Password">
-            <Input
-              type="password"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              placeholder="Enter current password"
-              autoComplete="current-password"
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="New Password">
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
-                autoComplete="new-password"
-              />
-            </Field>
-            <Field label="Confirm New Password">
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                autoComplete="new-password"
-              />
-            </Field>
-          </div>
-          <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={changingPassword}>
-            {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
-          </Button>
-        </Section>
+          <TabsContent value="fees" className="mt-4">
+            <Panel icon={DollarSign} title="Late Fee Configuration">
+              <div className="flex items-center justify-between py-3 border-b border-[#F1F5F9]">
+                <div>
+                  <p className="text-sm font-medium text-[#172554]">Enable Late Fees</p>
+                  <p className="text-xs text-[#64748B]">Automatically apply late fees on overdue payments</p>
+                </div>
+                <Switch
+                  checked={profile.settings.lateFee.enabled}
+                  onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: v } } })}
+                />
+              </div>
+              {profile.settings.lateFee.enabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <Field label="Grace Period (days)">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={profile.settings.lateFee.gracePeriod}
+                      onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, gracePeriod: Number(e.target.value) } } })}
+                    />
+                    <p className="text-xs text-[#94A3B8] mt-1">Days after due date before late fee applies</p>
+                  </Field>
+                  <Field label="Late Fee Type">
+                    <Select
+                      value={profile.settings.lateFee.type}
+                      onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, type: (v || p.settings.lateFee.type) as SchoolProfile["settings"]["lateFee"]["type"] } } })}
+                    >
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed Amount</SelectItem>
+                        <SelectItem value="percentage">Percentage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {profile.settings.lateFee.type === "fixed" ? (
+                    <Field label="Late Fee Amount (₹)">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={profile.settings.lateFee.amount}
+                        onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, amount: Number(e.target.value) } } })}
+                      />
+                    </Field>
+                  ) : (
+                    <Field label="Late Fee Percentage (%)">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={profile.settings.lateFee.percent}
+                        onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, percent: Number(e.target.value) } } })}
+                      />
+                    </Field>
+                  )}
+                  <Field label="Maximum Late Fee (₹)">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={profile.settings.lateFee.maxAmount}
+                      onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, maxAmount: Number(e.target.value) } } })}
+                    />
+                    <p className="text-xs text-[#94A3B8] mt-1">Cap on late fee amount</p>
+                  </Field>
+                </div>
+              )}
+            </Panel>
+          </TabsContent>
+        </Tabs>
       </form>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ icon: Icon, title, children }: { icon: typeof School; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] space-y-3">
-      <h2 className="text-sm font-semibold text-[#172554]">{title}</h2>
+    <div className="rounded-[18px] bg-white p-5 sm:p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] space-y-4">
+      <h2 className="text-sm font-bold text-[#172554] flex items-center gap-2">
+        <div className="h-8 w-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
+          <Icon className="h-4 w-4 text-[#4F46E5]" />
+        </div>
+        {title}
+      </h2>
       {children}
     </div>
   );
@@ -476,8 +572,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">{label}</label>
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
       {children}
     </div>
   );
