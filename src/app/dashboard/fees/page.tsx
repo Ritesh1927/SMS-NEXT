@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from "@/lib/razorpay-client";
+import { CreditCard, Receipt, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -178,8 +180,9 @@ export default function FeesPage() {
   };
 
   useEffect(() => {
+    if (user?.role === "parent") return;
     load();
-  }, []);
+  }, [user?.role]);
 
   const openAddConcession = () => {
     setEditingCon(null);
@@ -347,6 +350,10 @@ export default function FeesPage() {
   };
 
   if (!user) return null;
+
+  if (user.role === "parent") {
+    return <ParentFees />;
+  }
 
   return (
     <div>
@@ -760,6 +767,320 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="text-red-500"> *</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+interface ChildOption {
+  _id: string;
+  name: string;
+  class: string;
+  section?: string;
+}
+
+interface ParentDashboardResponse {
+  success: boolean;
+  data: { children: ChildOption[] };
+}
+
+interface ChildFeeLine {
+  _id: string;
+  title: string;
+  month: string | null;
+  amount: number;
+  paidAmount: number;
+  status: FeeStatus;
+  dueDate: string | null;
+  receiptNo: string | null;
+  feeStructure: { title: string; amount: number; frequency: Frequency } | null;
+}
+
+interface ChildFeesResponse {
+  success: boolean;
+  data: { fees: ChildFeeLine[]; summary: { paid: number; pending: number; total: number } };
+}
+
+interface ApiMsgResponse {
+  success: boolean;
+  message?: string;
+}
+
+const FEE_TILE_STYLES: Record<FeeStatus, string> = {
+  paid: "border-green-300 bg-green-50 text-green-700",
+  pending: "border-[#E2E8F0] text-[#64748B]",
+  partial: "border-amber-300 bg-amber-50 text-amber-700",
+  overdue: "border-red-300 bg-red-50 text-red-700",
+};
+
+function ParentFees() {
+  const [children, setChildren] = useState<ChildOption[] | null>(null);
+  const [childId, setChildId] = useState("");
+  const [childName, setChildName] = useState("");
+  const [data, setData] = useState<ChildFeesResponse["data"] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"details" | "history">("details");
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ParentDashboardResponse>("/dashboard/parent", token)
+      .then((res) => {
+        setChildren(res.data.children);
+        if (res.data.children.length > 0) {
+          setChildId(res.data.children[0]._id);
+          setChildName(res.data.children[0].name);
+        }
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load children."));
+  }, []);
+
+  const load = () => {
+    if (!childId) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<ChildFeesResponse>(`/fees/student/${childId}`, token)
+      .then((res) => setData(res.data))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load fees."));
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected child changes.
+    setData(null);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
+
+  const handlePay = async (fee: ChildFeeLine) => {
+    const token = getToken();
+    if (!token) return;
+    setPayingId(fee._id);
+    try {
+      await loadRazorpayScript();
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feePaymentId: fee._id, amount: fee.amount - fee.paidAmount }),
+      });
+      const orderJson: RazorpayOrderResponse & { message?: string } = await orderRes.json();
+      if (!orderRes.ok || !orderJson.success) throw new Error(orderJson.message || "Failed to start payment.");
+
+      const { orderId, amount, currency, keyId } = orderJson.data;
+      const rzp = openRazorpayCheckout({
+        key: keyId,
+        amount: Math.round(amount * 100),
+        currency,
+        name: childName,
+        description: fee.title,
+        order_id: orderId,
+        theme: { color: "#2563EB" },
+        prefill: { name: childName },
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ ...response, feePaymentId: fee._id }),
+            });
+            const verifyJson: ApiMsgResponse = await verifyRes.json();
+            if (!verifyRes.ok || !verifyJson.success) throw new Error(verifyJson.message || "Verification failed.");
+            toast.success("Payment successful!");
+            load();
+          } catch (err) {
+            toast.error("Payment verification failed", { description: err instanceof Error ? err.message : "Contact the school." });
+          } finally {
+            setPayingId(null);
+          }
+        },
+      });
+      rzp.on("payment.failed", (response) => {
+        toast.error("Payment failed", { description: response.error?.description || "Please try again." });
+        setPayingId(null);
+      });
+      rzp.open();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to start payment." });
+      setPayingId(null);
+    }
+  };
+
+  const selectedChild = children?.find((c) => c._id === childId) || null;
+
+  const groups = new Map<string, ChildFeeLine[]>();
+  (data?.fees || []).forEach((f) => {
+    const key = f.feeStructure?.title || f.title;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(f);
+  });
+
+  const paidHistory = (data?.fees || []).filter((f) => f.status === "paid").sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || ""));
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-[#172554]">Fee Details</h1>
+          <p className="text-sm text-[#64748B] mt-1">View and pay fees for your child.</p>
+        </div>
+        {children && children.length > 1 && (
+          <Select
+            value={childId}
+            onValueChange={(v) => {
+              setChildId(v || "");
+              setChildName(children.find((c) => c._id === v)?.name || "");
+            }}
+          >
+            <SelectTrigger className="w-56"><SelectValue placeholder="Select a child" /></SelectTrigger>
+            <SelectContent>
+              {children.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name} — Class {c.class}{c.section ? `-${c.section}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {selectedChild && children && children.length === 1 && (
+          <div className="rounded-full bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
+            <span className="font-semibold text-[#172554]">{selectedChild.name}</span>
+            <span className="text-[#64748B]"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {children === null || (childId && !data) ? (
+        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        </div>
+      ) : children.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No children linked to your account yet.</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-5">
+            <button
+              type="button"
+              onClick={() => setTab("details")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                tab === "details" ? "bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] text-[#172554]" : "text-[#64748B]"
+              }`}
+            >
+              Fee Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("history")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                tab === "history" ? "bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] text-[#172554]" : "text-[#64748B]"
+              }`}
+            >
+              Payment History
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+            <div className="rounded-[16px] bg-gradient-to-br from-green-500 to-green-600 p-4 text-white">
+              <p className="text-xs opacity-90">Total Paid</p>
+              <p className="text-xl font-bold mt-1">₹{(data?.summary.paid ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-[16px] bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white">
+              <p className="text-xs opacity-90">Pending</p>
+              <p className="text-xl font-bold mt-1">₹{(data?.summary.pending ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-[16px] bg-gradient-to-br from-violet-500 to-violet-600 p-4 text-white">
+              <p className="text-xs opacity-90">Total Fee</p>
+              <p className="text-xl font-bold mt-1">₹{(data?.summary.total ?? 0).toLocaleString()}</p>
+            </div>
+          </div>
+
+          {tab === "details" ? (
+            groups.size === 0 ? (
+              <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                <p className="text-sm text-[#64748B]">No fees have been set up for your child yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Array.from(groups.entries()).map(([title, lines]) => {
+                  const paidCount = lines.filter((l) => l.status === "paid").length;
+                  const structure = lines[0].feeStructure;
+                  return (
+                    <div key={title} className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9]">
+                        <p className="text-sm font-semibold text-[#172554]">{title}</p>
+                        <div className="flex items-center gap-2">
+                          {structure && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#2563EB]">
+                              ₹{structure.amount.toLocaleString()}{structure.frequency !== "one-time" ? `/${structure.frequency === "monthly" ? "month" : structure.frequency}` : ""}
+                            </span>
+                          )}
+                          {lines.length > 1 && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#64748B]">
+                              {structure?.frequency || "one-time"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {lines.length > 1 && (
+                        <p className="px-5 pt-3 text-xs text-[#64748B]">
+                          {paidCount} paid · {lines.length - paidCount} pending
+                        </p>
+                      )}
+                      <div className="p-5 flex flex-wrap gap-2">
+                        {lines.map((l) => (
+                          <div key={l._id} className={`rounded-xl border px-4 py-2.5 min-w-[110px] text-center ${FEE_TILE_STYLES[l.status]}`}>
+                            <p className="text-xs font-medium">{l.month || l.title}</p>
+                            {l.status === "paid" ? (
+                              <p className="text-xs font-semibold mt-1 flex items-center justify-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Paid
+                              </p>
+                            ) : (
+                              <>
+                                <p className="text-xs mt-1">₹{(l.amount - l.paidAmount).toLocaleString()}</p>
+                                <Button
+                                  size="xs"
+                                  onClick={() => handlePay(l)}
+                                  disabled={payingId === l._id}
+                                  className="gap-1 mt-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-[10px] h-6 w-full"
+                                >
+                                  {payingId === l._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
+                                  Pay
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-[#F1F5F9]">
+                <Receipt className="h-4 w-4 text-[#2563EB]" />
+                <p className="text-sm font-semibold text-[#172554]">Payment History</p>
+              </div>
+              {paidHistory.length === 0 ? (
+                <p className="text-sm text-[#64748B] px-5 py-6 text-center">No payments recorded yet.</p>
+              ) : (
+                paidHistory.map((f) => (
+                  <div key={f._id} className="flex items-center justify-between px-5 py-3 border-b border-[#F1F5F9] last:border-0">
+                    <div>
+                      <p className="text-sm text-[#172554]">{f.title}{f.month ? ` — ${f.month}` : ""}</p>
+                      {f.receiptNo && <p className="text-xs text-[#94A3B8] mt-0.5">Receipt: {f.receiptNo}</p>}
+                    </div>
+                    <p className="text-sm font-semibold text-green-600">₹{f.paidAmount.toLocaleString()}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
