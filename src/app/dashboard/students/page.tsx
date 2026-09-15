@@ -189,9 +189,16 @@ export default function StudentsPage() {
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
+            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Student</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Class</p>
+            <p className="w-16 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Roll No.</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Attendance</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+          </div>
           {filteredStudents.map((s) => (
-            <div key={s._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
-              <div className="flex items-center gap-3 min-w-0">
+            <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
                   <AvatarImage src={s.photo} alt={s.name} />
                   <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-sm font-semibold">
@@ -207,28 +214,40 @@ export default function StudentsPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#64748B] mt-0.5 truncate">
-                    {s.studentId} · Class {s.class}
+                  <p className="text-xs text-[#64748B] mt-0.5 truncate">{s.studentId}</p>
+                  {s.parent?.email && <p className="text-xs text-[#94A3B8] truncate">{s.parent.email}</p>}
+                  <p className="text-xs text-[#64748B] mt-0.5 sm:hidden">
+                    Class {s.class}
                     {s.section ? `-${s.section}` : ""} · Roll {s.rollNumber || "—"}
                   </p>
-                  {s.parent?.email && <p className="text-xs text-[#94A3B8] truncate">{s.parent.email}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden sm:flex items-center gap-2 w-24">
-                  {s.attendance > 0 ? (
-                    <>
-                      <div className="w-16 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden shrink-0">
-                        <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${s.attendance}%` }} />
-                      </div>
-                      <span className="text-xs font-medium text-[#475569]">{s.attendance}%</span>
-                    </>
-                  ) : (
-                    <span className="text-xs text-[#94A3B8]">—</span>
-                  )}
-                </div>
+
+              <div className="hidden sm:block w-28 shrink-0">
+                <p className="text-sm text-[#334155] truncate">
+                  Class {s.class}
+                  {s.section ? `-${s.section}` : ""}
+                </p>
+              </div>
+              <div className="hidden sm:block w-16 shrink-0">
+                <p className="text-sm text-[#334155]">{s.rollNumber || "—"}</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 w-32 shrink-0">
+                {s.attendance > 0 ? (
+                  <>
+                    <div className="w-16 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${s.attendance}%` }} />
+                    </div>
+                    <span className="text-xs font-medium text-[#475569]">{s.attendance}%</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-[#94A3B8]">—</span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-1 w-[104px] shrink-0">
                 {!isTeacher && (
-                  <div className="flex items-center gap-1">
+                  <>
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -251,7 +270,7 @@ export default function StudentsPage() {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
