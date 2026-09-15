@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     const yearStart = new Date(year, 0, 1);
     const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    const [monthlyCollected, monthlyPending, allPayments] = await Promise.all([
+    const [monthlyCollected, monthlyPending, allPayments, classWiseRaw] = await Promise.all([
       FeePayment.aggregate([
         { $match: { school: schoolId, status: "paid", paidDate: { $gte: yearStart, $lte: yearEnd } } },
         { $group: { _id: { $month: "$paidDate" }, total: { $sum: "$paidAmount" } } },
@@ -36,6 +36,13 @@ export async function GET(req: Request) {
         { $group: { _id: { $month: "$dueDate" }, total: { $sum: { $subtract: ["$amount", "$paidAmount"] } } } },
       ]),
       FeePayment.find({ school: schoolId }).select("status amount paidAmount"),
+      FeePayment.aggregate([
+        { $match: { school: schoolId, status: "paid" } },
+        { $lookup: { from: "students", localField: "student", foreignField: "_id", as: "s" } },
+        { $unwind: "$s" },
+        { $group: { _id: "$s.class", collected: { $sum: "$paidAmount" } } },
+        { $sort: { _id: 1 } },
+      ]),
     ]);
 
     const collectedByMonth = new Map(monthlyCollected.map((m) => [m._id, m.total]));
@@ -49,10 +56,12 @@ export async function GET(req: Request) {
 
     const totalCollected = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.paidAmount, 0);
     const totalPending = allPayments.filter((p) => p.status !== "paid").reduce((s, p) => s + (p.amount - p.paidAmount), 0);
+    const classWise = classWiseRaw.map((c) => ({ class: String(c._id), collected: Math.round(c.collected) }));
 
     return NextResponse.json({
       success: true,
       data,
+      classWise,
       summary: { totalCollected: Math.round(totalCollected), totalPending: Math.round(totalPending) },
     });
   } catch (err) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Trash2, DollarSign, Pencil, Tag } from "lucide-react";
+import { Plus, Loader2, Trash2, DollarSign, Pencil, Tag, TrendingUp, AlertCircle } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -76,6 +77,24 @@ interface StudentsResponse {
 
 const CONCESSION_TYPES: ConcessionType[] = ["Sibling", "Merit", "SC/ST", "Staff Ward", "Custom"];
 
+interface AnalyticsMonth {
+  month: string;
+  collected: number;
+  pending: number;
+}
+
+interface ClassWiseRow {
+  class: string;
+  collected: number;
+}
+
+interface AnalyticsResponse {
+  success: boolean;
+  data: AnalyticsMonth[];
+  classWise: ClassWiseRow[];
+  summary: { totalCollected: number; totalPending: number };
+}
+
 interface StructuresResponse {
   success: boolean;
   data: StructureRow[];
@@ -110,7 +129,6 @@ export default function FeesPage() {
   const { user } = useAuth();
   const [structures, setStructures] = useState<StructureRow[] | null>(null);
   const [payments, setPayments] = useState<PaymentRow[] | null>(null);
-  const [summary, setSummary] = useState<{ totalCollected: number; totalPending: number } | null>(null);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -134,6 +152,8 @@ export default function FeesPage() {
   });
   const [conSubmitting, setConSubmitting] = useState(false);
 
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -141,10 +161,7 @@ export default function FeesPage() {
       .then((res) => setStructures(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load fee structures."));
     apiGet<PaymentsResponse>("/fees/payments", token)
-      .then((res) => {
-        setPayments(res.data);
-        setSummary(res.summary);
-      })
+      .then((res) => setPayments(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load payments."));
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))
@@ -154,6 +171,9 @@ export default function FeesPage() {
       .catch(() => {});
     apiGet<StudentsResponse>("/students", token)
       .then((res) => setStudents(res.data))
+      .catch(() => {});
+    apiGet<AnalyticsResponse>("/fees/analytics", token)
+      .then(setAnalytics)
       .catch(() => {});
   };
 
@@ -339,25 +359,76 @@ export default function FeesPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
-      {summary && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xs text-[#64748B]">Total Collected</p>
-            <p className="text-xl font-bold text-green-600">₹{summary.totalCollected.toLocaleString()}</p>
-          </div>
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xs text-[#64748B]">Total Pending</p>
-            <p className="text-xl font-bold text-amber-600">₹{summary.totalPending.toLocaleString()}</p>
-          </div>
-        </div>
-      )}
-
-      <Tabs defaultValue="payments">
+      <Tabs defaultValue="dashboard">
         <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
           <TabsTrigger value="concessions">Concessions</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xs text-[#64748B]">Total Collected (Year)</p>
+              <p className="text-xl font-bold text-green-600">₹{(analytics?.summary.totalCollected ?? 0).toLocaleString()}</p>
+              <p className="text-[10px] text-[#94A3B8] mt-0.5">FY {new Date().getFullYear()}</p>
+            </div>
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xs text-[#64748B]">This Month</p>
+              <p className="text-xl font-bold text-[#2563EB]">₹{(analytics?.data[new Date().getMonth()]?.collected ?? 0).toLocaleString()}</p>
+              <p className="text-[10px] text-[#94A3B8] mt-0.5">{analytics?.data[new Date().getMonth()]?.month ?? ""}</p>
+            </div>
+            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-xs text-[#64748B]">Pending Dues</p>
+              <p className="text-xl font-bold text-amber-600">₹{(analytics?.summary.totalPending ?? 0).toLocaleString()}</p>
+              <p className="text-[10px] text-[#94A3B8] mt-0.5">Across all students</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-4 w-4 text-[#7C3AED]" />
+                <h2 className="text-sm font-semibold text-[#172554]">Monthly Collection Trend</h2>
+              </div>
+              {!analytics || analytics.data.every((a) => a.collected === 0 && a.pending === 0) ? (
+                <p className="text-sm text-[#64748B] text-center py-10">No data yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={analytics.data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
+                    <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v) => [`₹${Number(v).toLocaleString()}`, ""]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
+                    <Bar dataKey="collected" name="Collected" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pending" name="Pending" fill="#33C6E7" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertCircle className="h-4 w-4 text-[#2563EB]" />
+                <h2 className="text-sm font-semibold text-[#172554]">Class-wise Collection</h2>
+              </div>
+              {!analytics || analytics.classWise.length === 0 ? (
+                <p className="text-sm text-[#64748B] text-center py-10">No data yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={analytics.classWise}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="class" tick={{ fill: "#64748B", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v) => [`₹${Number(v).toLocaleString()}`, "Collected"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
+                    <Bar dataKey="collected" name="Collected" fill="#A78BFA" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
         <TabsContent value="payments" className="mt-4">
           {!payments ? (
