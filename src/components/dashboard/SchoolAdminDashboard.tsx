@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Users, GraduationCap, UserRound, TrendingUp, CalendarCheck, Loader2, IndianRupee,
-  CalendarDays, ClipboardList, Receipt, BellRing,
+  Users, GraduationCap, UserRound, CalendarCheck, Loader2, IndianRupee,
+  CalendarDays, FileText, Bell, CreditCard,
+  UserPlus, Inbox, MoreVertical, ArrowRight, ArrowUpRight, ChevronDown,
+  BarChart3,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
-import { StatCard } from "@/components/StatCard";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 
 interface DashboardStats {
   totalStudents: number;
@@ -103,16 +106,16 @@ const QUOTES: { text: string; author: string }[] = [
 function SchoolIllustration() {
   return (
     <svg viewBox="0 0 220 140" className="h-full w-full" aria-hidden="true">
-      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#4F46E5" opacity="0.06" />
-      <rect x="16" y="112" width="30" height="16" rx="2" fill="#8B5CF6" opacity="0.18" />
+      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#2563EB" opacity="0.06" />
+      <rect x="16" y="112" width="30" height="16" rx="2" fill="#7C3AED" opacity="0.18" />
       <circle cx="31" cy="98" r="16" fill="#22C55E" opacity="0.22" />
-      <rect x="174" y="108" width="26" height="20" rx="2" fill="#4F46E5" opacity="0.14" />
+      <rect x="174" y="108" width="26" height="20" rx="2" fill="#2563EB" opacity="0.14" />
       <circle cx="187" cy="96" r="14" fill="#22C55E" opacity="0.18" />
       <rect x="55" y="60" width="110" height="68" rx="4" fill="#EEF2FF" stroke="#C7D2FE" strokeWidth="1.5" />
-      <polygon points="48,62 110,26 172,62" fill="#8B5CF6" opacity="0.85" />
+      <polygon points="48,62 110,26 172,62" fill="#7C3AED" opacity="0.85" />
       <rect x="106" y="10" width="3" height="20" fill="#94A3B8" />
-      <polygon points="109,10 128,15 109,20" fill="#4F46E5" />
-      <rect x="94" y="94" width="32" height="34" rx="2" fill="#4F46E5" opacity="0.85" />
+      <polygon points="109,10 128,15 109,20" fill="#2563EB" />
+      <rect x="94" y="94" width="32" height="34" rx="2" fill="#2563EB" opacity="0.85" />
       <circle cx="121" cy="111" r="1.6" fill="#EEF2FF" />
       {[70, 143].map((x) => (
         <g key={x}>
@@ -125,25 +128,17 @@ function SchoolIllustration() {
   );
 }
 
-function timeAgo(iso: string) {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-const ACTIVITY_ICON: Record<ActivityItem["type"], typeof Receipt> = {
-  fee: Receipt,
-  student: Users,
-  notice: BellRing,
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: "#fff",
+  border: "1px solid #CDD3DD",
+  borderRadius: 12,
+  color: "#0F172A",
+  fontSize: 13,
+  boxShadow: "0 8px 24px -8px rgba(15,23,42,0.15)",
 };
 
-const panelClass = "rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]";
-
 export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: string; schoolName?: string }) {
+  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Snapshot once on mount rather than calling Date.now() during render (impure).
@@ -170,13 +165,88 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
   }
 
   const { stats, studentsByClass, todayAttendance, attendanceTrend, feeMonthly, classPerformance, upcomingExams, pendingFeeStudents, recentActivity } = data;
-  const maxClassCount = Math.max(1, ...studentsByClass.map((c) => c.count));
   const attendanceRate =
     todayAttendance.marked > 0
       ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.marked) * 100)
       : null;
-  const maxTrendCount = Math.max(1, ...attendanceTrend.flatMap((d) => [d.present, d.absent]));
   const quote = QUOTES[quoteIndex];
+  const hasClassPerformance = classPerformance.some((c) => c.avg > 0);
+
+  const STAT_CARDS: {
+    title: string;
+    value: string;
+    trend?: string;
+    color: string;
+    colorDark: string;
+    icon: typeof Users;
+    footerIcon: typeof Users;
+    footerLabel: string;
+    link: string;
+    decoration: React.ReactNode;
+  }[] = [
+    {
+      title: "Total Students",
+      value: String(stats.totalStudents),
+      trend: stats.newStudentsThisMonth > 0 ? `+${stats.newStudentsThisMonth} this month` : undefined,
+      color: "#3B82F6",
+      colorDark: "#2563EB",
+      icon: GraduationCap,
+      footerIcon: Users,
+      footerLabel: "Active Enrollments",
+      link: "/dashboard/students",
+      decoration: <WaveDoodle color="#3B82F6" />,
+    },
+    {
+      title: "Total Teachers",
+      value: String(stats.totalTeachers),
+      trend: stats.newTeachersThisMonth > 0 ? `+${stats.newTeachersThisMonth} this month` : undefined,
+      color: "#8B5CF6",
+      colorDark: "#7C3AED",
+      icon: Users,
+      footerIcon: GraduationCap,
+      footerLabel: "Teaching Staff",
+      link: "/dashboard/teachers",
+      decoration: <MiniBars color="#8B5CF6" />,
+    },
+    {
+      title: "Total Parents",
+      value: String(stats.totalParents),
+      color: "#0EA5E9",
+      colorDark: "#0284C7",
+      icon: UserRound,
+      footerIcon: UserRound,
+      footerLabel: "Linked Accounts",
+      link: "/dashboard/parents",
+      decoration: <MiniBars color="#0EA5E9" />,
+    },
+    {
+      title: "Today's Attendance",
+      value: attendanceRate !== null ? `${attendanceRate}%` : "—",
+      trend:
+        todayAttendance.marked > 0
+          ? `${todayAttendance.present + todayAttendance.late}/${todayAttendance.marked} marked present`
+          : undefined,
+      color: "#F59E0B",
+      colorDark: "#D97706",
+      icon: CalendarCheck,
+      footerIcon: CalendarCheck,
+      footerLabel: "Student Attendance",
+      link: "/dashboard/attendance",
+      decoration: <RingProgress percent={attendanceRate ?? 0} color="#F59E0B" />,
+    },
+    {
+      title: "Fee Collection",
+      value: `₹${stats.feeCollectedThisMonth.toLocaleString()}`,
+      trend: "This month",
+      color: "#10B981",
+      colorDark: "#059669",
+      icon: IndianRupee,
+      footerIcon: IndianRupee,
+      footerLabel: "Total Collected",
+      link: "/dashboard/fees",
+      decoration: <MiniBars color="#10B981" />,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -211,221 +281,494 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="Total Students"
-          value={String(stats.totalStudents)}
-          trend={stats.newStudentsThisMonth > 0 ? `+${stats.newStudentsThisMonth} this month` : undefined}
-          color="#4F46E5"
-          colorDark="#4338CA"
-          icon={GraduationCap}
-        />
-        <StatCard
-          title="Total Teachers"
-          value={String(stats.totalTeachers)}
-          trend={stats.newTeachersThisMonth > 0 ? `+${stats.newTeachersThisMonth} this month` : undefined}
-          color="#8B5CF6"
-          colorDark="#7C3AED"
-          icon={Users}
-        />
-        <StatCard
-          title="Total Parents"
-          value={String(stats.totalParents)}
-          color="#0EA5E9"
-          colorDark="#0284C7"
-          icon={UserRound}
-        />
-        <StatCard
-          title="Today's Attendance"
-          value={attendanceRate !== null ? `${attendanceRate}%` : "—"}
-          trend={
-            todayAttendance.marked > 0
-              ? `${todayAttendance.present + todayAttendance.late}/${todayAttendance.marked} marked present`
-              : "Not marked yet"
-          }
-          color="#16A34A"
-          colorDark="#15803D"
-          icon={CalendarCheck}
-          sparkline={attendanceTrend.map((d) => d.present)}
-        />
-        <StatCard
-          title="Fee Collection"
-          value={`₹${stats.feeCollectedThisMonth.toLocaleString()}`}
-          trend="This month"
-          color="#F59E0B"
-          colorDark="#D97706"
-          icon={IndianRupee}
-          sparkline={feeMonthly.map((m) => m.collected)}
-        />
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
+        {STAT_CARDS.map((s) => (
+          <AdminStatCard key={s.title} {...s} onNavigate={() => router.push(s.link)} />
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#4F46E5]" />
-            <h2 className="text-sm font-semibold text-[#172554]">Attendance — Last 7 Days</h2>
+      {/* Analytics Overview */}
+      <div>
+        <h2 className="text-lg font-semibold text-[#0F172A] mb-4">Analytics Overview</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={Users}
+              title="Attendance Overview"
+              subtitle="Track attendance trends for the current week"
+              accent="blue"
+              variant="dark"
+              badge="Live"
+              decoration={<HeaderWaveGlyph />}
+              showMoreMenu
+              rightAction={
+                <HeaderActionPill variant="dark">
+                  <CalendarDays className="h-3.5 w-3.5 text-white/80" />
+                  This Week
+                  <ChevronDown className="h-3 w-3 text-white/60" />
+                </HeaderActionPill>
+              }
+            />
+            <div className="bg-white p-6">
+              {attendanceTrend.every((d) => d.present === 0 && d.absent === 0) ? (
+                <p className="text-sm text-[#64748B] py-16 text-center">No attendance marked in the last 7 days.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={attendanceTrend} margin={{ left: -16 }}>
+                    <defs>
+                      <linearGradient id="attendGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.22} />
+                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="day" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                    <Area type="monotone" dataKey="present" name="Present" stroke="#4F46E5" fill="url(#attendGrad)" strokeWidth={2.5} activeDot={{ r: 5, fill: "#4F46E5", stroke: "#fff", strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-          {attendanceTrend.every((d) => d.present === 0 && d.absent === 0) ? (
-            <p className="text-sm text-[#64748B]">No attendance marked in the last 7 days.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={attendanceTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="day" tick={{ fill: "#64748B", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#64748B", fontSize: 12 }} allowDecimals={false} domain={[0, maxTrendCount]} />
-                <Tooltip contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                <Area type="monotone" dataKey="present" name="Present" stroke="#16A34A" fill="#16A34A" fillOpacity={0.15} strokeWidth={2} />
-                <Area type="monotone" dataKey="absent" name="Absent" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
 
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <IndianRupee className="h-4 w-4 text-[#F59E0B]" />
-            <h2 className="text-sm font-semibold text-[#172554]">Fee Collection — Last 6 Months</h2>
+          <div className="overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={IndianRupee}
+              title="Fee Collection"
+              subtitle="Track fee collection and revenue"
+              accent="green"
+              variant="dark"
+              badge="Updated"
+              decoration={<HeaderBarsGlyph />}
+              showMoreMenu
+              rightAction={
+                <HeaderActionPill variant="dark">
+                  <CalendarDays className="h-3.5 w-3.5 text-white/80" />
+                  This Year
+                  <ChevronDown className="h-3 w-3 text-white/60" />
+                </HeaderActionPill>
+              }
+            />
+            <div className="bg-white p-6">
+              {feeMonthly.every((m) => m.collected === 0 && m.pending === 0) ? (
+                <p className="text-sm text-[#64748B] py-16 text-center">No fee records yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={feeMonthly} margin={{ left: -16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="month" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`₹${Number(v).toLocaleString()}`, ""]} />
+                    <Bar dataKey="collected" name="Collected" fill="#4F46E5" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                    <Bar dataKey="pending" name="Pending" fill="#C7D2FE" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-          {feeMonthly.every((m) => m.collected === 0 && m.pending === 0) ? (
-            <p className="text-sm text-[#64748B]">No fee records yet.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={feeMonthly}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => [`₹${Number(v).toLocaleString()}`, ""]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                <Bar dataKey="collected" name="Collected" fill="#22C55E" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="pending" name="Pending" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#4F46E5]" />
-            <h2 className="text-sm font-semibold text-[#172554]">Students by Class</h2>
+      {/* Recent activities + upcoming events */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_1fr] gap-5 items-stretch">
+        <RecentActivities items={recentActivity} />
+        <UpcomingEvents />
+      </div>
+
+      {/* More Insights */}
+      <div>
+        <h2 className="text-lg font-semibold text-[#0F172A] mb-4">More Insights</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 glass-panel">
+            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Class Performance</h3>
+            {hasClassPerformance ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={classPerformance}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="name" stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Avg Score"]} />
+                  <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
+                    {classPerformance.map((_, i) => (
+                      <Cell key={i} fill={["#7C3AED", "#33C6E7", "#4A7DFF", "#A78BFA", "#34D399"][i % 5]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyPanel icon={BarChart3} title="No Performance Data Yet" subtitle="Class averages will appear here once exam results are recorded." />
+            )}
           </div>
-          {studentsByClass.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No students enrolled yet.</p>
-          ) : (
+
+          <div className="glass-panel">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-[#0F172A]">Pending Fees</h3>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FEE2E2] text-[#DC2626]">{pendingFeeStudents.length} pending</span>
+            </div>
+            {pendingFeeStudents.length === 0 ? (
+              <p className="text-sm text-[#64748B] text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingFeeStudents.map((f) => (
+                  <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[#F1F5F9] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-[#EEF2FF] text-[#4F46E5] border border-[#E2E8F0]">
+                        {(f.student?.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#172554] truncate">{f.student?.name || "Unknown student"}</p>
+                        <p className="text-xs text-[#64748B] truncate">{f.title}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-[#DC2626] shrink-0">₹{(f.amount - f.paidAmount).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <div className="glass-panel">
+            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Upcoming Exams</h3>
+            {upcomingExams.length === 0 ? (
+              <p className="text-sm text-[#64748B] text-center py-4">No upcoming exams scheduled.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {upcomingExams.map((e, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#4F46E5]">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#172554] truncate">{e.title}</p>
+                        <p className="text-xs text-[#64748B]">{e.class}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-[#4F46E5] shrink-0">
+                      {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-2">
+            <SchoolCalendar />
+          </div>
+        </div>
+
+        {studentsByClass.length > 0 && (
+          <div className="glass-panel mt-4">
+            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Students by Class</h3>
             <div className="space-y-3">
-              {studentsByClass.map((c) => (
-                <div key={c.name} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-xs font-medium text-[#475569]">{c.name}</span>
-                  <div className="flex-1 h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]"
-                      style={{ width: `${(c.count / maxClassCount) * 100}%` }}
-                    />
+              {studentsByClass.map((c) => {
+                const max = Math.max(1, ...studentsByClass.map((x) => x.count));
+                return (
+                  <div key={c.name} className="flex items-center gap-3">
+                    <span className="w-24 shrink-0 text-xs font-medium text-[#475569]">{c.name}</span>
+                    <div className="flex-1 h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]" style={{ width: `${(c.count / max) * 100}%` }} />
+                    </div>
+                    <span className="w-6 shrink-0 text-right text-xs font-semibold text-[#172554]">{c.count}</span>
                   </div>
-                  <span className="w-6 shrink-0 text-right text-xs font-semibold text-[#172554]">{c.count}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          )}
-        </div>
-
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="h-4 w-4 text-fuchsia-600" />
-            <h2 className="text-sm font-semibold text-[#172554]">Class Performance</h2>
           </div>
-          {classPerformance.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No published results yet.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={classPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{ fill: "#64748B", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#64748B", fontSize: 12 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(v) => [`${v}%`, "Average"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
-                <Bar dataKey="avg" name="Average %" fill="#C026D3" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="h-4 w-4 text-[#4F46E5]" />
-            <h2 className="text-sm font-semibold text-[#172554]">Upcoming Exams</h2>
-          </div>
-          {upcomingExams.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No upcoming exams scheduled.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {upcomingExams.map((e, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#172554] truncate">{e.title}</p>
-                    <p className="text-xs text-[#64748B]">{e.class}</p>
-                  </div>
-                  <span className="text-xs font-semibold text-[#4F46E5] shrink-0">
-                    {new Date(e.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <style jsx>{`
+        .glass-panel {
+          background: white;
+          border-radius: 18px;
+          padding: 24px;
+          box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.09), 0 2px 4px rgba(15, 23, 42, 0.06), 0 16px 32px -14px rgba(79, 70, 229, 0.15);
+        }
+      `}</style>
+    </div>
+  );
+}
 
-        <div className={panelClass}>
-          <div className="flex items-center gap-2 mb-4">
-            <Receipt className="h-4 w-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-[#172554]">Pending Fees</h2>
-          </div>
-          {pendingFeeStudents.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No pending fees. Everyone&apos;s paid up.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {pendingFeeStudents.map((f) => (
-                <div key={f._id} className="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#172554] truncate">{f.student?.name || "Unknown student"}</p>
-                    <p className="text-xs text-[#64748B]">{f.title}</p>
-                  </div>
-                  <span className="text-xs font-semibold text-amber-600 shrink-0">
-                    ₹{(f.amount - f.paidAmount).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+function EmptyPanel({ icon: Icon, title, subtitle }: { icon: typeof BarChart3; title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center" style={{ height: 280 }}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
+        <Icon className="h-6 w-6 text-[#64748B]" />
+      </div>
+      <p className="text-sm font-semibold text-[#475569]">{title}</p>
+      <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">{subtitle}</p>
+    </div>
+  );
+}
+
+function WaveDoodle({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 160 44" className="h-11 w-full" preserveAspectRatio="none">
+      <path d="M0 30 Q 20 12, 40 26 T 80 24 T 120 28 T 160 16 V44 H0 Z" fill={color} opacity={0.12} />
+      <circle cx="120" cy="26" r="5" fill={color} opacity={0.22} />
+      <circle cx="134" cy="21" r="3" fill={color} opacity={0.22} />
+    </svg>
+  );
+}
+
+function MiniBars({ color }: { color: string }) {
+  const heights = [28, 42, 34, 56, 46, 68];
+  return (
+    <div className="ml-auto flex h-12 items-end gap-1.5">
+      {heights.map((h, i) => (
+        <div key={i} className="w-2.5 rounded-t-md" style={{ height: `${h}%`, backgroundColor: color, opacity: 0.16 + i * 0.02 }} />
+      ))}
+    </div>
+  );
+}
+
+function RingProgress({ percent, color }: { percent: number; color: string }) {
+  const size = 68;
+  const stroke = 7;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const dash = (Math.min(Math.max(percent, 0), 100) / 100) * c;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="ml-auto shrink-0" style={{ filter: `drop-shadow(0 2px 6px ${color}40)` }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F1F5F9" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${dash} ${c - dash}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={14} fontWeight={700} fill="#0F172A">
+        {Math.round(percent)}%
+      </text>
+    </svg>
+  );
+}
+
+function AdminStatCard({
+  title, value, trend, color, colorDark, icon: Icon, footerIcon: FooterIcon, footerLabel, decoration, onNavigate,
+}: {
+  title: string; value: string; trend?: string; color: string; colorDark: string; icon: typeof Users;
+  footerIcon: typeof Users; footerLabel: string; link: string; decoration: React.ReactNode; onNavigate: () => void;
+}) {
+  return (
+    <div
+      className="group relative grid h-full grid-rows-[48px_auto_auto_1fr_auto] gap-4 overflow-hidden rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1"
+      style={{ "--accent": color } as React.CSSProperties}
+    >
+      <div className="flex items-center justify-between">
+        <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl shadow-sm shadow-black/10" style={{ background: `linear-gradient(135deg, ${color}, ${colorDark})` }}>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-transparent" />
+          <Icon className="relative h-5 w-5 text-white" />
         </div>
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5F9] text-[#64748B] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-[var(--accent)] group-hover:text-white cursor-pointer"
+        >
+          <ArrowUpRight className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className={panelClass}>
-        <div className="flex items-center gap-2 mb-4">
-          <BellRing className="h-4 w-4 text-[#8B5CF6]" />
-          <h2 className="text-sm font-semibold text-[#172554]">Recent Activity</h2>
-        </div>
-        {recentActivity.length === 0 ? (
-          <p className="text-sm text-[#64748B]">Nothing new yet.</p>
+      <div>
+        <p className="text-sm font-medium text-[#475569]">{title}</p>
+        <p className="mt-1 text-[32px] font-bold leading-none text-[#0F172A]">{value}</p>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        {trend ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#22C55E]">{trend}</span>
         ) : (
-          <div className="space-y-3">
-            {recentActivity.map((a, i) => {
-              const Icon = ACTIVITY_ICON[a.type];
+          <span className="text-[13px] text-[#64748B]">No data yet</span>
+        )}
+      </div>
+
+      <div className="flex items-center">{decoration}</div>
+
+      <div className="flex items-center justify-between border-t border-[#F1F5F9] pt-3">
+        <span className="flex items-center gap-1.5 text-xs text-[#64748B]">
+          <FooterIcon className="h-3.5 w-3.5" />
+          {footerLabel}
+        </span>
+        <button type="button" onClick={onNavigate} className="inline-flex items-center gap-1 text-xs font-semibold cursor-pointer" style={{ color }}>
+          View Details
+          <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const ACTIVITY_CONFIG: Record<ActivityItem["type"], { icon: typeof Bell; from: string; to: string; label: string }> = {
+  student: { icon: UserPlus, from: "#4F46E5", to: "#6366F1", label: "New Admission" },
+  fee: { icon: CreditCard, from: "#22C55E", to: "#16A34A", label: "Payment Update" },
+  notice: { icon: Bell, from: "#8B5CF6", to: "#7C3AED", label: "Notice Published" },
+};
+
+function timeAgo(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  return `${days}d ago`;
+}
+
+function RecentActivities({ items }: { items: ActivityItem[] }) {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+      <DashboardSectionHeader
+        icon={FileText}
+        title="Recent Activities"
+        subtitle="Latest updates from your institution"
+        accent="blue"
+        variant="dark"
+        decoration={<HeaderPulseGlyph />}
+        showMoreMenu
+        rightAction={
+          <HeaderActionPill variant="dark">
+            <span className="inline-flex items-center gap-1">
+              View All
+              <ArrowRight className="h-3.5 w-3.5" />
+            </span>
+          </HeaderActionPill>
+        }
+      />
+      <div className="flex flex-1 flex-col bg-white p-6 sm:p-7">
+        {items.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
+              <Inbox className="h-5 w-5 text-[#64748B]" />
+            </div>
+            <p className="text-sm text-[#64748B]">No recent activity yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#F1F5F9]">
+            {items.map((item, i) => {
+              const { icon: Icon, from, to, label } = ACTIVITY_CONFIG[item.type] ?? ACTIVITY_CONFIG.notice;
               return (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="h-7 w-7 shrink-0 rounded-full bg-[#F1F5F9] flex items-center justify-center">
-                    <Icon className="h-3.5 w-3.5 text-[#475569]" />
+                <div key={i} className="group/item flex items-center gap-4 rounded-xl px-2 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F8FAFC]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 4px 14px -2px ${from}59` }}>
+                    <Icon className="h-[18px] w-[18px] text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-[#172554]">{a.text}</p>
+                    <p className="text-[15px] font-medium text-[#0F172A] leading-snug truncate">{item.text}</p>
+                    <p className="text-[13px] text-[#64748B] mt-0.5">{label}</p>
                   </div>
-                  <span className="text-xs text-[#94A3B8] shrink-0">{timeAgo(a.time)}</span>
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-[#F8FAFC] px-2.5 py-1 text-xs font-medium text-[#64748B]">{timeAgo(item.time)}</span>
+                  <button type="button" tabIndex={-1} aria-hidden="true" className="hidden sm:flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#CBD5E1] opacity-0 transition-opacity duration-200 group-hover/item:opacity-100">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// sms-next has no Event/Calendar model yet (a real school-events feature is
+// separate scope from matching the original's dashboard *look*), so this
+// mirrors the original's own empty state exactly rather than fabricating
+// event data.
+function UpcomingEvents() {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+      <DashboardSectionHeader
+        icon={CalendarDays}
+        title="Upcoming Events"
+        subtitle="Stay updated with important events"
+        accent="purple"
+        variant="dark"
+        decoration={<HeaderDotGridGlyph />}
+        showMoreMenu
+        rightAction={
+          <HeaderActionPill variant="dark">
+            <span className="inline-flex items-center gap-1">
+              View All
+              <ArrowRight className="h-3.5 w-3.5" />
+            </span>
+          </HeaderActionPill>
+        }
+      />
+      <div className="flex flex-1 flex-col bg-white p-6 sm:p-7">
+        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
+            <CalendarDays className="h-6 w-6 text-[#64748B]" />
+          </div>
+          <p className="text-sm font-semibold text-[#475569]">No Upcoming Events</p>
+          <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+// Same rationale as UpcomingEvents: a real month-grid calendar, just with no
+// events wired up yet since there's no Event backend — matches the
+// original's own empty ("No upcoming events") state honestly.
+function SchoolCalendar() {
+  const today = new Date();
+  const [month, setMonth] = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+
+  const changeMonth = (delta: number) => {
+    let m = month + delta;
+    let y = year;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    setMonth(m);
+    setYear(y);
+  };
+
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const isToday = (d: number) => year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
+
+  return (
+    <div className="glass-panel">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-8 w-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
+          <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
+        </div>
+        <h3 className="text-base font-semibold text-[#0F172A]">School Calendar</h3>
+      </div>
+      <div className="flex items-center justify-between mb-3">
+        <button type="button" onClick={() => changeMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-[#64748B] hover:bg-[#F1F5F9]" aria-label="Previous month">
+          ‹
+        </button>
+        <p className="text-sm font-semibold text-[#172554]">{MONTH_NAMES[month]} {year}</p>
+        <button type="button" onClick={() => changeMonth(1)} className="h-7 w-7 flex items-center justify-center rounded-full text-[#64748B] hover:bg-[#F1F5F9]" aria-label="Next month">
+          ›
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS.map((d) => (
+          <p key={d} className="text-center text-[11px] font-medium text-[#94A3B8]">{d}</p>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-4">
+        {cells.map((day, i) => (
+          <div
+            key={i}
+            className={`h-9 rounded-lg flex items-center justify-center text-sm ${
+              day ? (isToday(day) ? "bg-[#4F46E5] text-white font-semibold" : "text-[#172554] hover:bg-[#F1F5F9]") : ""
+            }`}
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+      <p className="text-sm text-[#64748B] text-center py-2">No upcoming events.</p>
     </div>
   );
 }
