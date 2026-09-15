@@ -41,6 +41,14 @@ interface SchoolProfile {
       maxLoginAttempts: number;
       twoFactorAuth: boolean;
     };
+    lateFee: {
+      enabled: boolean;
+      gracePeriod: number;
+      type: "fixed" | "percentage";
+      amount: number;
+      percent: number;
+      maxAmount: number;
+    };
   };
 }
 
@@ -302,6 +310,73 @@ export default function SettingsPage() {
             />
             Two-factor authentication
           </label>
+        </Section>
+
+        <Section title="Late Fee Configuration">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
+            <input
+              type="checkbox"
+              checked={profile.settings.lateFee.enabled}
+              onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: e.target.checked } } })}
+            />
+            Enable late fees on overdue payments
+          </label>
+          {profile.settings.lateFee.enabled && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Grace Period (days)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={profile.settings.lateFee.gracePeriod}
+                  onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, gracePeriod: Number(e.target.value) } } })}
+                />
+              </Field>
+              <Field label="Late Fee Type">
+                <Select
+                  items={[
+                    { value: "fixed", label: "Fixed Amount" },
+                    { value: "percentage", label: "Percentage" },
+                  ]}
+                  value={profile.settings.lateFee.type}
+                  onValueChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, type: (v || p.settings.lateFee.type) as SchoolProfile["settings"]["lateFee"]["type"] } } })}
+                >
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">Fixed Amount</SelectItem>
+                    <SelectItem value="percentage">Percentage</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {profile.settings.lateFee.type === "fixed" ? (
+                <Field label="Late Fee Amount (₹)">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={profile.settings.lateFee.amount}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, amount: Number(e.target.value) } } })}
+                  />
+                </Field>
+              ) : (
+                <Field label="Late Fee Percentage (%)">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={profile.settings.lateFee.percent}
+                    onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, percent: Number(e.target.value) } } })}
+                  />
+                </Field>
+              )}
+              <Field label="Maximum Late Fee (₹)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={profile.settings.lateFee.maxAmount}
+                  onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, maxAmount: Number(e.target.value) } } })}
+                />
+              </Field>
+            </div>
+          )}
         </Section>
 
         <Button type="submit" className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={saving}>
