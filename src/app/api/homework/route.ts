@@ -6,6 +6,7 @@ import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
+import { uploadDocument } from "@/lib/cloudinary";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
@@ -78,7 +79,16 @@ export async function POST(req: Request) {
       }
     }
 
-    const { title, description, subject, class: cls, section, dueDate, maxMarks } = await req.json();
+    const formData = await req.formData();
+    const title = formData.get("title") as string | null;
+    const description = formData.get("description") as string | null;
+    const subject = formData.get("subject") as string | null;
+    const cls = formData.get("class") as string | null;
+    const section = formData.get("section") as string | null;
+    const dueDate = formData.get("dueDate") as string | null;
+    const maxMarks = formData.get("maxMarks") as string | null;
+    const file = formData.get("file");
+
     if (!title || !description || !subject || !cls || !dueDate) {
       return NextResponse.json(
         { success: false, message: "title, description, subject, class and dueDate are required." },
@@ -93,6 +103,11 @@ export async function POST(req: Request) {
       }
     }
 
+    let attachment: { url: string; publicId: string } | null = null;
+    if (file instanceof File && file.size > 0) {
+      attachment = await uploadDocument(file, "homework-attachments");
+    }
+
     const hw = await Homework.create({
       school: auth.schoolId,
       title,
@@ -101,9 +116,12 @@ export async function POST(req: Request) {
       class: cls,
       section: section || "",
       dueDate,
-      maxMarks: maxMarks || null,
+      maxMarks: maxMarks ? Number(maxMarks) : null,
       assignedBy: auth.id,
       assignedByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+      attachmentUrl: attachment?.url || "",
+      attachmentName: attachment ? (file as File).name : "",
+      attachmentPublicId: attachment?.publicId || "",
     });
 
     const populated = await Homework.findById(hw._id).populate("assignedBy", "name teacherId");

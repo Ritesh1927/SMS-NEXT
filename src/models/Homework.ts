@@ -24,6 +24,9 @@ export interface IHomework extends Document {
   submissions: mongoose.Types.DocumentArray<ISubmission>;
   maxMarks: number | null;
   isActive: boolean;
+  attachmentUrl: string;
+  attachmentName: string;
+  attachmentPublicId: string;
 }
 
 const submissionSchema = new Schema<ISubmission>(
@@ -52,6 +55,9 @@ const homeworkSchema = new Schema<IHomework>(
     submissions: [submissionSchema],
     maxMarks: { type: Number, default: null },
     isActive: { type: Boolean, default: true },
+    attachmentUrl: { type: String, default: "" },
+    attachmentName: { type: String, default: "" },
+    attachmentPublicId: { type: String, default: "" },
   },
   { timestamps: true },
 );
