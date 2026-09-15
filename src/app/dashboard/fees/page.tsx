@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Trash2, DollarSign } from "lucide-react";
+import { Plus, Loader2, Trash2, DollarSign, Pencil, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -41,6 +41,40 @@ interface PaymentRow {
   dueDate?: string;
   receiptNo?: string | null;
 }
+
+type ConcessionType = "Sibling" | "Merit" | "SC/ST" | "Staff Ward" | "Custom";
+type ConcessionDuration = "recurring" | "one-time" | "until-date";
+
+interface ConcessionRow {
+  _id: string;
+  student: { _id: string; name: string; studentId: string; class: string; section?: string } | null;
+  feeStructure: { _id: string; title: string; class: string; amount: number } | null;
+  type: ConcessionType;
+  value: number;
+  isPct: boolean;
+  description: string;
+  duration: ConcessionDuration;
+  validUntil: string | null;
+}
+
+interface ConcessionsResponse {
+  success: boolean;
+  data: ConcessionRow[];
+}
+
+interface StudentOption {
+  _id: string;
+  name: string;
+  class: string;
+  section?: string;
+}
+
+interface StudentsResponse {
+  success: boolean;
+  data: StudentOption[];
+}
+
+const CONCESSION_TYPES: ConcessionType[] = ["Sibling", "Merit", "SC/ST", "Staff Ward", "Custom"];
 
 interface StructuresResponse {
   success: boolean;
@@ -90,6 +124,16 @@ export default function FeesPage() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
   const [collecting, setCollecting] = useState(false);
 
+  const [concessions, setConcessions] = useState<ConcessionRow[] | null>(null);
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [conOpen, setConOpen] = useState(false);
+  const [editingCon, setEditingCon] = useState<ConcessionRow | null>(null);
+  const [conForm, setConForm] = useState({
+    studentId: "", feeStructureId: "", type: "Custom" as ConcessionType, value: "", isPct: true,
+    description: "", duration: "recurring" as ConcessionDuration, validUntil: "",
+  });
+  const [conSubmitting, setConSubmitting] = useState(false);
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -105,11 +149,89 @@ export default function FeesPage() {
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))
       .catch(() => {});
+    apiGet<ConcessionsResponse>("/fees/concessions", token)
+      .then((res) => setConcessions(res.data))
+      .catch(() => {});
+    apiGet<StudentsResponse>("/students", token)
+      .then((res) => setStudents(res.data))
+      .catch(() => {});
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const openAddConcession = () => {
+    setEditingCon(null);
+    setConForm({ studentId: "", feeStructureId: "", type: "Custom", value: "", isPct: true, description: "", duration: "recurring", validUntil: "" });
+    setConOpen(true);
+  };
+
+  const openEditConcession = (c: ConcessionRow) => {
+    setEditingCon(c);
+    setConForm({
+      studentId: c.student?._id || "",
+      feeStructureId: c.feeStructure?._id || "",
+      type: c.type,
+      value: String(c.value),
+      isPct: c.isPct,
+      description: c.description,
+      duration: c.duration,
+      validUntil: c.validUntil ? c.validUntil.slice(0, 10) : "",
+    });
+    setConOpen(true);
+  };
+
+  const handleConcessionSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const token = getToken();
+    if (!token) return;
+    setConSubmitting(true);
+    try {
+      const body = {
+        student: conForm.studentId,
+        feeStructure: conForm.feeStructureId || null,
+        type: conForm.type,
+        value: Number(conForm.value),
+        isPct: conForm.isPct,
+        description: conForm.description,
+        duration: conForm.duration,
+        validUntil: conForm.validUntil || null,
+      };
+      const res = await fetch(editingCon ? `/api/fees/concessions/${editingCon._id}` : "/api/fees/concessions", {
+        method: editingCon ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const json: ApiMessageResponse = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to save concession.");
+      toast.success(editingCon ? "Concession updated" : "Concession added");
+      setConOpen(false);
+      load();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    } finally {
+      setConSubmitting(false);
+    }
+  };
+
+  const handleDeleteConcession = async (c: ConcessionRow) => {
+    if (!confirm(`Delete this concession for ${c.student?.name || "student"}?`)) return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/fees/concessions/${c._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const json: ApiMessageResponse = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete concession.");
+      toast.success("Concession deleted");
+      load();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    }
+  };
+
+  const selectedConStudent = students.find((s) => s._id === conForm.studentId);
+  const conFeeStructureOptions = structures?.filter((s) => s.class === selectedConStudent?.class) || [];
 
   const handleStructureSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -234,6 +356,7 @@ export default function FeesPage() {
         <TabsList>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
+          <TabsTrigger value="concessions">Concessions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments" className="mt-4">
@@ -316,6 +439,62 @@ export default function FeesPage() {
                   </Button>
                 </div>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="concessions" className="mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-[#64748B]">Apply % or flat discounts per student per fee head.</p>
+            <Button onClick={openAddConcession} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+              <Plus className="h-4 w-4" /> Add Concession
+            </Button>
+          </div>
+          {!concessions ? (
+            <div className="flex items-center gap-2 text-sm text-[#64748B]">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            </div>
+          ) : concessions.length === 0 ? (
+            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-sm text-[#64748B]">No concessions configured yet.</p>
+            </div>
+          ) : (
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+              {concessions.map((c) => {
+                const durationLabel =
+                  c.duration === "one-time" ? "One-time" : c.duration === "until-date" ? `Until ${c.validUntil ? new Date(c.validUntil).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"}` : "Recurring";
+                return (
+                  <div key={c._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-[#172554]">{c.student?.name || "Unknown student"}</p>
+                        <span className="text-[10px] font-semibold text-[#2563EB] bg-[#2563EB]/10 px-2 py-0.5 rounded-full">{c.type}</span>
+                      </div>
+                      <p className="text-xs text-[#64748B] mt-0.5">
+                        {c.feeStructure?.title || "All fee structures"}
+                        {c.student ? ` · Class ${c.student.class}${c.student.section ? "-" + c.student.section : ""}` : ""}
+                        {" · "}{durationLabel}
+                        {c.description ? ` · ${c.description}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-semibold text-green-600">{c.isPct ? `${c.value}%` : `₹${c.value}`}</span>
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEditConcession(c)} aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleDeleteConcession(c)}
+                        aria-label="Delete"
+                        className="hover:text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -406,6 +585,96 @@ export default function FeesPage() {
               </Button>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={conOpen} onOpenChange={setConOpen}>
+        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg text-[#172554] flex items-center gap-2">
+              <Tag className="h-4 w-4 text-[#2563EB]" /> {editingCon ? "Edit Concession" : "Add Concession"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleConcessionSubmit} className="space-y-3 mt-2">
+            <Field label="Student" required>
+              <Select
+                value={conForm.studentId}
+                onValueChange={(v) => setConForm((f) => ({ ...f, studentId: v || f.studentId, feeStructureId: "" }))}
+                disabled={!!editingCon}
+              >
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select student" /></SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name} (Class {s.class}{s.section ? "-" + s.section : ""})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Fee Structure (optional — leave blank for all)">
+              <Select value={conForm.feeStructureId} onValueChange={(v) => setConForm((f) => ({ ...f, feeStructureId: v || "" }))}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All fee structures" /></SelectTrigger>
+                <SelectContent>
+                  {conFeeStructureOptions.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>{s.title} (₹{s.amount})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Concession Type">
+              <Select value={conForm.type} onValueChange={(v) => setConForm((f) => ({ ...f, type: (v || f.type) as ConcessionType }))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CONCESSION_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Value" required>
+                <Input type="number" min={0} placeholder="e.g. 20 or 500" value={conForm.value} onChange={(e) => setConForm((f) => ({ ...f, value: e.target.value }))} required />
+              </Field>
+              <Field label="Discount Type">
+                <div className="flex gap-2">
+                  {[{ l: "Percent (%)", v: true }, { l: "Flat (₹)", v: false }].map((opt) => (
+                    <button
+                      key={opt.l}
+                      type="button"
+                      onClick={() => setConForm((f) => ({ ...f, isPct: opt.v }))}
+                      className={`flex-1 h-10 rounded-lg border text-xs font-medium transition-all ${conForm.isPct === opt.v ? "bg-[#2563EB] text-white border-transparent" : "border-[#E2E8F0] text-[#64748B] hover:border-[#2563EB]"}`}
+                    >
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+            <Field label="Description (optional)">
+              <Input placeholder="Reason for concession…" value={conForm.description} onChange={(e) => setConForm((f) => ({ ...f, description: e.target.value }))} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Duration">
+                <Select value={conForm.duration} onValueChange={(v) => setConForm((f) => ({ ...f, duration: (v || f.duration) as ConcessionDuration, validUntil: "" }))}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recurring">Every month (recurring)</SelectItem>
+                    <SelectItem value="one-time">One-time only</SelectItem>
+                    <SelectItem value="until-date">Until a date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {conForm.duration === "until-date" && (
+                <Field label="Valid Until">
+                  <Input type="date" value={conForm.validUntil} onChange={(e) => setConForm((f) => ({ ...f, validUntil: e.target.value }))} />
+                </Field>
+              )}
+            </div>
+            <Button type="submit" className="w-full bg-[#2563EB] hover:bg-[#1D4ED8]" disabled={conSubmitting || !conForm.studentId}>
+              {conSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingCon ? "Update Concession" : "Add Concession"}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
