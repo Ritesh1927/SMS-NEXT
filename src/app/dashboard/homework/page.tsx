@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Trash2, ClipboardCheck, BookOpen } from "lucide-react";
+import { Plus, Loader2, Trash2, ClipboardCheck, BookOpen, CheckCircle2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -95,8 +95,9 @@ export default function HomeworkPage() {
   };
 
   useEffect(() => {
+    if (user?.role === "parent") return;
     load();
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     const token = getToken();
@@ -187,6 +188,10 @@ export default function HomeworkPage() {
   };
 
   if (!user) return null;
+
+  if (user.role === "parent") {
+    return <ParentHomework />;
+  }
 
   const filteredHomework = (homework || []).filter((hw) => {
     if (search) {
@@ -436,6 +441,196 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {required && <span className="text-red-500"> *</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+interface ChildOption {
+  _id: string;
+  name: string;
+  class: string;
+  section?: string;
+}
+
+interface ParentDashboardResponse {
+  success: boolean;
+  data: { children: ChildOption[] };
+}
+
+interface ChildHomeworkItem {
+  _id: string;
+  title: string;
+  description: string;
+  subject: string;
+  dueDate: string;
+  maxMarks: number | null;
+  assignedBy?: { name: string } | null;
+  submission: { status: "submitted" | "late" | "graded"; marks: number | null; feedback: string; submittedAt: string } | null;
+}
+
+interface ChildHomeworkResponse {
+  success: boolean;
+  data: ChildHomeworkItem[];
+}
+
+function ParentHomework() {
+  const [children, setChildren] = useState<ChildOption[] | null>(null);
+  const [childId, setChildId] = useState("");
+  const [items, setItems] = useState<ChildHomeworkItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ParentDashboardResponse>("/dashboard/parent", token)
+      .then((res) => {
+        setChildren(res.data.children);
+        if (res.data.children.length > 0) setChildId(res.data.children[0]._id);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load children."));
+  }, []);
+
+  const load = () => {
+    if (!childId) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<ChildHomeworkResponse>(`/homework/student/${childId}`, token)
+      .then((res) => setItems(res.data))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load homework."));
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected child changes.
+    setItems(null);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId]);
+
+  const handleSubmit = async (hw: ChildHomeworkItem) => {
+    const token = getToken();
+    if (!token) return;
+    setSubmittingId(hw._id);
+    try {
+      const res = await fetch(`/api/homework/${hw._id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId: childId }),
+      });
+      const json: ApiMessageResponse = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to submit.");
+      toast.success(json.message || "Submitted");
+      load();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const selectedChild = children?.find((c) => c._id === childId) || null;
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-[#172554]">Homework</h1>
+          <p className="text-sm text-[#64748B] mt-1">Assignments for your child.</p>
+        </div>
+        {children && children.length > 1 && (
+          <Select value={childId} onValueChange={(v) => setChildId(v || "")}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="Select a child" /></SelectTrigger>
+            <SelectContent>
+              {children.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name} — Class {c.class}{c.section ? `-${c.section}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {selectedChild && children && children.length === 1 && (
+          <div className="rounded-full bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
+            <span className="font-semibold text-[#172554]">{selectedChild.name}</span>
+            <span className="text-[#64748B]"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {children === null || (childId && !items) ? (
+        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        </div>
+      ) : children.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No children linked to your account yet.</p>
+        </div>
+      ) : !items || items.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <BookOpen className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
+          <p className="text-sm text-[#64748B]">No homework assigned yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((hw) => {
+            const isExpired = new Date(hw.dueDate).getTime() < now;
+            return (
+              <div key={hw._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-[#172554]">{hw.title}</p>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          isExpired ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {isExpired ? "Expired" : "Active"}
+                      </span>
+                      {hw.submission && (
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            hw.submission.status === "graded" ? "bg-blue-100 text-blue-700" : hw.submission.status === "late" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {hw.submission.status === "graded" ? "Graded" : hw.submission.status === "late" ? "Submitted late" : "Submitted"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#64748B] mt-0.5">
+                      {hw.subject} · Due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {hw.maxMarks ? ` · ${hw.maxMarks} marks` : ""}
+                      {hw.assignedBy ? ` · Assigned by ${hw.assignedBy.name}` : ""}
+                    </p>
+                    {hw.description && <p className="text-sm text-[#475569] mt-2">{hw.description}</p>}
+                    {hw.submission?.status === "graded" && (
+                      <p className="text-xs text-[#2563EB] font-semibold mt-2 flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Scored {hw.submission.marks}{hw.maxMarks ? ` / ${hw.maxMarks}` : ""}
+                        {hw.submission.feedback ? ` — ${hw.submission.feedback}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  {!hw.submission && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleSubmit(hw)}
+                      disabled={submittingId === hw._id}
+                      className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] shrink-0"
+                    >
+                      {submittingId === hw._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      Mark Submitted
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
