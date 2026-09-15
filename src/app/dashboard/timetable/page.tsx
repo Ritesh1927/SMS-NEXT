@@ -521,6 +521,27 @@ export default function TimetablePage() {
         </div>
       </div>
 
+      {entries.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-[#172554]">{entries.length}</p>
+            <p className="text-xs text-[#64748B]">Total Periods</p>
+          </div>
+          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-[#2563EB]">{uniqueSubjects.length}</p>
+            <p className="text-xs text-[#64748B]">Subjects</p>
+          </div>
+          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-[#7C3AED]">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
+            <p className="text-xs text-[#64748B]">Teachers</p>
+          </div>
+          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-amber-600">{periods.length}</p>
+            <p className="text-xs text-[#64748B]">Period Rows</p>
+          </div>
+        </div>
+      )}
+
       {isAdmin && (
         <Dialog open={!!editCell} onOpenChange={(open) => !open && setEditCell(null)}>
           <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
