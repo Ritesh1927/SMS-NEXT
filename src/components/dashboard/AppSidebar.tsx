@@ -172,7 +172,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
 
   return (
     <Sidebar collapsible="icon" className="border-r border-[#E2E8F0]">
-      <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1.5 border-b border-[#E2E8F0] overflow-hidden">
+      <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-5 group-data-[collapsible=icon]:pr-2 border-b border-[#E2E8F0] overflow-hidden">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
           <Logo className="h-5 w-5 text-white" />
         </div>
@@ -228,7 +228,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
         </div>
 
         <div className="mt-auto pt-4 border-t border-[#E2E8F0]">
-          <div className="flex items-center gap-2 px-1 py-2 mb-1 group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center gap-2 px-1 py-2 mb-1 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-2">
             <Avatar className="h-8 w-8 shrink-0">
               <AvatarFallback className="bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold">
                 {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -241,7 +241,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
           </div>
           <button
             onClick={onLogout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#64748B] hover:bg-red-50 hover:text-red-600 transition-colors group-data-[collapsible=icon]:justify-center"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#64748B] hover:bg-red-50 hover:text-red-600 transition-colors group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-4"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             <span className="group-data-[collapsible=icon]:hidden">Logout</span>
