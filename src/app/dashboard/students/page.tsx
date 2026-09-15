@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface StudentRow {
@@ -31,6 +33,17 @@ interface StudentsResponse {
   data: StudentRow[];
 }
 
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
+}
+
 interface ApiMessageResponse {
   success: boolean;
   message?: string;
@@ -40,8 +53,11 @@ export default function StudentsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
 
   // Teachers get a read-only view scoped to their own classes — matches
   // SMS-BACKEND, where the student create/update/delete routes are
@@ -55,6 +71,9 @@ export default function StudentsPage() {
     apiGet<StudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
       .then((res) => setStudents(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClasses(res.data))
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -106,6 +125,21 @@ export default function StudentsPage() {
 
   if (!user) return null;
 
+  const filteredStudents = (students || []).filter((s) => {
+    if (classFilter && s.class !== classFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !s.name.toLowerCase().includes(q) &&
+        !s.studentId.toLowerCase().includes(q) &&
+        !(s.rollNumber || "").toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -124,6 +158,21 @@ export default function StudentsPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
+      {students && students.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+          <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Classes</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {error ? null : !students ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
@@ -134,9 +183,13 @@ export default function StudentsPage() {
             {isTeacher ? "No students in your classes yet." : "No students yet. Add your first admission to get started."}
           </p>
         </div>
+      ) : filteredStudents.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No students match your filters.</p>
+        </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {students.map((s) => (
+          {filteredStudents.map((s) => (
             <div key={s._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
