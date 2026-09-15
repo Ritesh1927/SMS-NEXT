@@ -1,18 +1,21 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, GraduationCap, UserRound, School, Link2, CalendarCheck,
   BookOpen, CalendarClock, ClipboardList, Library, IndianRupee, Megaphone, MessageSquare,
-  BarChart3, Trophy, Brain, Activity, Settings, TrendingUp, LogOut, GraduationCap as Logo,
+  BarChart3, Trophy, Brain, Activity, Settings, TrendingUp, LogOut, Shield, UserCog,
+  GraduationCap as Logo,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuBadge, SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { AuthUser, UserRole } from "@/contexts/AuthContext";
+import { getToken, type AuthUser, type UserRole } from "@/contexts/AuthContext";
+import { apiGet } from "@/lib/api";
 import type { LucideIcon } from "lucide-react";
 
 interface NavItem {
@@ -21,6 +24,7 @@ interface NavItem {
   icon: LucideIcon;
   section: string;
   badge?: "unread";
+  pageKey?: string;
 }
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
@@ -48,26 +52,28 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
     { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights" },
 
+    { href: "/dashboard/roles-permissions", label: "Roles & Permissions", icon: Shield, section: "Administration" },
+    { href: "/dashboard/user-master", label: "User Master", icon: UserCog, section: "Administration" },
     { href: "/dashboard/login-activity", label: "Login Activity", icon: Activity, section: "Administration" },
     { href: "/dashboard/settings", label: "Settings", icon: Settings, section: "Administration" },
   ],
   teacher: [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview" },
 
-    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics" },
-    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics" },
-    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics" },
-    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics" },
-    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics" },
+    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", pageKey: "pageAttendance" },
+    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", pageKey: "pageTestsExams" },
+    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", pageKey: "pageHomework" },
+    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", pageKey: "pageTimetable" },
+    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", pageKey: "pageStudyMaterials" },
 
-    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance" },
+    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", pageKey: "pageFees" },
 
-    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread" },
+    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", pageKey: "pageNotices" },
+    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication" },
 
-    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights" },
+    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", pageKey: "pageReports" },
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
-    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights" },
+    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights", pageKey: "pageAi" },
   ],
   parent: [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview" },
@@ -112,9 +118,32 @@ const ROLE_LABEL: Record<UserRole, string> = {
   student: "Student",
 };
 
+interface PermissionResponse {
+  success: boolean;
+  data: { pages: string[] };
+}
+
 export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; unreadCount: number; onLogout: () => void }) {
   const pathname = usePathname();
-  const sections = groupBySection(NAV_BY_ROLE[user.role] || []);
+  const [allowedPages, setAllowedPages] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (user.role !== "teacher") return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<PermissionResponse>(`/permissions/${user.id}`, token)
+      .then((res) => setAllowedPages(res.data.pages || []))
+      .catch(() => setAllowedPages([]));
+  }, [user.role, user.id]);
+
+  // Empty/not-yet-loaded pages list means "allow everything" — matches the
+  // original app's backward-compatible default for teachers with no
+  // Roles & Permissions assignment yet.
+  const navItems = (NAV_BY_ROLE[user.role] || []).filter((item) => {
+    if (!item.pageKey || !allowedPages || allowedPages.length === 0) return true;
+    return allowedPages.includes(item.pageKey);
+  });
+  const sections = groupBySection(navItems);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-[#E2E8F0]">
