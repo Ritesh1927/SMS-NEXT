@@ -50,6 +50,12 @@ interface StudentResponse {
   data: StudentDetail;
 }
 
+interface ParentLookupResponse {
+  success: boolean;
+  found: boolean;
+  data?: { name: string; motherName: string; motherPhone: string; phone: string; relation: string };
+}
+
 interface ApiMessageResponse {
   success: boolean;
   message?: string;
@@ -81,6 +87,9 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const lastCheckedParentEmail = useRef<string | null>(null);
+  const [checkingParentEmail, setCheckingParentEmail] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -129,6 +138,39 @@ export function StudentForm({ studentId }: { studentId?: string }) {
     if (cls) {
       update("studentClass", cls.name);
       update("section", cls.section);
+    }
+  };
+
+  // If this email already belongs to a parent in the school (e.g. admitting
+  // a second child), pull in their details instead of making the admin
+  // retype them — and instead of risking a second Parent record, since
+  // parent email is how they log in and must stay unique per school.
+  const handleParentEmailBlur = async () => {
+    if (isEdit) return;
+    const email = form.parentEmail.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email) || lastCheckedParentEmail.current === email.toLowerCase()) return;
+    lastCheckedParentEmail.current = email.toLowerCase();
+
+    const token = getToken();
+    if (!token) return;
+    setCheckingParentEmail(true);
+    try {
+      const res = await apiGet<ParentLookupResponse>(`/parents/lookup?email=${encodeURIComponent(email)}`, token);
+      if (res.found && res.data) {
+        setForm((f) => ({
+          ...f,
+          parentName: res.data!.name || f.parentName,
+          motherName: res.data!.motherName || f.motherName,
+          motherPhone: res.data!.motherPhone || f.motherPhone,
+          parentPhone: res.data!.phone || f.parentPhone,
+        }));
+        toast.success("Existing parent found", { description: "Filled in their details for this sibling." });
+      }
+    } catch {
+      // Silent — a failed lookup shouldn't block the admin from typing the rest of the form.
+    } finally {
+      setCheckingParentEmail(false);
     }
   };
 
@@ -320,7 +362,23 @@ export function StudentForm({ studentId }: { studentId?: string }) {
               </Select>
             </Field>
             <Field label="Email" required>
-              <Input value={form.parentEmail} onChange={(e) => update("parentEmail", e.target.value)} placeholder="parent@email.com" type="email" maxLength={255} required />
+              <div className="relative">
+                <Input
+                  value={form.parentEmail}
+                  onChange={(e) => update("parentEmail", e.target.value)}
+                  onBlur={handleParentEmailBlur}
+                  placeholder="parent@email.com"
+                  type="email"
+                  maxLength={255}
+                  required
+                />
+                {checkingParentEmail && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#94A3B8]" />
+                )}
+              </div>
+              {!isEdit && (
+                <p className="text-xs text-[#64748B]">Already a parent here? Enter their email to link this as a sibling.</p>
+              )}
             </Field>
           </div>
         </Section>
