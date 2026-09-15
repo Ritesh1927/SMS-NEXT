@@ -100,6 +100,10 @@ export default function AttendancePage() {
     setRoster((r) => r && r.map((entry) => (entry.student._id === studentId ? { ...entry, status } : entry)));
   };
 
+  const markAll = (status: Status) => {
+    setRoster((r) => r && r.map((entry) => ({ ...entry, status })));
+  };
+
   const handleSave = async () => {
     const token = getToken();
     if (!token || !roster || !classId) return;
@@ -166,11 +170,36 @@ export default function AttendancePage() {
           <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="w-40" />
         </div>
         {roster && roster.length > 0 && (
-          <Button onClick={handleSave} disabled={saving} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => markAll("present")} className="text-green-700 border-green-300 hover:bg-green-50">
+              Mark All Present
+            </Button>
+            <Button variant="outline" onClick={() => markAll("absent")} className="text-red-700 border-red-300 hover:bg-red-50">
+              Mark All Absent
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] ml-auto">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
+            </Button>
+          </>
         )}
       </div>
+
+      {roster && roster.length > 0 && (
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-2xl font-bold text-green-600">{roster.filter((r) => r.status === "present").length}</p>
+            <p className="text-xs text-[#64748B]">Present</p>
+          </div>
+          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-2xl font-bold text-red-600">{roster.filter((r) => r.status === "absent").length}</p>
+            <p className="text-xs text-[#64748B]">Absent</p>
+          </div>
+          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-2xl font-bold text-amber-600">{roster.filter((r) => r.status === "late").length}</p>
+            <p className="text-xs text-[#64748B]">Late</p>
+          </div>
+        </div>
+      )}
 
       {loadingRoster && (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
