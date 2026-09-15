@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power, Users, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -125,6 +125,13 @@ export default function StudentsPage() {
 
   if (!user) return null;
 
+  const allStudents = students || [];
+  const counts = {
+    total: allStudents.length,
+    active: allStudents.filter((s) => s.isActive).length,
+    inactive: allStudents.filter((s) => !s.isActive).length,
+  };
+
   const filteredStudents = (students || []).filter((s) => {
     if (classFilter && s.class !== classFilter) return false;
     if (search) {
@@ -159,18 +166,50 @@ export default function StudentsPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {students && students.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
-          <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Classes</SelectItem>
-              {classes.map((c) => (
-                <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
+                <p className="text-xs text-[#64748B]">Total Students</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-green-600">{counts.active}</p>
+                <p className="text-xs text-[#64748B]">Active</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                <UserX className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-red-600">{counts.inactive}</p>
+                <p className="text-xs text-[#64748B]">Inactive</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+            <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Classes</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
       )}
 
       {error ? null : !students ? (
