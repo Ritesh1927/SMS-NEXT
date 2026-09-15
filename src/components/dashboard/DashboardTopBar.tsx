@@ -2,12 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Search, Users, GraduationCap, School as SchoolIcon, Loader2 } from "lucide-react";
+import { AlertTriangle, Bell, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuGroup, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { formatClassName } from "@/lib/helpers";
+
+interface NoticeItem {
+  _id: string;
+  title: string;
+  content: string;
+  isUrgent: boolean;
+  createdAt: string;
+}
+
+interface NoticesResponse {
+  success: boolean;
+  data: NoticeItem[];
+}
 
 interface LicenseWarning {
   daysLeft: number;
@@ -38,7 +56,15 @@ interface ClassRow {
   studentCount?: number;
 }
 
-export function DashboardTopBar({ user, licenseWarning }: { user: AuthUser; licenseWarning: LicenseWarning | null }) {
+export function DashboardTopBar({
+  user,
+  licenseWarning,
+  onLogout,
+}: {
+  user: AuthUser;
+  licenseWarning: LicenseWarning | null;
+  onLogout: () => void;
+}) {
   const router = useRouter();
   const canSearch = user.role === "schooladmin";
 
@@ -49,6 +75,32 @@ export function DashboardTopBar({ user, licenseWarning }: { user: AuthUser; lice
   const [teachers, setTeachers] = useState<SearchResult[]>([]);
   const [classes, setClasses] = useState<SearchResult[]>([]);
   const boxRef = useRef<HTMLDivElement>(null);
+
+  const [notices, setNotices] = useState<NoticeItem[]>([]);
+  const [hasUnseen, setHasUnseen] = useState(false);
+  const lastSeenKey = `notif_lastSeen_${user.id}`;
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<NoticesResponse>("/notices", token)
+      .then((res) => {
+        const list = res.data.slice(0, 8);
+        setNotices(list);
+        const lastSeen = localStorage.getItem(lastSeenKey);
+        const newest = list[0]?.createdAt;
+        setHasUnseen(!!newest && (!lastSeen || new Date(newest) > new Date(lastSeen)));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleBellOpen = (isOpen: boolean) => {
+    if (isOpen && notices[0]?.createdAt) {
+      localStorage.setItem(lastSeenKey, notices[0].createdAt);
+      setHasUnseen(false);
+    }
+  };
 
   useEffect(() => {
     const q = query.trim();
@@ -180,6 +232,76 @@ export function DashboardTopBar({ user, licenseWarning }: { user: AuthUser; lice
           </div>
         </div>
       )}
+
+      <div className={`flex items-center gap-2.5 shrink-0 ${licenseWarning ? "" : "ml-auto"}`}>
+        <DropdownMenu onOpenChange={handleBellOpen}>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full text-[#475569] hover:text-[#4F46E5] hover:bg-[#F1F5F9]">
+                <Bell className="h-[18px] w-[18px]" />
+                {hasUnseen && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#EF4444] ring-2 ring-white" />}
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Notices</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            {notices.length === 0 ? (
+              <p className="text-sm text-[#64748B] text-center py-6">No notices yet.</p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto space-y-1">
+                {notices.map((n) => (
+                  <div key={n._id} className="flex items-start gap-2.5 rounded-md px-2 py-2 hover:bg-[#F1F5F9]">
+                    {n.isUrgent ? (
+                      <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <Megaphone className="h-4 w-4 text-[#4F46E5] shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#172554] truncate">{n.title}</p>
+                      <p className="text-xs text-[#64748B] line-clamp-2">{n.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push("/dashboard/notices")}>View all notices</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            nativeButton={false}
+            render={
+              <div className="flex items-center gap-2 cursor-pointer rounded-full hover:bg-[#F1F5F9] p-1 pr-2 transition-colors">
+                <Avatar className="h-9 w-9 ring-2 ring-[#E0E7FF]">
+                  <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-xs font-semibold">
+                    {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-[#172554] truncate">{user.name}</span>
+                  <span className="text-xs text-[#64748B] truncate">{user.email}</span>
+                </div>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }

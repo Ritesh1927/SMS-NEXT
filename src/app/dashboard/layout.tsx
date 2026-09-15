@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <AppSidebar user={user} unreadCount={unread} onLogout={handleLogout} />
       <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
-        <DashboardTopBar user={user} licenseWarning={licenseWarning} />
+        <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
         <main className="flex-1 px-6 py-8 overflow-auto">
           <div className="mx-auto max-w-6xl w-full">{children}</div>
         </main>
