@@ -231,7 +231,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
         <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
 
-        <div className="hidden sm:block pointer-events-none absolute right-0 bottom-0 h-[85%] w-[52%]">
+        <div className="hidden sm:block pointer-events-none absolute right-10 sm:right-16 bottom-0 h-[85%] w-[52%]">
           <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
         </div>
 
@@ -248,7 +248,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm shrink-0 self-start">
+          <div className="flex items-center gap-2 rounded-2xl bg-white/45 backdrop-blur-sm px-4 py-2.5 border border-white/60 shadow-sm shrink-0 self-start">
             <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
             <span className="text-sm font-semibold text-[#172554]">
               {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
