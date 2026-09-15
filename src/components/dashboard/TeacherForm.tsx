@@ -1,0 +1,559 @@
+"use client";
+
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Loader2, Save, Camera, School, X } from "lucide-react";
+import { toast } from "sonner";
+import { getToken } from "@/contexts/AuthContext";
+import { apiGet } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
+}
+
+interface TeacherDetail {
+  name: string;
+  email: string;
+  phone: string;
+  qualification: string;
+  experience: string;
+  designation: string;
+  staffType: string;
+  department: string;
+  subjects: string[];
+  gender: string;
+  dateOfBirth: string | null;
+  address: string;
+  bloodGroup: string;
+  joiningDate: string | null;
+  salary: number | string;
+  employmentType: string;
+  emergencyContact: string;
+  emergencyPhone: string;
+  emergencyRelation: string;
+  aadhaarNumber: string;
+  panNumber: string;
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  specialization: string;
+  previousExperience: string;
+  assignedClasses?: ClassOption[];
+  photo: string;
+}
+
+interface TeacherResponse {
+  success: boolean;
+  data: TeacherDetail;
+}
+
+interface ApiMessageResponse {
+  success: boolean;
+  message?: string;
+  tempPassword?: string;
+}
+
+const EMPTY_FORM = {
+  name: "", email: "", phone: "", qualification: "", experience: "", designation: "Teacher",
+  staffType: "teaching", department: "",
+  subjects: "",
+  gender: "male", dateOfBirth: "", address: "", bloodGroup: "",
+  joiningDate: "", salary: "", employmentType: "full-time",
+  emergencyContact: "", emergencyPhone: "", emergencyRelation: "",
+  aadhaarNumber: "", panNumber: "",
+  bankName: "", accountNumber: "", ifscCode: "",
+  specialization: "", previousExperience: "",
+};
+
+const todayISO = () => new Date().toISOString().split("T")[0];
+
+export function TeacherForm({ teacherId }: { teacherId?: string }) {
+  const router = useRouter();
+  const isEdit = !!teacherId;
+
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [classLoading, setClassLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClassOptions(res.data))
+      .catch(() => toast.error("Could not load classes."))
+      .finally(() => setClassLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!isEdit || !teacherId) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<TeacherResponse>(`/teachers/${teacherId}`, token)
+      .then((res) => {
+        const t = res.data;
+        setForm({
+          name: t.name || "", email: t.email || "", phone: t.phone || "",
+          qualification: t.qualification || "", experience: t.experience || "",
+          designation: t.designation || "Teacher",
+          staffType: t.staffType || "teaching", department: t.department || "",
+          subjects: (t.subjects || []).join(", "),
+          gender: t.gender || "male",
+          dateOfBirth: t.dateOfBirth ? t.dateOfBirth.slice(0, 10) : "",
+          address: t.address || "", bloodGroup: t.bloodGroup || "",
+          joiningDate: t.joiningDate ? t.joiningDate.slice(0, 10) : "",
+          salary: t.salary != null ? String(t.salary) : "", employmentType: t.employmentType || "full-time",
+          emergencyContact: t.emergencyContact || "", emergencyPhone: t.emergencyPhone || "",
+          emergencyRelation: t.emergencyRelation || "",
+          aadhaarNumber: t.aadhaarNumber || "", panNumber: t.panNumber || "",
+          bankName: t.bankName || "", accountNumber: t.accountNumber || "",
+          ifscCode: t.ifscCode || "",
+          specialization: t.specialization || "", previousExperience: t.previousExperience || "",
+        });
+        setSelectedClassIds((t.assignedClasses || []).map((c) => c._id));
+        setPhotoPreview(t.photo || "");
+      })
+      .catch(() => toast.error("Failed to load teacher."))
+      .finally(() => setLoading(false));
+  }, [teacherId, isEdit]);
+
+  const update = (key: keyof typeof EMPTY_FORM, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const toggleClass = (cid: string) => {
+    setSelectedClassIds((prev) => (prev.includes(cid) ? prev.filter((x) => x !== cid) : [...prev, cid]));
+  };
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB.");
+      return;
+    }
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+
+    if (isEdit && teacherId) {
+      const token = getToken();
+      if (!token) return;
+      setUploadingPhoto(true);
+      try {
+        const fd = new FormData();
+        fd.append("photo", file);
+        const res = await fetch(`/api/teachers/${teacherId}/photo`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        const json: ApiMessageResponse & { data?: { photo: string } } = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || "Failed to upload photo.");
+        if (json.data?.photo) setPhotoPreview(json.data.photo);
+        toast.success("Photo updated.");
+      } catch (err) {
+        toast.error("Error", { description: err instanceof Error ? err.message : "Failed to upload photo." });
+      } finally {
+        setUploadingPhoto(false);
+      }
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) return toast.error("Name is required.");
+    if (!form.email.trim()) return toast.error("Email is required.");
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) return toast.error("Invalid email format.");
+    if (form.phone && !/^\d{10}$/.test(form.phone)) return toast.error("Phone must be exactly 10 digits.");
+    if (form.dateOfBirth && new Date(form.dateOfBirth) > new Date()) return toast.error("Date of birth cannot be in the future.");
+    if (form.aadhaarNumber && !/^\d{12}$/.test(form.aadhaarNumber)) return toast.error("Aadhaar must be exactly 12 digits.");
+    if (form.emergencyPhone && !/^\d{10}$/.test(form.emergencyPhone)) return toast.error("Emergency phone must be exactly 10 digits.");
+    if (form.accountNumber && (form.accountNumber.length < 9 || form.accountNumber.length > 18)) {
+      return toast.error("Account number should be 9-18 digits.");
+    }
+    if (form.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(form.ifscCode)) {
+      return toast.error("Invalid IFSC code format (e.g. SBIN0001234).");
+    }
+
+    const bankFieldsFilled = [form.bankName, form.accountNumber, form.ifscCode].filter(Boolean).length;
+    if (bankFieldsFilled > 0 && bankFieldsFilled < 3) {
+      return toast.error("Fill in all bank details (name, account number, IFSC) or leave them all blank.");
+    }
+
+    const emergencyFieldsFilled = [form.emergencyContact, form.emergencyPhone, form.emergencyRelation].filter(Boolean).length;
+    if (emergencyFieldsFilled > 0 && emergencyFieldsFilled < 3) {
+      return toast.error("Fill in all emergency contact details or leave them all blank.");
+    }
+
+    const token = getToken();
+    if (!token) return;
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        designation: form.staffType === "teaching" ? "Teacher" : (form.department || "Staff"),
+        subjects: form.staffType === "teaching" && form.subjects ? form.subjects.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        salary: form.salary ? Number(form.salary) : 0,
+        classIds: form.staffType === "teaching" ? selectedClassIds : [],
+      };
+      if (isEdit && teacherId) {
+        const res = await fetch(`/api/teachers/${teacherId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        });
+        const json: ApiMessageResponse = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || "Failed to save teacher.");
+        toast.success("Teacher updated.");
+      } else {
+        const res = await fetch("/api/teachers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
+        });
+        const json: ApiMessageResponse & { data?: { _id: string } } = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || "Failed to save teacher.");
+        toast.success("Staff added.", { description: `Temporary password: ${json.tempPassword} (also emailed).` });
+        const newId = json.data?._id;
+        if (photoFile && newId) {
+          try {
+            const fd = new FormData();
+            fd.append("photo", photoFile);
+            await fetch(`/api/teachers/${newId}/photo`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
+          } catch {
+            toast.error("Staff created, but the photo upload failed — you can add it from Edit.");
+          }
+        }
+      }
+      router.push("/dashboard/teachers");
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to save teacher." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" className="gap-2 text-[#64748B] hover:text-[#172554] -ml-2" onClick={() => router.push("/dashboard/teachers")}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <h1 className="text-2xl font-bold text-[#172554]">{isEdit ? "Edit Staff" : "Add New Staff"}</h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Section title="Staff Type">
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => !isEdit && update("staffType", "teaching")}
+              disabled={isEdit}
+              className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-semibold transition-all ${
+                form.staffType === "teaching"
+                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                  : isEdit
+                  ? "border-[#E2E8F0] bg-slate-50 text-slate-400 cursor-not-allowed"
+                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#4F46E5]/30"
+              }`}
+            >
+              Teaching Staff
+            </button>
+            <button
+              type="button"
+              onClick={() => !isEdit && update("staffType", "non-teaching")}
+              disabled={isEdit}
+              className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-semibold transition-all ${
+                form.staffType === "non-teaching"
+                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                  : isEdit
+                  ? "border-[#E2E8F0] bg-slate-50 text-slate-400 cursor-not-allowed"
+                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#4F46E5]/30"
+              }`}
+            >
+              Non-Teaching Staff
+            </button>
+          </div>
+          {isEdit && <p className="text-xs text-[#64748B] mt-2">Staff type cannot be changed after creation.</p>}
+          {form.staffType === "non-teaching" && (
+            <div className="mt-4 space-y-1.5">
+              <label className="text-sm font-medium text-[#172554]">Department</label>
+              <Select value={form.department} onValueChange={(v) => update("department", v || "")} disabled={isEdit}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectContent>
+                  {["Administration", "Accounts", "Library", "Lab", "Office", "Transport", "Canteen", "Security", "Other"].map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </Section>
+
+        <Section title="Basic Information">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="relative shrink-0">
+              <Avatar className="h-20 w-20 border-2 border-[#E2E8F0]">
+                <AvatarImage src={photoPreview} alt={form.name} />
+                <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-lg font-semibold">
+                  {form.name ? form.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-md hover:bg-[#4338CA] transition-colors disabled:opacity-60"
+                aria-label="Change photo"
+              >
+                {uploadingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhotoSelect} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[#172554]">Profile Photo</p>
+              <p className="text-xs text-[#64748B]">{isEdit ? "Click the camera icon to change it." : "Optional — click the camera icon to add one."}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Full Name" required>
+              <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Staff name" maxLength={100} required />
+            </Field>
+            <Field label="Email" required>
+              <Input
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                placeholder="staff@email.com"
+                type="email"
+                maxLength={255}
+                required
+                disabled={isEdit}
+                className={isEdit ? "opacity-60 cursor-not-allowed" : ""}
+              />
+            </Field>
+            <Field label="Phone">
+              <Input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} />
+            </Field>
+            <Field label="Gender">
+              <Select value={form.gender} onValueChange={(v) => update("gender", v || form.gender)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Date of Birth">
+              <Input type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} max={todayISO()} />
+            </Field>
+            <Field label="Blood Group">
+              <Select value={form.bloodGroup} onValueChange={(v) => update("bloodGroup", v || "")}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((g) => (
+                    <SelectItem key={g} value={g}>{g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Address">
+                <Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Address" maxLength={200} />
+              </Field>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Employment Details">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Job Title">
+              <Input value={form.designation} onChange={(e) => update("designation", e.target.value)} placeholder="e.g. Senior Teacher, Vice Principal, HOD" maxLength={50} />
+              <p className="text-xs text-[#64748B]">Their title at school — separate from their system role.</p>
+            </Field>
+            <Field label="Qualification">
+              <Input value={form.qualification} onChange={(e) => update("qualification", e.target.value)} placeholder="e.g. BSc, MSc, B.Ed" maxLength={100} />
+            </Field>
+            <Field label="Experience">
+              <Input value={form.experience} onChange={(e) => update("experience", e.target.value)} placeholder="e.g. 5 years" maxLength={20} />
+            </Field>
+            <Field label="Specialization">
+              <Input value={form.specialization} onChange={(e) => update("specialization", e.target.value)} placeholder="e.g. Mathematics, Science" maxLength={100} />
+            </Field>
+            <Field label="Joining Date">
+              <Input
+                type="date"
+                value={form.joiningDate}
+                onChange={(e) => update("joiningDate", e.target.value)}
+                disabled={isEdit}
+                className={isEdit ? "opacity-60 cursor-not-allowed" : ""}
+              />
+            </Field>
+            <Field label="Salary (₹)">
+              <Input value={form.salary} onChange={(e) => update("salary", e.target.value.replace(/\D/g, ""))} placeholder="Monthly salary" inputMode="numeric" />
+            </Field>
+            <Field label="Employment Type">
+              <Select value={form.employmentType} onValueChange={(v) => update("employmentType", v || form.employmentType)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full-time">Full-time</SelectItem>
+                  <SelectItem value="part-time">Part-time</SelectItem>
+                  <SelectItem value="contract">Contract</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Previous Organization">
+              <Input value={form.previousExperience} onChange={(e) => update("previousExperience", e.target.value)} placeholder="Previous organization name" maxLength={200} />
+            </Field>
+          </div>
+        </Section>
+
+        {form.staffType === "teaching" && (
+          <Section title="Classes">
+            <label className="text-sm font-medium text-[#172554] flex items-center gap-1.5 mb-2">
+              <School className="h-4 w-4 text-[#4F46E5]" /> Assign Classes
+            </label>
+            {classLoading ? (
+              <p className="text-xs text-[#64748B]">Loading classes...</p>
+            ) : classOptions.length === 0 ? (
+              <p className="text-xs text-[#64748B]">No classes found. Create classes first.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {classOptions.map((c) => {
+                  const selected = selectedClassIds.includes(c._id);
+                  return (
+                    <button
+                      key={c._id}
+                      type="button"
+                      onClick={() => toggleClass(c._id)}
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        selected ? "bg-[#4F46E5] text-white border-[#4F46E5]" : "bg-white text-[#64748B] border-[#E2E8F0] hover:border-[#4F46E5]/50"
+                      }`}
+                    >
+                      {c.name}-{c.section}
+                      {selected && <X className="h-3 w-3" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {selectedClassIds.length > 0 && (
+              <p className="text-xs text-[#64748B] mt-1">{selectedClassIds.length} class{selectedClassIds.length > 1 ? "es" : ""} selected</p>
+            )}
+          </Section>
+        )}
+
+        <Section title="Documents">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Aadhaar Number">
+              <Input value={form.aadhaarNumber} onChange={(e) => update("aadhaarNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar" inputMode="numeric" maxLength={12} />
+            </Field>
+            <Field label="PAN Number">
+              <Input value={form.panNumber} onChange={(e) => update("panNumber", e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Bank Details">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Bank Name">
+              <Input value={form.bankName} onChange={(e) => update("bankName", e.target.value)} placeholder="Bank name" maxLength={100} />
+            </Field>
+            <Field label="Account Number">
+              <Input value={form.accountNumber} onChange={(e) => update("accountNumber", e.target.value.replace(/\D/g, "").slice(0, 20))} placeholder="Account number" inputMode="numeric" maxLength={20} />
+            </Field>
+            <Field label="IFSC Code">
+              <Input value={form.ifscCode} onChange={(e) => update("ifscCode", e.target.value.toUpperCase())} placeholder="SBIN0001234" maxLength={11} />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Emergency Contact">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Contact Name">
+              <Input value={form.emergencyContact} onChange={(e) => update("emergencyContact", e.target.value)} placeholder="Contact name" maxLength={100} />
+            </Field>
+            <Field label="Contact Phone">
+              <Input value={form.emergencyPhone} onChange={(e) => update("emergencyPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} />
+            </Field>
+            <Field label="Relationship">
+              <Select value={form.emergencyRelation} onValueChange={(v) => update("emergencyRelation", v || "")}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {["Spouse", "Father", "Mother", "Sibling", "Friend", "Other"].map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+        </Section>
+
+        <div className="flex justify-end gap-3 pb-6">
+          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/teachers")}>Cancel</Button>
+          <Button type="submit" disabled={saving} className="gap-2 bg-[#4F46E5] hover:bg-[#4338CA]">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving..." : isEdit ? "Update Staff" : "Add Staff"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(79,70,229,0.15)]">
+      <h3 className="text-sm font-bold text-[#172554] mb-4">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-[#172554]">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      {children}
+    </div>
+  );
+}

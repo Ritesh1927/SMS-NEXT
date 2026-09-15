@@ -14,7 +14,30 @@ const ALLOWED_FIELDS = [
   "name", "phone", "subjects", "classes", "qualification", "experience", "designation", "isActive",
   "gender", "dateOfBirth", "address", "bloodGroup", "joiningDate", "salary", "employmentType",
   "staffType", "department", "permissions",
+  "emergencyContact", "emergencyPhone", "emergencyRelation", "aadhaarNumber", "panNumber",
+  "bankName", "accountNumber", "ifscCode", "specialization", "previousExperience",
 ] as const;
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = requireSchoolAdmin(req);
+  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+
+  try {
+    const { id } = await params;
+    await connectDB();
+    const teacher = await Teacher.findOne({ _id: id, school: auth.schoolId })
+      .select("-password")
+      .populate("assignedClasses", "name section");
+    if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
+
+    return NextResponse.json({ success: true, data: teacher });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, message: err instanceof Error ? err.message : "Failed to load teacher." },
+      { status: 500 },
+    );
+  }
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireSchoolAdmin(req);

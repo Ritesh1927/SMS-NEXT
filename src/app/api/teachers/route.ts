@@ -50,6 +50,8 @@ export async function POST(req: Request) {
       name, email, phone, subjects, classes, classIds, qualification, experience, designation,
       gender, dateOfBirth, address, bloodGroup, joiningDate, salary, employmentType,
       staffType, department,
+      emergencyContact, emergencyPhone, emergencyRelation, aadhaarNumber, panNumber,
+      bankName, accountNumber, ifscCode, specialization, previousExperience,
     } = body;
 
     if (!name || !email) {
@@ -101,6 +103,16 @@ export async function POST(req: Request) {
       joiningDate: joiningDate || null,
       salary: salary || 0,
       employmentType: employmentType || "full-time",
+      emergencyContact: emergencyContact || "",
+      emergencyPhone: emergencyPhone || "",
+      emergencyRelation: emergencyRelation || "",
+      aadhaarNumber: aadhaarNumber || "",
+      panNumber: panNumber || "",
+      bankName: bankName || "",
+      accountNumber: accountNumber || "",
+      ifscCode: ifscCode || "",
+      specialization: specialization || "",
+      previousExperience: previousExperience || "",
     });
 
     try {
