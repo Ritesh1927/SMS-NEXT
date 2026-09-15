@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, User, Pencil, Trash2, Power } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface StudentRow {
   _id: string;
@@ -18,7 +19,9 @@ interface StudentRow {
   rollNumber?: string;
   admissionNo?: string;
   phone?: string;
+  photo?: string;
   isActive: boolean;
+  attendance: number;
   parent?: { name: string; email: string; phone?: string } | null;
 }
 
@@ -135,24 +138,42 @@ export default function StudentsPage() {
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           {students.map((s) => (
             <div key={s._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#172554]">{s.name}</p>
-                  {!s.isActive && (
-                    <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                      Inactive
-                    </span>
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
+                  <AvatarImage src={s.photo} alt={s.name} />
+                  <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-sm font-semibold">
+                    {s.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-[#172554] truncate">{s.name}</p>
+                    {!s.isActive && (
+                      <span className="shrink-0 text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#64748B] mt-0.5 truncate">
+                    {s.studentId} · Class {s.class}
+                    {s.section ? `-${s.section}` : ""} · Roll {s.rollNumber || "—"}
+                  </p>
+                  {s.parent?.email && <p className="text-xs text-[#94A3B8] truncate">{s.parent.email}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="hidden sm:flex items-center gap-2 w-24">
+                  {s.attendance > 0 ? (
+                    <>
+                      <div className="w-16 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden shrink-0">
+                        <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${s.attendance}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-[#475569]">{s.attendance}%</span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-[#94A3B8]">—</span>
                   )}
                 </div>
-                <p className="text-xs text-[#64748B] mt-0.5">
-                  {s.studentId} · Class {s.class}
-                  {s.section ? `-${s.section}` : ""} · Roll {s.rollNumber || "—"}
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-[#64748B] shrink-0">
-                <span className="hidden sm:flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5" /> {s.parent?.name || "No parent linked"}
-                </span>
                 {!isTeacher && (
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit">

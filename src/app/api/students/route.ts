@@ -5,6 +5,7 @@ import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
+import { withAttendancePercent } from "@/lib/studentAttendance";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -34,9 +35,12 @@ export async function GET(req: Request) {
     const students = await Student.find(query)
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone")
-      .sort({ class: 1, rollNumber: 1 });
+      .sort({ class: 1, rollNumber: 1 })
+      .lean();
 
-    return NextResponse.json({ success: true, count: students.length, data: students });
+    const data = await withAttendancePercent(auth.schoolId, students);
+
+    return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load students." },

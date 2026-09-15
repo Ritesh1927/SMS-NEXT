@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
+import { withAttendancePercent } from "@/lib/studentAttendance";
 import "@/models/Parent";
 
 // GET /api/teachers/my-students — read-only student list scoped to classes
@@ -34,9 +35,12 @@ export async function GET(req: Request) {
     })
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone")
-      .sort({ class: 1, rollNumber: 1 });
+      .sort({ class: 1, rollNumber: 1 })
+      .lean();
 
-    return NextResponse.json({ success: true, count: students.length, data: students });
+    const data = await withAttendancePercent(auth.schoolId, students);
+
+    return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load students." },
