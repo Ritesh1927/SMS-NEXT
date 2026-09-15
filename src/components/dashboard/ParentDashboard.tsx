@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard, BookOpen } from "lucide-react";
+import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard, BookOpen, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -107,6 +107,7 @@ export function ParentDashboard() {
               )}
               <ChildAttendance studentId={child._id} />
               <ChildResults studentId={child._id} />
+              <ChildUpcomingExams studentClass={child.class} studentSection={child.section} />
               <ChildFees studentId={child._id} childName={child.name} />
               <ChildHomework studentId={child._id} />
             </div>
@@ -192,6 +193,58 @@ function ChildResults({ studentId }: { studentId: string }) {
         {data.results.slice(0, 3).map((r, i) => (
           <p key={i} className="text-[11px] text-[#64748B]">
             {r.exam?.subject || r.exam?.title || "Exam"}: {r.marksObtained}/{r.totalMarks} ({r.grade})
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface ExamRow {
+  _id: string;
+  title: string;
+  subject: string;
+  date: string;
+  class: string;
+  section: string;
+  status: string;
+}
+
+interface ExamsResponse {
+  success: boolean;
+  data: ExamRow[];
+}
+
+function ChildUpcomingExams({ studentClass, studentSection }: { studentClass: string; studentSection?: string }) {
+  const [exams, setExams] = useState<ExamRow[] | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ExamsResponse>(`/exams?class=${encodeURIComponent(studentClass)}`, token)
+      .then((res) => {
+        const now = Date.now();
+        const upcoming = res.data
+          .filter((e) => (!e.section || e.section === studentSection) && new Date(e.date).getTime() >= now && e.status !== "cancelled")
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .slice(0, 3);
+        setExams(upcoming);
+      })
+      .catch(() => {});
+  }, [studentClass, studentSection]);
+
+  if (!exams || exams.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1.5 text-xs">
+        <ClipboardList className="h-3.5 w-3.5 text-[#2563EB]" />
+        <span className="font-semibold text-[#2563EB]">{exams.length} upcoming exam{exams.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="mt-1.5 space-y-0.5">
+        {exams.map((e) => (
+          <p key={e._id} className="text-[11px] text-[#64748B]">
+            {e.subject}: {e.title} — {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </p>
         ))}
       </div>
