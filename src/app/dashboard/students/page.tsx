@@ -82,10 +82,16 @@ export default function StudentsPage() {
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
+  // Teachers get a read-only view scoped to their own classes — matches
+  // SMS-BACKEND, where the student create/update/delete routes are
+  // schooladmin-only at the router level (no teacher-facing path exists at
+  // all, regardless of their canEditStudent/canDeleteStudent flags).
+  const isTeacher = user?.role === "teacher";
+
   const load = () => {
     const token = getToken();
     if (!token) return;
-    apiGet<StudentsResponse>("/students", token)
+    apiGet<StudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
       .then((res) => setStudents(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
     apiGet<ClassesResponse>("/classes", token)
@@ -95,7 +101,8 @@ export default function StudentsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -203,11 +210,15 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#172554]">Students</h1>
-          <p className="text-sm text-[#64748B] mt-1">Manage student admissions and records.</p>
+          <p className="text-sm text-[#64748B] mt-1">
+            {isTeacher ? "Students in your classes." : "Manage student admissions and records."}
+          </p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-          <Plus className="h-4 w-4" /> Add Student
-        </Button>
+        {!isTeacher && (
+          <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+            <Plus className="h-4 w-4" /> Add Student
+          </Button>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -218,7 +229,9 @@ export default function StudentsPage() {
         </div>
       ) : students.length === 0 ? (
         <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No students yet. Add your first admission to get started.</p>
+          <p className="text-sm text-[#64748B]">
+            {isTeacher ? "No students in your classes yet." : "No students yet. Add your first admission to get started."}
+          </p>
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -242,30 +255,32 @@ export default function StudentsPage() {
                 <span className="hidden sm:flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" /> {s.parent?.name || "No parent linked"}
                 </span>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon-sm" onClick={() => openEdit(s)} aria-label="Edit">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => toggleActive(s)}
-                    disabled={busyId === s._id}
-                    aria-label={s.isActive ? "Deactivate" : "Activate"}
-                  >
-                    <Power className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDelete(s)}
-                    disabled={busyId === s._id}
-                    aria-label="Delete"
-                    className="hover:text-red-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                {!isTeacher && (
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(s)} aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => toggleActive(s)}
+                      disabled={busyId === s._id}
+                      aria-label={s.isActive ? "Deactivate" : "Activate"}
+                    >
+                      <Power className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDelete(s)}
+                      disabled={busyId === s._id}
+                      aria-label="Delete"
+                      className="hover:text-red-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

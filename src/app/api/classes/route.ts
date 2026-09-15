@@ -25,16 +25,13 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
+    const classQuery: Record<string, unknown> = { school: auth.schoolId };
     if (auth.role === "teacher") {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-      const classes = await Class.find({
-        school: auth.schoolId,
-        $or: accessible.length > 0 ? accessible.map((c) => ({ name: c.name, section: c.section })) : [{ _id: null }],
-      }).sort({ name: 1, section: 1 });
-      return NextResponse.json({ success: true, count: classes.length, data: classes });
+      classQuery.$or = accessible.length > 0 ? accessible.map((c) => ({ name: c.name, section: c.section })) : [{ _id: null }];
     }
 
-    const classes = await Class.find({ school: auth.schoolId })
+    const classes = await Class.find(classQuery)
       .populate("classTeacher", "name teacherId")
       .populate("assignedSubjects", "name code")
       .sort({ name: 1, section: 1 });

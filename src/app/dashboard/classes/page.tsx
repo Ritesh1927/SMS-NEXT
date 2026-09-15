@@ -59,20 +59,27 @@ export default function ClassesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const isTeacher = user?.role === "teacher";
+
   const load = () => {
     const token = getToken();
     if (!token) return;
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
-    apiGet<TeachersResponse>("/teachers", token)
-      .then((res) => setTeachers(res.data))
-      .catch(() => {});
+    // Only schooladmin can assign a class teacher, so only schooladmin
+    // needs the teacher-picker list this powers.
+    if (!isTeacher) {
+      apiGet<TeachersResponse>("/teachers", token)
+        .then((res) => setTeachers(res.data))
+        .catch(() => {});
+    }
   };
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -147,16 +154,20 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#172554]">Classes</h1>
-          <p className="text-sm text-[#64748B] mt-1">Manage class sections and assign class teachers.</p>
+          <p className="text-sm text-[#64748B] mt-1">
+            {isTeacher ? "Your assigned classes." : "Manage class sections and assign class teachers."}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
-            <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
-          </Link>
-          <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-            <Plus className="h-4 w-4" /> Add Class
-          </Button>
-        </div>
+        {!isTeacher && (
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
+              <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
+            </Link>
+            <Button onClick={openAdd} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
+              <Plus className="h-4 w-4" /> Add Class
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -180,21 +191,23 @@ export default function ClassesPage() {
                     {c.classTeacher ? `${c.classTeacher.name} (${c.classTeacher.teacherId})` : "No class teacher assigned"}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDelete(c)}
-                    disabled={busyId === c._id}
-                    aria-label="Delete"
-                    className="hover:text-red-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                {!isTeacher && (
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDelete(c)}
+                      disabled={busyId === c._id}
+                      aria-label="Delete"
+                      className="hover:text-red-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs text-[#64748B] border-t border-[#F1F5F9] pt-3">
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.studentCount} students</span>

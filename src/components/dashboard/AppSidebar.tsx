@@ -61,6 +61,9 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   teacher: [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
+    { href: "/dashboard/students", label: "Students", icon: Users, section: "My Classes", pageKey: "pageStudents", featureKey: "students" },
+    { href: "/dashboard/classes", label: "Classes", icon: School, section: "My Classes", pageKey: "pageClasses", featureKey: "classes" },
+
     { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", pageKey: "pageAttendance", featureKey: "attendance" },
     { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", pageKey: "pageTestsExams", featureKey: "exams" },
     { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", pageKey: "pageHomework", featureKey: "homework" },
@@ -105,6 +108,7 @@ type SectionTheme = { icon: string; activeBg: string; activeText: string; label:
 const SECTION_THEMES: Record<string, SectionTheme> = {
   Overview: { icon: "text-[#2563EB]/60", activeBg: "bg-[#2563EB]/10", activeText: "text-[#2563EB]", label: "text-[#2563EB]/60" },
   People: { icon: "text-blue-500/60", activeBg: "bg-blue-500/10", activeText: "text-blue-600", label: "text-blue-500/60" },
+  "My Classes": { icon: "text-blue-500/60", activeBg: "bg-blue-500/10", activeText: "text-blue-600", label: "text-blue-500/60" },
   Academics: { icon: "text-violet-500/60", activeBg: "bg-violet-500/10", activeText: "text-violet-600", label: "text-violet-500/60" },
   Finance: { icon: "text-emerald-500/60", activeBg: "bg-emerald-500/10", activeText: "text-emerald-600", label: "text-emerald-500/60" },
   Communication: { icon: "text-amber-500/60", activeBg: "bg-amber-500/10", activeText: "text-amber-600", label: "text-amber-500/60" },
