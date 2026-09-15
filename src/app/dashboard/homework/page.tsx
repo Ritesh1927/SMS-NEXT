@@ -77,6 +77,12 @@ export default function HomeworkPage() {
   const [savingGradeFor, setSavingGradeFor] = useState<string | null>(null);
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
 
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "expired">("");
+  // Snapshot once on mount rather than calling Date.now() during render (impure).
+  const [now] = useState(() => Date.now());
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -182,19 +188,56 @@ export default function HomeworkPage() {
 
   if (!user) return null;
 
+  const filteredHomework = (homework || []).filter((hw) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!hw.title.toLowerCase().includes(q) && !hw.subject.toLowerCase().includes(q)) return false;
+    }
+    if (classFilter && hw.class !== classFilter) return false;
+    if (statusFilter) {
+      const isExpired = new Date(hw.dueDate).getTime() < now;
+      if (statusFilter === "expired" && !isExpired) return false;
+      if (statusFilter === "active" && isExpired) return false;
+    }
+    return true;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#172554]">Homework</h1>
-          <p className="text-sm text-[#64748B] mt-1">Assign homework and grade submissions.</p>
+          <p className="text-sm text-[#64748B] mt-1">{(homework || []).length} assignment{(homework || []).length === 1 ? "" : "s"} total.</p>
         </div>
         <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#2563EB] hover:bg-[#1D4ED8]">
-          <Plus className="h-4 w-4" /> Assign Homework
+          <Plus className="h-4 w-4" /> New Assignment
         </Button>
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {homework && homework.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <Input placeholder="Search by title or subject..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+          <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+            <SelectTrigger className="w-40"><SelectValue placeholder="All Classes" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Classes</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter((v || "") as typeof statusFilter)}>
+            <SelectTrigger className="w-36"><SelectValue placeholder="All Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {!homework ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
@@ -205,18 +248,39 @@ export default function HomeworkPage() {
           <BookOpen className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
           <p className="text-sm text-[#64748B]">No homework assigned yet.</p>
         </div>
+      ) : filteredHomework.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No homework matches your filters.</p>
+        </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {homework.map((hw) => (
+          {filteredHomework.map((hw) => (
             <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#172554]">{hw.title}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-[#172554]">{hw.title}</p>
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      new Date(hw.dueDate).getTime() < now ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {new Date(hw.dueDate).getTime() < now ? "Expired" : "Active"}
+                  </span>
+                </div>
                 <p className="text-xs text-[#64748B] mt-0.5">
                   Class {hw.class}
                   {hw.section ? `-${hw.section}` : ""} · {hw.subject} · Due{" "}
                   {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} ·{" "}
                   {hw.submissions.length}/{hw.totalStudents} submitted
                 </p>
+                {hw.totalStudents > 0 && (
+                  <div className="w-full max-w-xs h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden mt-2">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                      style={{ width: `${Math.min(100, (hw.submissions.length / hw.totalStudents) * 100)}%` }}
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon-sm" onClick={() => openGrading(hw)} aria-label="Submissions">
