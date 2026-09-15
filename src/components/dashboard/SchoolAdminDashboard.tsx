@@ -90,6 +90,41 @@ function getGreeting() {
   return "Good Evening";
 }
 
+const QUOTES: { text: string; author: string }[] = [
+  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
+  { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
+  { text: "Intelligence plus character — that is the goal of true education.", author: "Martin Luther King Jr." },
+  { text: "Teaching is the one profession that creates all other professions.", author: "Unknown" },
+  { text: "The roots of education are bitter, but the fruit is sweet.", author: "Aristotle" },
+  { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
+  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+];
+
+function SchoolIllustration() {
+  return (
+    <svg viewBox="0 0 220 140" className="h-full w-full" aria-hidden="true">
+      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#2563EB" opacity="0.06" />
+      <rect x="16" y="112" width="30" height="16" rx="2" fill="#7C3AED" opacity="0.18" />
+      <circle cx="31" cy="98" r="16" fill="#22C55E" opacity="0.22" />
+      <rect x="174" y="108" width="26" height="20" rx="2" fill="#2563EB" opacity="0.14" />
+      <circle cx="187" cy="96" r="14" fill="#22C55E" opacity="0.18" />
+      <rect x="55" y="60" width="110" height="68" rx="4" fill="#EEF2FF" stroke="#C7D2FE" strokeWidth="1.5" />
+      <polygon points="48,62 110,26 172,62" fill="#7C3AED" opacity="0.85" />
+      <rect x="106" y="10" width="3" height="20" fill="#94A3B8" />
+      <polygon points="109,10 128,15 109,20" fill="#2563EB" />
+      <rect x="94" y="94" width="32" height="34" rx="2" fill="#2563EB" opacity="0.85" />
+      <circle cx="121" cy="111" r="1.6" fill="#EEF2FF" />
+      {[70, 143].map((x) => (
+        <g key={x}>
+          <rect x={x} y="72" width="18" height="16" rx="2" fill="#fff" stroke="#C7D2FE" strokeWidth="1.2" />
+          <rect x={x} y="72" width="18" height="16" rx="2" fill="#60A5FA" opacity="0.3" />
+        </g>
+      ))}
+      <circle cx="196" cy="26" r="12" fill="#FBBF24" opacity="0.65" />
+    </svg>
+  );
+}
+
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -111,6 +146,8 @@ const panelClass = "rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,
 export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: string; schoolName?: string }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Snapshot once on mount rather than calling Date.now() during render (impure).
+  const [quoteIndex] = useState(() => Math.floor(Date.now() / 86400000) % QUOTES.length);
 
   useEffect(() => {
     const token = getToken();
@@ -139,6 +176,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.marked) * 100)
       : null;
   const maxTrendCount = Math.max(1, ...attendanceTrend.flatMap((d) => [d.present, d.absent]));
+  const quote = QUOTES[quoteIndex];
 
   return (
     <div className="space-y-6">
@@ -147,19 +185,28 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
         <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#7C3AED]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#2563EB]/10 blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
-          <div>
+          <div className="max-w-xl">
             <h1 className="text-2xl sm:text-[26px] font-bold text-[#172554]">
               {getGreeting()}, <span className="text-[#2563EB]">{adminName || "Admin"}</span>
             </h1>
             <p className="text-sm text-[#475569] mt-1.5">
               Here&apos;s what&apos;s happening at {schoolName || "your school"} today.
             </p>
+            <p className="text-sm text-[#334155] mt-4 italic border-l-2 border-[#7C3AED]/40 pl-3">
+              &ldquo;{quote.text}&rdquo;
+              <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm shrink-0 self-start sm:self-auto">
-            <CalendarDays className="h-4 w-4 text-[#2563EB]" />
-            <span className="text-sm font-semibold text-[#172554]">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            </span>
+          <div className="flex flex-col items-end gap-4 shrink-0 self-stretch sm:self-auto">
+            <div className="flex items-center gap-2 rounded-2xl bg-white/80 backdrop-blur px-4 py-2.5 border border-white shadow-sm self-start sm:self-auto">
+              <CalendarDays className="h-4 w-4 text-[#2563EB]" />
+              <span className="text-sm font-semibold text-[#172554]">
+                {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </span>
+            </div>
+            <div className="hidden sm:block h-28 w-40 self-end">
+              <SchoolIllustration />
+            </div>
           </div>
         </div>
       </div>
@@ -199,6 +246,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
           color="#16A34A"
           colorDark="#15803D"
           icon={CalendarCheck}
+          sparkline={attendanceTrend.map((d) => d.present)}
         />
         <StatCard
           title="Fee Collection"
@@ -207,6 +255,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
           color="#F59E0B"
           colorDark="#D97706"
           icon={IndianRupee}
+          sparkline={feeMonthly.map((m) => m.collected)}
         />
       </div>
 

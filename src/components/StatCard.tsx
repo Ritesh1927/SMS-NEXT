@@ -1,5 +1,6 @@
 import { ArrowUp, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 
 interface StatCardProps {
   title: string;
@@ -8,9 +9,12 @@ interface StatCardProps {
   color: string;
   colorDark: string;
   icon: LucideIcon;
+  sparkline?: number[];
 }
 
-export function StatCard({ title, value, trend, color, colorDark, icon: Icon }: StatCardProps) {
+export function StatCard({ title, value, trend, color, colorDark, icon: Icon, sparkline }: StatCardProps) {
+  const hasSparkline = sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0);
+
   return (
     <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5">
       <div
@@ -33,6 +37,21 @@ export function StatCard({ title, value, trend, color, colorDark, icon: Icon }: 
           </span>
         )}
       </div>
+      {hasSparkline && (
+        <div className="-mx-1 -mb-1 mt-2 h-9">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={sparkline.map((v, i) => ({ i, v }))} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id={`spark-${title.replace(/\s+/g, "")}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} fill={`url(#spark-${title.replace(/\s+/g, "")})`} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
