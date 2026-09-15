@@ -17,6 +17,17 @@ export function getAuthUser(req: Request): TokenPayload | null {
   }
 }
 
+type SuperAdminResult = { auth: TokenPayload } | { error: NextResponse };
+
+// Shared by every protected /api/superadmin/* route.
+export function requireSuperAdmin(req: Request): SuperAdminResult {
+  const auth = getAuthUser(req);
+  if (!auth || auth.role !== "superadmin") {
+    return { error: NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 }) };
+  }
+  return { auth };
+}
+
 type FeeManagerResult = { auth: TokenPayload } | { error: NextResponse };
 
 // Shared by every /api/fees write route: schooladmin is always allowed,

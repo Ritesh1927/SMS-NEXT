@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { SuperAdmin } from "@/models/SuperAdmin";
 import { generateToken } from "@/lib/helpers";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 // Step 2 of SuperAdmin login: verify the emailed OTP and issue the real
 // session token.
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email, otp } = await req.json();
     if (!email || !otp) {

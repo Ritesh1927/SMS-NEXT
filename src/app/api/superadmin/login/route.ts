@@ -3,11 +3,15 @@ import { connectDB } from "@/lib/db";
 import { SuperAdmin } from "@/models/SuperAdmin";
 import { generateOTP } from "@/lib/helpers";
 import { sendOTPMail } from "@/lib/mail";
+import { checkAuthRateLimit } from "@/lib/rateLimit";
 
 // Step 1 of SuperAdmin login: verify email + password, then email a one-time
 // code. The actual session token is only issued after that OTP is verified
 // (see /api/superadmin/verify-otp) — mirrors SMS-BACKEND's two-step flow.
 export async function POST(req: Request) {
+  const limited = await checkAuthRateLimit(req);
+  if (limited) return limited;
+
   try {
     const { email, password } = await req.json();
     if (!email || !password) {
