@@ -6,6 +6,10 @@ import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { AttendanceRecord } from "@/models/AttendanceRecord";
+import { FeePayment } from "@/models/FeePayment";
+import { Result } from "@/models/Result";
+import { Exam } from "@/models/Exam";
+import { Notice } from "@/models/Notice";
 import { formatClassName } from "@/lib/helpers";
 
 export async function GET(req: Request) {
@@ -84,13 +88,89 @@ export async function GET(req: Request) {
       }),
     );
 
+    // Last 6 calendar months (oldest first), bucketed by each fee's dueDate —
+    // matches how the Fees page itself groups payments into a monthly cycle.
+    const sixMonthsAgo = new Date(monthStart);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    const feeBuckets = await FeePayment.aggregate([
+      { $match: { school: schoolObjectId, dueDate: { $gte: sixMonthsAgo } } },
+      {
+        $group: {
+          _id: { year: { $year: "$dueDate" }, month: { $month: "$dueDate" } },
+          collected: { $sum: "$paidAmount" },
+          pending: { $sum: { $subtract: ["$amount", "$paidAmount"] } },
+        },
+      },
+    ]);
+    const feeByKey = new Map(feeBuckets.map((b) => [`${b._id.year}-${b._id.month}`, b]));
+    const feeMonthly = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(monthStart);
+      d.setMonth(d.getMonth() - (5 - i));
+      const bucket = feeByKey.get(`${d.getFullYear()}-${d.getMonth() + 1}`);
+      return {
+        month: d.toLocaleDateString("en-US", { month: "short" }),
+        collected: bucket?.collected || 0,
+        pending: Math.max(0, bucket?.pending || 0),
+      };
+    });
+    const feeCollectedThisMonth = feeMonthly[feeMonthly.length - 1]?.collected || 0;
+
+    const classPerformance = (
+      await Result.aggregate([
+        { $match: { school: schoolObjectId, isPublished: true } },
+        { $lookup: { from: "students", localField: "student", foreignField: "_id", as: "s" } },
+        { $unwind: "$s" },
+        { $group: { _id: "$s.class", avg: { $avg: "$percentage" } } },
+        { $sort: { _id: 1 } },
+        { $limit: 8 },
+      ])
+    ).map((c) => ({ name: formatClassName(c._id), avg: Math.round(c.avg) }));
+
+    const upcomingExams = (
+      await Exam.find({ school: schoolId, date: { $gte: todayStart } })
+        .select("title date class section subject")
+        .sort({ date: 1 })
+        .limit(5)
+    ).map((e) => ({ title: e.title, date: e.date, class: formatClassName(e.class, e.section) }));
+
+    const pendingFeeStudents = await FeePayment.find({ school: schoolId, status: { $in: ["pending", "partial", "overdue"] } })
+      .populate("student", "name class section")
+      .sort({ dueDate: 1 })
+      .limit(5);
+
+    const [recentPayments, recentStudents, recentNotices] = await Promise.all([
+      FeePayment.find({ school: schoolId, status: "paid" }).populate("student", "name").sort({ paidDate: -1 }).limit(4),
+      Student.find({ school: schoolId, isActive: true }).sort({ admissionDate: -1 }).limit(4),
+      Notice.find({ school: schoolId }).sort({ createdAt: -1 }).limit(4),
+    ]);
+    const recentActivity = [
+      ...recentPayments
+        .filter((p) => p.paidDate)
+        .map((p) => ({
+          type: "fee" as const,
+          text: `${(p.student as unknown as { name: string })?.name || "A student"} paid ₹${p.paidAmount.toLocaleString()} for ${p.title}`,
+          time: p.paidDate as Date,
+        })),
+      ...recentStudents.map((s) => ({ type: "student" as const, text: `${s.name} was admitted`, time: s.admissionDate as Date })),
+      ...recentNotices.map((n) => ({ type: "notice" as const, text: `Notice posted: ${n.title}`, time: n.get("createdAt") as Date })),
+    ]
+      .filter((a) => a.time)
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 6)
+      .map((a) => ({ type: a.type, text: a.text, time: a.time }));
+
     return NextResponse.json({
       success: true,
       data: {
-        stats: { totalStudents, totalTeachers, totalParents, newStudentsThisMonth, newTeachersThisMonth },
+        stats: { totalStudents, totalTeachers, totalParents, newStudentsThisMonth, newTeachersThisMonth, feeCollectedThisMonth },
         studentsByClass,
         todayAttendance,
         attendanceTrend,
+        feeMonthly,
+        classPerformance,
+        upcomingExams,
+        pendingFeeStudents,
+        recentActivity,
       },
     });
   } catch (err) {

@@ -18,7 +18,7 @@ export default function DashboardPage() {
   if (!user) return null;
 
   if (user.role === "schooladmin") {
-    return <SchoolAdminDashboard schoolName={user.schoolName} />;
+    return <SchoolAdminDashboard adminName={user.name} schoolName={user.schoolName} />;
   }
 
   if (user.role === "parent") {
