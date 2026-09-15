@@ -168,20 +168,23 @@ export default function FeesPage() {
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))
       .catch(() => {});
-    apiGet<ConcessionsResponse>("/fees/concessions", token)
-      .then((res) => setConcessions(res.data))
-      .catch(() => {});
-    apiGet<StudentsResponse>("/students", token)
-      .then((res) => setStudents(res.data))
-      .catch(() => {});
-    apiGet<AnalyticsResponse>("/fees/analytics", token)
-      .then(setAnalytics)
-      .catch(() => {});
+    if (user?.role === "schooladmin") {
+      apiGet<ConcessionsResponse>("/fees/concessions", token)
+        .then((res) => setConcessions(res.data))
+        .catch(() => {});
+      apiGet<StudentsResponse>("/students", token)
+        .then((res) => setStudents(res.data))
+        .catch(() => {});
+      apiGet<AnalyticsResponse>("/fees/analytics", token)
+        .then(setAnalytics)
+        .catch(() => {});
+    }
   };
 
   useEffect(() => {
     if (user?.role === "parent") return;
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load() is stable enough here; only re-run when role changes.
   }, [user?.role]);
 
   const openAddConcession = () => {
@@ -366,14 +369,15 @@ export default function FeesPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
-      <Tabs defaultValue="dashboard">
+      <Tabs defaultValue={user.role === "schooladmin" ? "dashboard" : "payments"}>
         <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          {user.role === "schooladmin" && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
-          <TabsTrigger value="concessions">Concessions</TabsTrigger>
+          {user.role === "schooladmin" && <TabsTrigger value="concessions">Concessions</TabsTrigger>}
         </TabsList>
 
+        {user.role === "schooladmin" && (
         <TabsContent value="dashboard" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
@@ -436,6 +440,7 @@ export default function FeesPage() {
             </div>
           </div>
         </TabsContent>
+        )}
 
         <TabsContent value="payments" className="mt-4">
           {!payments ? (
@@ -521,6 +526,7 @@ export default function FeesPage() {
           )}
         </TabsContent>
 
+        {user.role === "schooladmin" && (
         <TabsContent value="concessions" className="mt-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-[#64748B]">Apply % or flat discounts per student per fee head.</p>
@@ -576,6 +582,7 @@ export default function FeesPage() {
             </div>
           )}
         </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={structureOpen} onOpenChange={setStructureOpen}>
