@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -58,6 +58,7 @@ export default function ClassesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const isTeacher = user?.role === "teacher";
 
@@ -149,6 +150,16 @@ export default function ClassesPage() {
 
   if (!user) return null;
 
+  const filteredClasses = (classes || []).filter((c) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.section.toLowerCase().includes(q) ||
+      (c.classTeacher?.name || "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -172,6 +183,13 @@ export default function ClassesPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
+      {classes && classes.length > 0 && (
+        <div className="relative max-w-sm mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Input placeholder="Search classes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      )}
+
       {error ? null : !classes ? (
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
@@ -180,9 +198,13 @@ export default function ClassesPage() {
         <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <p className="text-sm text-[#64748B]">No classes yet. Add your first one to get started.</p>
         </div>
+      ) : filteredClasses.length === 0 ? (
+        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-[#64748B]">No classes match your search.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {classes.map((c) => (
+          {filteredClasses.map((c) => (
             <div key={c._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex items-start justify-between">
                 <div>
