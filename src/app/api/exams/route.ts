@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
+import "@/models/Admin";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
       examType: examType || "unit-test",
       instructions: instructions || "",
       createdBy: auth.id,
+      createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
       status: "upcoming",
     });
 

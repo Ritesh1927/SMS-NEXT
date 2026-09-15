@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Notice } from "@/models/Notice";
 import { Teacher } from "@/models/Teacher";
+import "@/models/Admin";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);

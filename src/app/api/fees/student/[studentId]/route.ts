@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { Parent } from "@/models/Parent";
+import "@/models/FeeStructure";
 
 // GET /api/fees/student/[studentId] — a student's fee records + paid/
 // pending totals. Simplified from SMS-BACKEND's getStudentFees, which

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Homework } from "@/models/Homework";
+import "@/models/Teacher";
+import "@/models/Admin";
+import "@/models/Student";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = getAuthUser(req);

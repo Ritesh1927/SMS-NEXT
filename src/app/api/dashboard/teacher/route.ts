@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
+import "@/models/Class";
 import { formatClassName } from "@/lib/helpers";
 
 // Legacy fallback for teachers whose classes were entered as free text

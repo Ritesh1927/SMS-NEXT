@@ -109,7 +109,9 @@ export async function POST(req: Request) {
     if (!role || role === "parent") {
       const filter: Record<string, unknown> = { email: identifier.toLowerCase() };
       if (schoolId) filter.school = schoolId;
-      const parents = await Parent.find(filter).populate("students", "name studentId class section");
+      const parents = await Parent.find(filter)
+        .populate("students", "name studentId class section")
+        .populate<{ school: { _id: unknown; schoolName: string } }>("school", "schoolName");
       for (const p of parents) {
         if (!(await p.comparePassword(password))) continue;
         if (!p.isActive) {
@@ -117,8 +119,8 @@ export async function POST(req: Request) {
           continue;
         }
         results.push({
-          schoolId: String(p.school),
-          schoolName: "Unknown School",
+          schoolId: String(p.school._id),
+          schoolName: p.school.schoolName || "Unknown School",
           role: "parent",
           userId: p.id,
           userName: p.name,
@@ -131,7 +133,10 @@ export async function POST(req: Request) {
     if (!role || role === "teacher") {
       const filter: Record<string, unknown> = { email: identifier.toLowerCase() };
       if (schoolId) filter.school = schoolId;
-      const teachers = await Teacher.find(filter);
+      const teachers = await Teacher.find(filter).populate<{ school: { _id: unknown; schoolName: string } }>(
+        "school",
+        "schoolName",
+      );
       for (const t of teachers) {
         if (!(await t.comparePassword(password))) continue;
         if (!t.isActive) {
@@ -139,8 +144,8 @@ export async function POST(req: Request) {
           continue;
         }
         results.push({
-          schoolId: String(t.school),
-          schoolName: "Unknown School",
+          schoolId: String(t.school._id),
+          schoolName: t.school.schoolName || "Unknown School",
           role: "teacher",
           userId: t.id,
           userName: t.name,

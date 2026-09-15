@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import "@/models/Subject";
+import "@/models/Teacher";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);

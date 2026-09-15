@@ -5,6 +5,7 @@ import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { FeeStructure } from "@/models/FeeStructure";
 import { Student } from "@/models/Student";
+import "@/models/Teacher";
 
 function populate(q: ReturnType<typeof FeePayment.find>) {
   return q

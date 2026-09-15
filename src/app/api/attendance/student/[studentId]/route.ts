@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { AttendanceRecord } from "@/models/AttendanceRecord";
 import { Parent } from "@/models/Parent";
+import "@/models/Class";
 
 // GET /api/attendance/student/[studentId]?month&year — one student's
 // attendance history and summary. Schooladmin/teacher can view any student

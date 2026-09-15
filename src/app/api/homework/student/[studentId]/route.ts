@@ -4,6 +4,8 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Homework } from "@/models/Homework";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
+import "@/models/Teacher";
+import "@/models/Admin";
 
 // GET /api/homework/student/[studentId] — a parent's view of one child's
 // homework. Not present as its own endpoint in SMS-BACKEND (its

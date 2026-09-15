@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db";
 import { requireFeeManager } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
+import "@/models/FeeStructure";
+import "@/models/Teacher";
 
 async function genReceipt() {
   const count = await FeePayment.countDocuments();

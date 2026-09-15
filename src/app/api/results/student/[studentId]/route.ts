@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Result } from "@/models/Result";
 import { Parent } from "@/models/Parent";
+import "@/models/Exam";
 
 // GET /api/results/student/[studentId] — a student's results + average.
 // SMS-BACKEND's getStudentResults lets ANY parent pass any studentId with

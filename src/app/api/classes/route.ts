@@ -5,6 +5,7 @@ import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 import "@/models/Subject";
+import "@/models/Teacher";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);

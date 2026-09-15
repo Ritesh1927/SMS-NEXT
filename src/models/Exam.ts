@@ -16,6 +16,7 @@ export interface IExam extends Document {
   passingMarks: number;
   examType: ExamType;
   createdBy: mongoose.Types.ObjectId;
+  createdByModel: "Teacher" | "Admin";
   instructions: string;
   status: ExamStatus;
 }
@@ -33,7 +34,8 @@ const examSchema = new Schema<IExam>(
     totalMarks: { type: Number, required: true },
     passingMarks: { type: Number, required: true },
     examType: { type: String, enum: ["unit-test", "mid-term", "final", "practical", "assignment"], default: "unit-test" },
-    createdBy: { type: Schema.Types.ObjectId, required: true },
+    createdBy: { type: Schema.Types.ObjectId, required: true, refPath: "createdByModel" },
+    createdByModel: { type: String, enum: ["Teacher", "Admin"], default: "Teacher" },
     instructions: { type: String, default: "" },
     status: { type: String, enum: ["upcoming", "ongoing", "completed", "cancelled"], default: "upcoming" },
   },

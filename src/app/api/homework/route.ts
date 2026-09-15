@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Homework } from "@/models/Homework";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
+import "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
 
 export async function GET(req: Request) {
