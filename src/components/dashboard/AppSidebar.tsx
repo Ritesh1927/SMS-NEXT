@@ -82,9 +82,13 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   parent: [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
+    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", featureKey: "attendance" },
+    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", featureKey: "homework" },
     { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", featureKey: "timetable" },
     { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", featureKey: "materials" },
     { href: "/dashboard/progress", label: "Progress", icon: TrendingUp, section: "Academics", featureKey: "reports" },
+
+    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", featureKey: "fees" },
 
     { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", featureKey: "notices" },
     { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
