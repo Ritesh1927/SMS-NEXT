@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       name, phone, studentClass, section, rollNumber, dateOfBirth, gender, address, bloodGroup,
       parentName, motherName, motherPhone, parentEmail, parentPhone, parentRelation,
       admissionDate, admissionNo, previousSchool, aadhaarNumber,
+      emergencyContact, emergencyPhone, emergencyRelation,
       religion, category,
     } = body;
 
@@ -86,6 +87,9 @@ export async function POST(req: Request) {
     }
     if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) {
       return NextResponse.json({ success: false, message: "Aadhaar must be exactly 12 digits." }, { status: 400 });
+    }
+    if (emergencyPhone && !/^\d{10}$/.test(emergencyPhone)) {
+      return NextResponse.json({ success: false, message: "Emergency phone must be exactly 10 digits." }, { status: 400 });
     }
 
     await connectDB();
@@ -163,6 +167,9 @@ export async function POST(req: Request) {
       admissionNo: finalAdmissionNo,
       previousSchool: previousSchool || "",
       aadhaarNumber: aadhaarNumber || "",
+      emergencyContact: emergencyContact || "",
+      emergencyPhone: emergencyPhone || "",
+      emergencyRelation: emergencyRelation || "",
       religion: religion || "",
       category: category || "",
     });

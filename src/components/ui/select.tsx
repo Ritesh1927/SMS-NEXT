@@ -5,7 +5,49 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+// Base UI's <Select.Value> only knows how to render a selected item's label
+// if it's told the value->label mapping up front via the `items` prop on
+// <Select.Root> (see base-ui.com/react/components/select) -- unlike Radix,
+// it does NOT scan the mounted <Select.Item> children to infer labels. Every
+// call site in this app renders <SelectItem value={...}>{label}</SelectItem>
+// without ever passing `items`, so whenever a value differs from its visible
+// label (an id, a composite key, or even just a differently-cased enum like
+// value="male" vs the text "Male"), the trigger silently falls back to
+// showing the raw value instead of the label. Fix it once, here, instead of
+// at every call site: walk this Select's own children to build the items
+// map automatically, so nothing above has to change.
+function collectSelectItems(children: React.ReactNode): Record<string, React.ReactNode> {
+  const items: Record<string, React.ReactNode> = {}
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return
+    if (child.type === SelectItem) {
+      const props = child.props as { value?: string; children?: React.ReactNode }
+      if (props.value !== undefined) items[props.value] = props.children
+      return
+    }
+    const childProps = child.props as { children?: React.ReactNode } | undefined
+    if (childProps?.children) {
+      Object.assign(items, collectSelectItems(childProps.children))
+    }
+  })
+  return items
+}
+
+function Select({
+  children,
+  items,
+  ...props
+}: SelectPrimitive.Root.Props<string, false>) {
+  const derivedItems = React.useMemo(
+    () => items ?? collectSelectItems(children),
+    [children, items]
+  )
+  return (
+    <SelectPrimitive.Root items={derivedItems} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

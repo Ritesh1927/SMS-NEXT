@@ -16,6 +16,30 @@ const ALLOWED_FIELDS = [
   "emergencyContact", "emergencyPhone", "emergencyRelation", "religion", "category",
 ] as const;
 
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = requireSchoolAdmin(req);
+  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+
+  try {
+    const { id } = await params;
+    await connectDB();
+
+    const student = await Student.findOne({ _id: id, school: auth.schoolId })
+      .select("-password")
+      .populate("parent", "name motherName motherPhone email phone relation");
+    if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
+
+    return NextResponse.json({ success: true, data: student });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, message: err instanceof Error ? err.message : "Failed to load student." },
+      { status: 500 },
+    );
+  }
+}
+
+const PARENT_SYNC_FIELDS = ["parentName", "motherName", "motherPhone", "parentPhone", "parentEmail"] as const;
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireSchoolAdmin(req);
   if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
@@ -26,6 +50,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updates: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) updates[key] = body[key];
+    }
+    const parentBody: Record<string, unknown> = {};
+    for (const key of PARENT_SYNC_FIELDS) {
+      if (body[key] !== undefined) parentBody[key] = body[key];
     }
 
     await connectDB();
@@ -71,6 +99,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       returnDocument: "after",
     }).select("-password");
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
+
+    if (student.parent && Object.keys(parentBody).length > 0) {
+      const parentUpdates: Record<string, unknown> = {};
+      if (parentBody.parentName) parentUpdates.name = parentBody.parentName;
+      if (parentBody.motherName !== undefined) parentUpdates.motherName = parentBody.motherName;
+      if (parentBody.motherPhone !== undefined) parentUpdates.motherPhone = parentBody.motherPhone;
+      if (parentBody.parentPhone) parentUpdates.phone = parentBody.parentPhone;
+      if (parentBody.parentEmail) parentUpdates.email = parentBody.parentEmail;
+      await Parent.findOneAndUpdate({ _id: student.parent, school: auth.schoolId }, parentUpdates);
+    }
 
     return NextResponse.json({ success: true, message: "Student updated.", data: student });
   } catch (err) {

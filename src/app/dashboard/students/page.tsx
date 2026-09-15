@@ -1,21 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Loader2, User, Pencil, Trash2, Power } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface ClassOption {
-  _id: string;
-  name: string;
-  section: string;
-}
 
 interface StudentRow {
   _id: string;
@@ -36,51 +28,17 @@ interface StudentsResponse {
   data: StudentRow[];
 }
 
-interface ClassesResponse {
-  success: boolean;
-  data: ClassOption[];
-}
-
-const classKey = (name: string, section: string) => `${name}::${section}`;
-
 interface ApiMessageResponse {
   success: boolean;
   message?: string;
-  parentTempPassword?: string | null;
 }
-
-const EMPTY_FORM = {
-  name: "",
-  phone: "",
-  studentClass: "",
-  section: "",
-  rollNumber: "",
-  dateOfBirth: "",
-  gender: "male",
-  admissionDate: "",
-  parentName: "",
-  motherName: "",
-  parentPhone: "",
-  motherPhone: "",
-  parentEmail: "",
-  parentRelation: "father",
-};
-
-const EMPTY_EDIT_FORM = { name: "", phone: "", class: "", section: "", rollNumber: "" };
 
 export default function StudentsPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
-  const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
-  const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Teachers get a read-only view scoped to their own classes — matches
   // SMS-BACKEND, where the student create/update/delete routes are
@@ -94,72 +52,12 @@ export default function StudentsPage() {
     apiGet<StudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
       .then((res) => setStudents(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
-    apiGet<ClassesResponse>("/classes", token)
-      .then((res) => setClasses(res.data))
-      .catch(() => {});
   };
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTeacher]);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const token = getToken();
-    if (!token) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
-      });
-      const json: ApiMessageResponse = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message || "Failed to create student.");
-      toast.success("Student added", {
-        description: json.parentTempPassword
-          ? `Parent account created. Temporary password: ${json.parentTempPassword} (also emailed).`
-          : "Linked to existing parent account.",
-      });
-      setOpen(false);
-      setForm(EMPTY_FORM);
-      load();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed to create student." });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openEdit = (s: StudentRow) => {
-    setEditingStudent(s);
-    setEditForm({ name: s.name, phone: s.phone || "", class: s.class, section: s.section || "", rollNumber: s.rollNumber || "" });
-  };
-
-  const handleEditSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!editingStudent) return;
-    const token = getToken();
-    if (!token) return;
-    setEditSubmitting(true);
-    try {
-      const res = await fetch(`/api/students/${editingStudent._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(editForm),
-      });
-      const json: ApiMessageResponse = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message || "Failed to update student.");
-      toast.success("Student updated");
-      setEditingStudent(null);
-      load();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
-    } finally {
-      setEditSubmitting(false);
-    }
-  };
 
   const toggleActive = async (s: StudentRow) => {
     const token = getToken();
@@ -215,7 +113,7 @@ export default function StudentsPage() {
           </p>
         </div>
         {!isTeacher && (
-          <Button onClick={() => setOpen(true)} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
+          <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
             <Plus className="h-4 w-4" /> Add Student
           </Button>
         )}
@@ -257,7 +155,7 @@ export default function StudentsPage() {
                 </span>
                 {!isTeacher && (
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(s)} aria-label="Edit">
+                    <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -286,159 +184,6 @@ export default function StudentsPage() {
           ))}
         </div>
       )}
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">Add Student</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="mt-2">
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">Student Details</p>
-                <Field label="Full Name" required>
-                  <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
-                </Field>
-                {classes.length > 0 ? (
-                  <Field label="Class" required>
-                    <Select
-                      value={form.studentClass ? classKey(form.studentClass, form.section) : ""}
-                      onValueChange={(v) => {
-                        const cls = classes.find((c) => classKey(c.name, c.section) === v);
-                        if (cls) setForm((f) => ({ ...f, studentClass: cls.name, section: cls.section }));
-                      }}
-                    >
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
-                      <SelectContent>
-                        {classes.map((c) => (
-                          <SelectItem key={c._id} value={classKey(c.name, c.section)}>
-                            Class {c.name}-{c.section}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Class" required>
-                      <Input value={form.studentClass} onChange={(e) => setForm((f) => ({ ...f, studentClass: e.target.value }))} required />
-                    </Field>
-                    <Field label="Section">
-                      <Input value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} />
-                    </Field>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Roll Number" required>
-                    <Input value={form.rollNumber} onChange={(e) => setForm((f) => ({ ...f, rollNumber: e.target.value }))} required />
-                  </Field>
-                  <Field label="Phone (10 digits)" required>
-                    <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} required maxLength={10} />
-                  </Field>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Date of Birth" required>
-                    <Input type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} required />
-                  </Field>
-                  <Field label="Admission Date" required>
-                    <Input type="date" value={form.admissionDate} onChange={(e) => setForm((f) => ({ ...f, admissionDate: e.target.value }))} required />
-                  </Field>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">Parent / Guardian</p>
-                <Field label="Father's Name" required>
-                  <Input value={form.parentName} onChange={(e) => setForm((f) => ({ ...f, parentName: e.target.value }))} required />
-                </Field>
-                <Field label="Mother's Name" required>
-                  <Input value={form.motherName} onChange={(e) => setForm((f) => ({ ...f, motherName: e.target.value }))} required />
-                </Field>
-                <Field label="Parent Email" required>
-                  <Input type="email" value={form.parentEmail} onChange={(e) => setForm((f) => ({ ...f, parentEmail: e.target.value }))} required />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Parent Phone" required>
-                    <Input value={form.parentPhone} onChange={(e) => setForm((f) => ({ ...f, parentPhone: e.target.value }))} required maxLength={10} />
-                  </Field>
-                  <Field label="Mother's Phone">
-                    <Input value={form.motherPhone} onChange={(e) => setForm((f) => ({ ...f, motherPhone: e.target.value }))} maxLength={10} />
-                  </Field>
-                </div>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full mt-5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Student"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editingStudent} onOpenChange={(o) => { if (!o) setEditingStudent(null); }}>
-        <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">Edit Student</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-3 mt-2">
-            <Field label="Full Name" required>
-              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} required />
-            </Field>
-            {classes.length > 0 ? (
-              <Field label="Class" required>
-                <Select
-                  value={editForm.class ? classKey(editForm.class, editForm.section) : ""}
-                  onValueChange={(v) => {
-                    const cls = classes.find((c) => classKey(c.name, c.section) === v);
-                    if (cls) setEditForm((f) => ({ ...f, class: cls.name, section: cls.section }));
-                  }}
-                >
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c._id} value={classKey(c.name, c.section)}>
-                        Class {c.name}-{c.section}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Class" required>
-                  <Input value={editForm.class} onChange={(e) => setEditForm((f) => ({ ...f, class: e.target.value }))} required />
-                </Field>
-                <Field label="Section">
-                  <Input value={editForm.section} onChange={(e) => setEditForm((f) => ({ ...f, section: e.target.value }))} />
-                </Field>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Roll Number">
-                <Input value={editForm.rollNumber} onChange={(e) => setEditForm((f) => ({ ...f, rollNumber: e.target.value }))} />
-              </Field>
-              <Field label="Phone">
-                <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} maxLength={10} />
-              </Field>
-            </div>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={editSubmitting}>
-              {editSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">
-        {label}
-        {required && <span className="text-red-500"> *</span>}
-      </label>
-      {children}
     </div>
   );
 }
