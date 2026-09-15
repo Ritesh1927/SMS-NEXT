@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import type { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
-import "@/models/Class";
-import { formatClassName } from "@/lib/helpers";
+import { Class } from "@/models/Class";
+import { AttendanceRecord } from "@/models/AttendanceRecord";
+import { Homework } from "@/models/Homework";
+import { Result } from "@/models/Result";
+import { formatClassName, startOfToday } from "@/lib/helpers";
 
 // Legacy fallback for teachers whose classes were entered as free text
 // before assignedClasses (real Class refs) existed — "<class>-<section>",
@@ -58,6 +62,85 @@ export async function GET(req: Request) {
 
     const totalStudents = classBreakdown.reduce((sum, c) => sum + c.studentCount, 0);
 
+    // Classes this teacher is the *class teacher* of take priority for the
+    // attendance/performance widgets (matches the original's own
+    // preference) — only fall back to assignedClasses if they have none.
+    const classTeacherClasses = await Class.find({ classTeacher: teacher._id, school: teacher.school }).select("name section").lean();
+    let ownedClasses: { _id: Types.ObjectId; name: string; section: string }[] = classTeacherClasses;
+    if (ownedClasses.length === 0 && assigned.length > 0) {
+      ownedClasses = assigned.map((c) => ({ _id: c._id as Types.ObjectId, name: c.name, section: c.section }));
+    }
+    const classIds = ownedClasses.map((c) => c._id);
+
+    const myStudentCount =
+      ownedClasses.length > 0
+        ? await Student.countDocuments({
+            school: teacher.school,
+            isActive: true,
+            $or: ownedClasses.map((c) => ({ class: c.name, section: c.section })),
+          })
+        : 0;
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayRecords =
+      classIds.length > 0
+        ? await AttendanceRecord.find({ school: teacher.school, classId: { $in: classIds }, date: { $gte: todayStart, $lte: todayEnd } }).select("status")
+        : [];
+    const todayPresent = todayRecords.filter((r) => r.status === "present" || r.status === "late").length;
+    const todayAttendancePct = todayRecords.length > 0 ? Math.round((todayPresent / todayRecords.length) * 100) : null;
+
+    const pendingHomework = await Homework.countDocuments({
+      school: teacher.school,
+      assignedBy: teacher._id,
+      assignedByModel: "Teacher",
+      isActive: true,
+      dueDate: { $gte: startOfToday() },
+    });
+
+    // Weekly attendance trend — this calendar month's weeks, oldest first.
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthName = now.toLocaleString("en-US", { month: "short" });
+
+    const weeklyTrend: { week: string; label: string; rate: number }[] = [];
+    const wCursor = new Date(monthStart);
+    for (let weekIdx = 1; weekIdx <= 6; weekIdx++) {
+      const wStart = new Date(wCursor);
+      if (wStart > now) break;
+      const wEnd = new Date(wCursor);
+      wEnd.setDate(wEnd.getDate() + 6);
+      wEnd.setHours(23, 59, 59, 999);
+
+      const atts = classIds.length > 0 ? await AttendanceRecord.find({ school: teacher.school, classId: { $in: classIds }, date: { $gte: wStart, $lte: wEnd } }).select("status") : [];
+      const wPresent = atts.filter((r) => r.status === "present" || r.status === "late").length;
+
+      const startDay = wStart.getDate();
+      const endDay = Math.min(wEnd.getDate(), new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
+      weeklyTrend.push({
+        week: `W${weekIdx}`,
+        label: `${monthName} ${startDay}-${endDay}`,
+        rate: atts.length > 0 ? Math.round((wPresent / atts.length) * 100) : 0,
+      });
+      wCursor.setDate(wCursor.getDate() + 7);
+    }
+
+    // Class performance — average published Result % per owned class.
+    const classPerformance = await Promise.all(
+      ownedClasses.map(async (cls) => {
+        const label = formatClassName(cls.name, cls.section);
+        const studentIds = (await Student.find({ school: teacher.school, isActive: true, class: cls.name, section: cls.section }).select("_id")).map((s) => s._id);
+        if (studentIds.length === 0) return { name: label, avg: 0 };
+        const results = await Result.find({ school: teacher.school, student: { $in: studentIds } }).select("percentage");
+        const avg = results.length > 0 ? Math.round(results.reduce((s, r) => s + (r.percentage || 0), 0) / results.length) : 0;
+        return { name: label, avg };
+      }),
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -68,8 +151,11 @@ export async function GET(req: Request) {
           subjects: teacher.subjects,
           staffType: teacher.staffType,
         },
-        stats: { classCount: classBreakdown.length, totalStudents },
+        stats: { classCount: ownedClasses.length, totalStudents, myStudentCount, todayAttendancePct, pendingHomework },
         classBreakdown,
+        weeklyTrendMonth: `${monthName} ${now.getFullYear()}`,
+        weeklyTrend,
+        classPerformance,
       },
     });
   } catch (err) {

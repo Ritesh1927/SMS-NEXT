@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Layers, Loader2, BookOpen } from "lucide-react";
+import { Users, Layers, Loader2, BookOpen, CalendarCheck, ClipboardList, TrendingUp, IndianRupee } from "lucide-react";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -14,8 +15,17 @@ interface TeacherDashboardData {
     subjects: string[];
     staffType: string;
   };
-  stats: { classCount: number; totalStudents: number };
+  stats: {
+    classCount: number;
+    totalStudents: number;
+    myStudentCount: number;
+    todayAttendancePct: number | null;
+    pendingHomework: number;
+  };
   classBreakdown: { label: string; studentCount: number }[];
+  weeklyTrendMonth: string;
+  weeklyTrend: { week: string; label: string; rate: number }[];
+  classPerformance: { name: string; avg: number }[];
 }
 
 interface TeacherDashboardResponse {
@@ -23,9 +33,37 @@ interface TeacherDashboardResponse {
   data: TeacherDashboardData;
 }
 
+interface FeeRow {
+  _id: string;
+  name: string;
+  class: string;
+  section: string;
+  rollNumber: string;
+  totalDue: number;
+  totalPaid: number;
+  pendingAmount: number;
+  feeStatus: "clear" | "pending" | "partial" | "paid";
+}
+
+interface FeeSummaryResponse {
+  success: boolean;
+  data: FeeRow[];
+  summary: { totalDue: number; totalPaid: number; totalPending: number; paidCount: number; pendingCount: number };
+}
+
+const FEE_STATUS_STYLE: Record<FeeRow["feeStatus"], string> = {
+  paid: "bg-green-100 text-green-700",
+  clear: "bg-green-100 text-green-700",
+  partial: "bg-blue-100 text-blue-700",
+  pending: "bg-orange-100 text-orange-700",
+};
+
+const panelClass = "rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]";
+
 export function TeacherDashboard() {
   const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fees, setFees] = useState<FeeSummaryResponse | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -33,6 +71,9 @@ export function TeacherDashboard() {
     apiGet<TeacherDashboardResponse>("/dashboard/teacher", token)
       .then((res) => setData(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load dashboard."));
+    apiGet<FeeSummaryResponse>("/teachers/my-students/fees", token)
+      .then(setFees)
+      .catch(() => {});
   }, []);
 
   if (error) return <p className="text-sm text-red-600">{error}</p>;
@@ -45,7 +86,7 @@ export function TeacherDashboard() {
     );
   }
 
-  const { teacher, stats, classBreakdown } = data;
+  const { teacher, stats, classBreakdown, weeklyTrend, weeklyTrendMonth, classPerformance } = data;
 
   return (
     <div className="space-y-6">
@@ -56,20 +97,94 @@ export function TeacherDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title="Assigned Classes" value={String(stats.classCount)} color="#2563EB" colorDark="#1D4ED8" icon={Layers} />
-        <StatCard title="My Students" value={String(stats.totalStudents)} color="#7C3AED" colorDark="#6D28D9" icon={Users} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="My Classes" value={String(stats.classCount)} color="#2563EB" colorDark="#1D4ED8" icon={Layers} />
+        <StatCard title="Total Students" value={String(stats.myStudentCount)} color="#7C3AED" colorDark="#6D28D9" icon={Users} />
         <StatCard
-          title="Subjects"
-          value={teacher.subjects.length > 0 ? String(teacher.subjects.length) : "0"}
-          color="#0EA5E9"
-          colorDark="#0284C7"
-          icon={BookOpen}
+          title="Today's Attendance"
+          value={stats.todayAttendancePct != null ? `${stats.todayAttendancePct}%` : "—"}
+          trend={stats.todayAttendancePct != null ? undefined : "Not marked yet"}
+          color="#16A34A"
+          colorDark="#15803D"
+          icon={CalendarCheck}
+        />
+        <StatCard
+          title="Assignments Pending"
+          value={String(stats.pendingHomework)}
+          trend={stats.pendingHomework === 0 ? "All done" : undefined}
+          color="#F59E0B"
+          colorDark="#D97706"
+          icon={ClipboardList}
         />
       </div>
 
+      {fees && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard
+            title="Total Collected"
+            value={`₹${fees.summary.totalPaid.toLocaleString("en-IN")}`}
+            trend={fees.summary.paidCount ? `${fees.summary.paidCount} students paid` : "No payments yet"}
+            color="#22C55E"
+            colorDark="#16A34A"
+            icon={IndianRupee}
+          />
+          <StatCard
+            title="Pending Dues"
+            value={`₹${fees.summary.totalPending.toLocaleString("en-IN")}`}
+            trend={fees.summary.pendingCount ? `${fees.summary.pendingCount} students pending` : "All clear"}
+            color="#F59E0B"
+            colorDark="#D97706"
+            icon={IndianRupee}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className={panelClass}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-4 w-4 text-[#7C3AED]" />
+            <h2 className="text-sm font-semibold text-[#172554]">
+              Weekly Attendance Trend{weeklyTrendMonth ? ` — ${weeklyTrendMonth}` : ""}
+            </h2>
+          </div>
+          {weeklyTrend.length === 0 ? (
+            <p className="text-sm text-[#64748B]">No attendance data yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={weeklyTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="label" tick={{ fill: "#64748B", fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} />
+                <Tooltip formatter={(v) => [`${v}%`, "Attendance"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
+                <Line type="monotone" dataKey="rate" stroke="#7C3AED" strokeWidth={2.5} dot={{ r: 4, fill: "#7C3AED" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className={panelClass}>
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="h-4 w-4 text-fuchsia-600" />
+            <h2 className="text-sm font-semibold text-[#172554]">Class Performance Average</h2>
+          </div>
+          {classPerformance.length === 0 ? (
+            <p className="text-sm text-[#64748B]">No result data yet.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={classPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{ fill: "#64748B", fontSize: 12 }} />
+                <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 12 }} />
+                <Tooltip formatter={(v) => [`${v}%`, "Average"]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 8 }} />
+                <Bar dataKey="avg" fill="#33C6E7" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
       {teacher.subjects.length > 0 && (
-        <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className={panelClass}>
           <h2 className="text-sm font-semibold text-[#172554] mb-2">Subjects</h2>
           <div className="flex flex-wrap gap-2">
             {teacher.subjects.map((s) => (
@@ -81,8 +196,10 @@ export function TeacherDashboard() {
         </div>
       )}
 
-      <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]">
-        <h2 className="text-sm font-semibold text-[#172554] mb-4">My Classes</h2>
+      <div className={panelClass}>
+        <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-[#2563EB]" /> My Classes
+        </h2>
         {classBreakdown.length === 0 ? (
           <p className="text-sm text-[#64748B]">
             No classes assigned yet. Ask your school admin to assign classes on your profile.
@@ -98,6 +215,45 @@ export function TeacherDashboard() {
           </div>
         )}
       </div>
+
+      {fees && fees.data.length > 0 && (
+        <div className={panelClass}>
+          <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
+            <IndianRupee className="h-4 w-4 text-[#2563EB]" /> Student Fee Details
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#F1F5F9]">
+                  <th className="text-left p-2 font-medium text-[#64748B]">Student</th>
+                  <th className="text-left p-2 font-medium text-[#64748B]">Class</th>
+                  <th className="text-right p-2 font-medium text-[#64748B]">Total Due</th>
+                  <th className="text-right p-2 font-medium text-[#64748B]">Paid</th>
+                  <th className="text-right p-2 font-medium text-[#64748B]">Pending</th>
+                  <th className="text-center p-2 font-medium text-[#64748B]">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fees.data.map((s) => (
+                  <tr key={s._id} className="border-b border-[#F1F5F9] last:border-0">
+                    <td className="p-2">
+                      <p className="font-medium text-[#172554]">{s.name}</p>
+                      <p className="text-xs text-[#94A3B8]">{s.rollNumber}</p>
+                    </td>
+                    <td className="p-2 text-[#475569]">{s.class}-{s.section}</td>
+                    <td className="p-2 text-right font-mono text-[#172554]">₹{s.totalDue.toLocaleString("en-IN")}</td>
+                    <td className="p-2 text-right font-mono text-green-600">₹{s.totalPaid.toLocaleString("en-IN")}</td>
+                    <td className="p-2 text-right font-mono text-amber-600">₹{Math.max(0, s.pendingAmount).toLocaleString("en-IN")}</td>
+                    <td className="p-2 text-center">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${FEE_STATUS_STYLE[s.feeStatus]}`}>{s.feeStatus}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
