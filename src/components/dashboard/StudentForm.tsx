@@ -53,7 +53,11 @@ interface StudentResponse {
 interface ParentLookupResponse {
   success: boolean;
   found: boolean;
-  data?: { name: string; motherName: string; motherPhone: string; phone: string; relation: string };
+  data?: {
+    name: string; motherName: string; motherPhone: string; phone: string; relation: string;
+    address: string; emergencyContact: string; emergencyPhone: string; emergencyRelation: string;
+    religion: string; category: string;
+  };
 }
 
 interface ApiMessageResponse {
@@ -158,14 +162,21 @@ export function StudentForm({ studentId }: { studentId?: string }) {
     try {
       const res = await apiGet<ParentLookupResponse>(`/parents/lookup?email=${encodeURIComponent(email)}`, token);
       if (res.found && res.data) {
+        const d = res.data;
         setForm((f) => ({
           ...f,
-          parentName: res.data!.name || f.parentName,
-          motherName: res.data!.motherName || f.motherName,
-          motherPhone: res.data!.motherPhone || f.motherPhone,
-          parentPhone: res.data!.phone || f.parentPhone,
+          parentName: d.name || f.parentName,
+          motherName: d.motherName || f.motherName,
+          motherPhone: d.motherPhone || f.motherPhone,
+          parentPhone: d.phone || f.parentPhone,
+          address: d.address || f.address,
+          emergencyContact: d.emergencyContact || f.emergencyContact,
+          emergencyPhone: d.emergencyPhone || f.emergencyPhone,
+          emergencyRelation: d.emergencyRelation || f.emergencyRelation,
+          religion: d.religion || f.religion,
+          category: d.category || f.category,
         }));
-        toast.success("Existing parent found", { description: "Filled in their details for this sibling." });
+        toast.success("Existing parent found", { description: "Filled in their household details — you can still edit anything before saving." });
       }
     } catch {
       // Silent — a failed lookup shouldn't block the admin from typing the rest of the form.
