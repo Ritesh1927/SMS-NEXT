@@ -250,17 +250,23 @@ export default function TimetablePage() {
 
   const handleSave = async () => {
     if (!editCell || !editSubject.trim() || !selectedClassId) return;
+    const token = getToken();
+    if (!token) return;
     setSaving(true);
     try {
       const daysToSave = repeatAllDays ? DAYS : [editCell.day];
       for (const day of daysToSave) {
-        await apiPost("/timetable", {
-          classId: selectedClassId,
-          teacherId: editTeacherId || undefined,
-          day,
-          periodNumber: editCell.periodNumber,
-          subject: editSubject.trim(),
-        });
+        await apiPost(
+          "/timetable",
+          {
+            classId: selectedClassId,
+            teacherId: editTeacherId || undefined,
+            day,
+            periodNumber: editCell.periodNumber,
+            subject: editSubject.trim(),
+          },
+          token,
+        );
       }
       loadTimetable();
       setEditCell(null);
@@ -299,9 +305,11 @@ export default function TimetablePage() {
       toast.error("Label, start time and end time are required.");
       return;
     }
+    const token = getToken();
+    if (!token) return;
     setAddingPeriod(true);
     try {
-      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak });
+      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak }, token);
       setNewLabel("");
       setNewStart("");
       setNewEnd("");
@@ -334,6 +342,8 @@ export default function TimetablePage() {
       toast.error("Please enter valid values.");
       return;
     }
+    const token = getToken();
+    if (!token) return;
     setGenerating(true);
     try {
       const minsToTime = (mins: number) => {
@@ -352,7 +362,7 @@ export default function TimetablePage() {
           cursor += qBreakMin;
         }
       }
-      for (const p of toCreate) await apiPost("/periods", p);
+      for (const p of toCreate) await apiPost("/periods", p, token);
       loadPeriods();
       toast.success(`${toCreate.length} periods generated.`);
     } catch (err) {
