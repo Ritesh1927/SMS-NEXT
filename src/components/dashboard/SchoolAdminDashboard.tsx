@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Users, GraduationCap, UserRound, CalendarCheck, Loader2, IndianRupee,
   CalendarDays, FileText, Bell, CreditCard,
@@ -102,31 +103,6 @@ const QUOTES: { text: string; author: string }[] = [
   { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
   { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
 ];
-
-function SchoolIllustration() {
-  return (
-    <svg viewBox="0 0 220 140" className="h-full w-full" aria-hidden="true">
-      <ellipse cx="110" cy="128" rx="95" ry="8" fill="#2563EB" opacity="0.06" />
-      <rect x="16" y="112" width="30" height="16" rx="2" fill="#7C3AED" opacity="0.18" />
-      <circle cx="31" cy="98" r="16" fill="#22C55E" opacity="0.22" />
-      <rect x="174" y="108" width="26" height="20" rx="2" fill="#2563EB" opacity="0.14" />
-      <circle cx="187" cy="96" r="14" fill="#22C55E" opacity="0.18" />
-      <rect x="55" y="60" width="110" height="68" rx="4" fill="#EEF2FF" stroke="#C7D2FE" strokeWidth="1.5" />
-      <polygon points="48,62 110,26 172,62" fill="#7C3AED" opacity="0.85" />
-      <rect x="106" y="10" width="3" height="20" fill="#94A3B8" />
-      <polygon points="109,10 128,15 109,20" fill="#2563EB" />
-      <rect x="94" y="94" width="32" height="34" rx="2" fill="#2563EB" opacity="0.85" />
-      <circle cx="121" cy="111" r="1.6" fill="#EEF2FF" />
-      {[70, 143].map((x) => (
-        <g key={x}>
-          <rect x={x} y="72" width="18" height="16" rx="2" fill="#fff" stroke="#C7D2FE" strokeWidth="1.2" />
-          <rect x={x} y="72" width="18" height="16" rx="2" fill="#60A5FA" opacity="0.3" />
-        </g>
-      ))}
-      <circle cx="196" cy="26" r="12" fill="#FBBF24" opacity="0.65" />
-    </svg>
-  );
-}
 
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: "#fff",
@@ -274,8 +250,8 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                 {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </span>
             </div>
-            <div className="hidden sm:block h-28 w-40 self-end">
-              <SchoolIllustration />
+            <div className="hidden sm:block relative h-28 w-40 self-end">
+              <Image src="/school-illustration.png" alt="" fill className="object-contain" priority />
             </div>
           </div>
         </div>
