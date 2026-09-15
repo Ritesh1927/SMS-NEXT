@@ -25,32 +25,33 @@ interface NavItem {
   section: string;
   badge?: "unread";
   pageKey?: string;
+  featureKey?: string;
 }
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   schooladmin: [
-    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview" },
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
-    { href: "/dashboard/students", label: "Students", icon: Users, section: "People" },
-    { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, section: "People" },
+    { href: "/dashboard/students", label: "Students", icon: Users, section: "People", featureKey: "students" },
+    { href: "/dashboard/teachers", label: "Teachers", icon: GraduationCap, section: "People", featureKey: "teachers" },
     { href: "/dashboard/parents", label: "Parents", icon: UserRound, section: "People" },
-    { href: "/dashboard/classes", label: "Classes", icon: School, section: "People" },
+    { href: "/dashboard/classes", label: "Classes", icon: School, section: "People", featureKey: "classes" },
 
     { href: "/dashboard/subjects", label: "Subjects", icon: Link2, section: "Academics" },
-    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics" },
-    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics" },
-    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics" },
-    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics" },
-    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics" },
+    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", featureKey: "attendance" },
+    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", featureKey: "exams" },
+    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", featureKey: "homework" },
+    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", featureKey: "timetable" },
+    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", featureKey: "materials" },
 
-    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance" },
+    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", featureKey: "fees" },
 
-    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread" },
+    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", featureKey: "notices" },
+    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
 
-    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights" },
+    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", featureKey: "reports" },
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
-    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights" },
+    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights", featureKey: "ai" },
 
     { href: "/dashboard/roles-permissions", label: "Roles & Permissions", icon: Shield, section: "Administration" },
     { href: "/dashboard/user-master", label: "User Master", icon: UserCog, section: "Administration" },
@@ -58,32 +59,32 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/settings", label: "Settings", icon: Settings, section: "Administration" },
   ],
   teacher: [
-    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview" },
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
-    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", pageKey: "pageAttendance" },
-    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", pageKey: "pageTestsExams" },
-    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", pageKey: "pageHomework" },
-    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", pageKey: "pageTimetable" },
-    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", pageKey: "pageStudyMaterials" },
+    { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", pageKey: "pageAttendance", featureKey: "attendance" },
+    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", pageKey: "pageTestsExams", featureKey: "exams" },
+    { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", pageKey: "pageHomework", featureKey: "homework" },
+    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", pageKey: "pageTimetable", featureKey: "timetable" },
+    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", pageKey: "pageStudyMaterials", featureKey: "materials" },
 
-    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", pageKey: "pageFees" },
+    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", pageKey: "pageFees", featureKey: "fees" },
 
-    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", pageKey: "pageNotices" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication" },
+    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", pageKey: "pageNotices", featureKey: "notices" },
+    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication", featureKey: "chat" },
 
-    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", pageKey: "pageReports" },
+    { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", pageKey: "pageReports", featureKey: "reports" },
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
-    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights", pageKey: "pageAi" },
+    { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights", pageKey: "pageAi", featureKey: "ai" },
   ],
   parent: [
-    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview" },
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
-    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics" },
-    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics" },
-    { href: "/dashboard/progress", label: "Progress", icon: TrendingUp, section: "Academics" },
+    { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", featureKey: "timetable" },
+    { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", featureKey: "materials" },
+    { href: "/dashboard/progress", label: "Progress", icon: TrendingUp, section: "Academics", featureKey: "reports" },
 
-    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication" },
-    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread" },
+    { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", featureKey: "notices" },
+    { href: "/dashboard/chat", label: "Messages", icon: MessageSquare, section: "Communication", badge: "unread", featureKey: "chat" },
 
     { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights" },
   ],
@@ -123,9 +124,15 @@ interface PermissionResponse {
   data: { pages: string[] };
 }
 
+interface LicenseResponse {
+  success: boolean;
+  data: { features: string[] } | null;
+}
+
 export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; unreadCount: number; onLogout: () => void }) {
   const pathname = usePathname();
   const [allowedPages, setAllowedPages] = useState<string[] | null>(null);
+  const [allowedFeatures, setAllowedFeatures] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (user.role !== "teacher") return;
@@ -136,12 +143,23 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
       .catch(() => setAllowedPages([]));
   }, [user.role, user.id]);
 
-  // Empty/not-yet-loaded pages list means "allow everything" — matches the
-  // original app's backward-compatible default for teachers with no
-  // Roles & Permissions assignment yet.
+  useEffect(() => {
+    if (user.role !== "schooladmin" && user.role !== "teacher" && user.role !== "parent") return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<LicenseResponse>("/school/license", token)
+      .then((res) => setAllowedFeatures(res.data?.features || []))
+      .catch(() => setAllowedFeatures([]));
+  }, [user.role]);
+
+  // Empty/not-yet-loaded pages or features list means "allow everything" —
+  // matches the original app's backward-compatible default (teachers with
+  // no Roles & Permissions assignment yet; schools with no plan features
+  // configured, i.e. trial/free mode).
   const navItems = (NAV_BY_ROLE[user.role] || []).filter((item) => {
-    if (!item.pageKey || !allowedPages || allowedPages.length === 0) return true;
-    return allowedPages.includes(item.pageKey);
+    if (item.pageKey && allowedPages && allowedPages.length > 0 && !allowedPages.includes(item.pageKey)) return false;
+    if (item.featureKey && allowedFeatures && allowedFeatures.length > 0 && !allowedFeatures.includes(item.featureKey)) return false;
+    return true;
   });
   const sections = groupBySection(navItems);
 
