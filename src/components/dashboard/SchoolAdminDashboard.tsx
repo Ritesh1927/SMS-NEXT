@@ -231,13 +231,17 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
         <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
 
-        <div className="hidden sm:block pointer-events-none absolute right-10 sm:right-16 bottom-0 h-[85%] w-[52%]">
+        <div className="hidden sm:block pointer-events-none absolute right-20 sm:right-28 bottom-0 h-[85%] w-[52%]">
           <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(90deg, #F5F3FF 0%, rgba(245,243,255,0.75) 20%, rgba(245,243,255,0.25) 45%, rgba(245,243,255,0) 65%)" }}
+          />
         </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-6 sm:p-7">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
           <div className="max-w-xl">
-            <h1 className="text-2xl sm:text-[26px] font-bold text-[#172554]">
+            <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#172554]">
               {getGreeting()}, <span className="text-[#4F46E5]">{adminName || "Admin"}</span>
             </h1>
             <p className="text-sm text-[#475569] mt-1.5">
