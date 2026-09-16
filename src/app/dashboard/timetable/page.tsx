@@ -152,21 +152,25 @@ export default function TimetablePage() {
   // assignedClasses); a class's classTeacher is included too so the class's
   // own teacher isn't excluded just for lacking a separate assignedClasses entry.
   const selectedClass = classes.find((c) => c._id === selectedClassId) || null;
-  const filteredTeachers = useMemo(() => {
-    const byClass = !selectedClass
-      ? teachers
-      : teachers.filter(
-          (t) =>
-            t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
-            selectedClass.classTeacher?._id === t._id,
-        );
-    if (!editSubject) return byClass;
-    // Once a period's subject is picked, surface the teacher whose primary
-    // (then secondary) subject matches it first — no one is hidden, just
-    // reordered, so a teacher can still be picked outside their subject.
-    const rank = (t: TeacherOption) => (t.primarySubject === editSubject ? 0 : t.secondarySubject === editSubject ? 1 : 2);
-    return [...byClass].sort((a, b) => rank(a) - rank(b));
-  }, [teachers, selectedClass, editSubject]);
+  const classTeachers = useMemo(() => {
+    if (!selectedClass) return teachers;
+    return teachers.filter(
+      (t) =>
+        t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
+        selectedClass.classTeacher?._id === t._id,
+    );
+  }, [teachers, selectedClass]);
+
+  // Once a period's subject is picked, narrow further to teachers whose
+  // primary or secondary subject actually matches it — if that leaves
+  // nobody (no assigned teacher has declared this subject), fall back to
+  // the full class-assigned list rather than leaving the admin stuck with
+  // only "— None —".
+  const subjectMatchedTeachers = editSubject
+    ? classTeachers.filter((t) => t.primarySubject === editSubject || t.secondarySubject === editSubject)
+    : classTeachers;
+  const usingSubjectFallback = !!editSubject && subjectMatchedTeachers.length === 0 && classTeachers.length > 0;
+  const filteredTeachers = usingSubjectFallback ? classTeachers : subjectMatchedTeachers;
 
   const loadPeriods = () => {
     const token = getToken();
@@ -638,6 +642,9 @@ export default function TimetablePage() {
                     })}
                   </SelectContent>
                 </Select>
+                {usingSubjectFallback && (
+                  <p className="text-xs text-[#94A3B8]">No assigned teacher has {editSubject} as a subject — showing everyone assigned to this class.</p>
+                )}
               </div>
             </div>
             {editSubject && !editCell?.entry && (
