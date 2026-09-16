@@ -53,6 +53,8 @@ interface TeacherOption {
   _id: string;
   name: string;
   assignedClasses?: { _id: string }[];
+  primarySubject?: string;
+  secondarySubject?: string;
 }
 
 interface SubjectOption {
@@ -151,13 +153,20 @@ export default function TimetablePage() {
   // own teacher isn't excluded just for lacking a separate assignedClasses entry.
   const selectedClass = classes.find((c) => c._id === selectedClassId) || null;
   const filteredTeachers = useMemo(() => {
-    if (!selectedClass) return teachers;
-    return teachers.filter(
-      (t) =>
-        t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
-        selectedClass.classTeacher?._id === t._id,
-    );
-  }, [teachers, selectedClass]);
+    const byClass = !selectedClass
+      ? teachers
+      : teachers.filter(
+          (t) =>
+            t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
+            selectedClass.classTeacher?._id === t._id,
+        );
+    if (!editSubject) return byClass;
+    // Once a period's subject is picked, surface the teacher whose primary
+    // (then secondary) subject matches it first — no one is hidden, just
+    // reordered, so a teacher can still be picked outside their subject.
+    const rank = (t: TeacherOption) => (t.primarySubject === editSubject ? 0 : t.secondarySubject === editSubject ? 1 : 2);
+    return [...byClass].sort((a, b) => rank(a) - rank(b));
+  }, [teachers, selectedClass, editSubject]);
 
   const loadPeriods = () => {
     const token = getToken();
@@ -619,10 +628,16 @@ export default function TimetablePage() {
                       const busyClass = busyTeachers[t._id];
                       const isBusy = !!busyClass;
                       const isCurrentTeacher = editCell?.entry?.teacherId?._id === t._id;
+                      const subjectMatch =
+                        editSubject && t.primarySubject === editSubject
+                          ? " — Primary subject"
+                          : editSubject && t.secondarySubject === editSubject
+                          ? " — Secondary subject"
+                          : "";
                       return (
                         <SelectItem key={t._id} value={t._id} disabled={isBusy && !isCurrentTeacher}>
                           {t.name}
-                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : ""}
+                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : subjectMatch}
                         </SelectItem>
                       );
                     })}

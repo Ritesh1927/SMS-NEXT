@@ -56,6 +56,8 @@ export interface ITeacher extends Document {
   teacherId: string;
   school: mongoose.Types.ObjectId;
   subjects: string[];
+  primarySubject: string;
+  secondarySubject: string;
   classes: string[];
   qualification: string;
   experience: string;
@@ -102,6 +104,11 @@ const teacherSchema = new Schema<ITeacher>(
     teacherId: { type: String },
     school: { type: Schema.Types.ObjectId, ref: "Admin", required: true },
     subjects: [{ type: String }],
+    // The subject this teacher is primarily assigned to teach in their
+    // classes — feeds the Timetable teacher-picker so it can prioritize
+    // the right teacher once a period's subject is chosen there.
+    primarySubject: { type: String, default: "" },
+    secondarySubject: { type: String, default: "" },
     classes: [{ type: String }],
     qualification: { type: String, default: "" },
     experience: { type: String, default: "" },

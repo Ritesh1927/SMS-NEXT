@@ -11,7 +11,7 @@ function requireSchoolAdmin(req: Request) {
 }
 
 const ALLOWED_FIELDS = [
-  "name", "phone", "subjects", "classes", "qualification", "experience", "designation", "isActive",
+  "name", "phone", "subjects", "primarySubject", "secondarySubject", "classes", "qualification", "experience", "designation", "isActive",
   "gender", "dateOfBirth", "address", "bloodGroup", "joiningDate", "salary", "employmentType",
   "staffType", "department", "permissions",
   "emergencyContact", "emergencyPhone", "emergencyRelation", "aadhaarNumber", "panNumber",

@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      name, email, phone, subjects, classes, classIds, qualification, experience, designation,
+      name, email, phone, subjects, primarySubject, secondarySubject, classes, classIds, qualification, experience, designation,
       gender, dateOfBirth, address, bloodGroup, joiningDate, salary, employmentType,
       staffType, department,
       emergencyContact, emergencyPhone, emergencyRelation, aadhaarNumber, panNumber,
@@ -56,6 +56,10 @@ export async function POST(req: Request) {
 
     if (!name || !email) {
       return NextResponse.json({ success: false, message: "Name and email required." }, { status: 400 });
+    }
+    const isTeaching = !staffType || staffType === "teaching";
+    if (isTeaching && !primarySubject) {
+      return NextResponse.json({ success: false, message: "Primary subject is required for teaching staff." }, { status: 400 });
     }
 
     await connectDB();
@@ -66,7 +70,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const isTeaching = !staffType || staffType === "teaching";
     const rawPassword = generatePassword();
 
     // classIds (real Class records) take priority over free-text classes —
@@ -88,6 +91,8 @@ export async function POST(req: Request) {
       staffType: isTeaching ? "teaching" : "non-teaching",
       department: department || "",
       subjects: isTeaching ? subjects || [] : [],
+      primarySubject: isTeaching ? primarySubject || "" : "",
+      secondarySubject: isTeaching ? secondarySubject || "" : "",
       classes: isTeaching ? classLabels : [],
       assignedClasses: isTeaching ? assignedClasses : [],
       qualification: qualification || "",
