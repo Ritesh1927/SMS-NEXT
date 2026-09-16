@@ -46,11 +46,13 @@ interface ClassOption {
   _id: string;
   name: string;
   section: string;
+  classTeacher?: { _id: string; name: string } | null;
 }
 
 interface TeacherOption {
   _id: string;
   name: string;
+  assignedClasses?: { _id: string }[];
 }
 
 interface SubjectOption {
@@ -140,6 +142,22 @@ export default function TimetablePage() {
   }, [entries]);
 
   const uniqueSubjects = useMemo(() => [...new Set(entries.map((e) => e.subject))].sort(), [entries]);
+
+  // Only teachers actually assigned to the selected class — either via
+  // Teacher.assignedClasses or by being that class's own class teacher —
+  // can be scheduled into its periods. Matches the original SMS app's
+  // Timetable page filter (it does the same client-side, keyed off
+  // assignedClasses); a class's classTeacher is included too so the class's
+  // own teacher isn't excluded just for lacking a separate assignedClasses entry.
+  const selectedClass = classes.find((c) => c._id === selectedClassId) || null;
+  const filteredTeachers = useMemo(() => {
+    if (!selectedClass) return teachers;
+    return teachers.filter(
+      (t) =>
+        t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
+        selectedClass.classTeacher?._id === t._id,
+    );
+  }, [teachers, selectedClass]);
 
   const loadPeriods = () => {
     const token = getToken();
@@ -585,7 +603,7 @@ export default function TimetablePage() {
               <div className="space-y-1.5">
                 <Label>Teacher (optional)</Label>
                 <Select
-                  items={[{ value: "__none__", label: "— None —" }, ...teachers.map((t) => ({ value: t._id, label: t.name }))]}
+                  items={[{ value: "__none__", label: "— None —" }, ...filteredTeachers.map((t) => ({ value: t._id, label: t.name }))]}
                   value={editTeacherId || "__none__"}
                   onValueChange={(v) => setEditTeacherId(!v || v === "__none__" ? "" : v)}
                 >
@@ -594,7 +612,10 @@ export default function TimetablePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— None —</SelectItem>
-                    {teachers.map((t) => {
+                    {filteredTeachers.length === 0 && (
+                      <p className="px-2 py-1.5 text-xs text-[#94A3B8]">No teacher assigned to this class.</p>
+                    )}
+                    {filteredTeachers.map((t) => {
                       const busyClass = busyTeachers[t._id];
                       const isBusy = !!busyClass;
                       const isCurrentTeacher = editCell?.entry?.teacherId?._id === t._id;
