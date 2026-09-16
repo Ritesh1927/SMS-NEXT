@@ -5,7 +5,7 @@ import { Homework } from "@/models/Homework";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import "@/models/Admin";
-import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
+import { getTeacherAccessibleClasses, teacherHasAccessToClass, isClassTeacherOf } from "@/lib/teacherClasses";
 import { uploadDocument } from "@/lib/cloudinary";
 
 export async function GET(req: Request) {
@@ -72,13 +72,6 @@ export async function POST(req: Request) {
   try {
     await connectDB();
 
-    if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      if (!teacher?.permissions?.canAssignHomework) {
-        return NextResponse.json({ success: false, message: "You don't have permission to assign homework." }, { status: 403 });
-      }
-    }
-
     const formData = await req.formData();
     const title = formData.get("title") as string | null;
     const description = formData.get("description") as string | null;
@@ -100,6 +93,17 @@ export async function POST(req: Request) {
       const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
       if (!allowed) {
         return NextResponse.json({ success: false, message: "You can only assign homework to your classes." }, { status: 403 });
+      }
+
+      // Being the class's actual class teacher is enough on its own — the
+      // canAssignHomework grant is only needed for a subject-only teacher
+      // (access via assignedClasses, not Class.classTeacher).
+      const isClassTeacher = await isClassTeacherOf(auth.id, auth.schoolId, cls);
+      if (!isClassTeacher) {
+        const teacher = await Teacher.findById(auth.id).select("permissions");
+        if (!teacher?.permissions?.canAssignHomework) {
+          return NextResponse.json({ success: false, message: "You don't have permission to assign homework." }, { status: 403 });
+        }
       }
     }
 
