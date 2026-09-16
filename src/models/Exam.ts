@@ -14,11 +14,17 @@ export interface IExam extends Document {
   endTime: string;
   totalMarks: number;
   passingMarks: number;
+  duration: number | null;
   examType: ExamType;
   createdBy: mongoose.Types.ObjectId;
   createdByModel: "Teacher" | "Admin";
   instructions: string;
   status: ExamStatus;
+  // Set when this exam is one subject's slot within a multi-subject exam
+  // term rather than a standalone exam — see ScheduledExam. Every other
+  // field/route (roster, marks entry, results, publish) works identically
+  // either way, since both are just Exam + Result records underneath.
+  scheduledExamId: mongoose.Types.ObjectId | null;
 }
 
 const examSchema = new Schema<IExam>(
@@ -33,11 +39,13 @@ const examSchema = new Schema<IExam>(
     endTime: { type: String, default: "" },
     totalMarks: { type: Number, required: true },
     passingMarks: { type: Number, required: true },
+    duration: { type: Number, default: null },
     examType: { type: String, enum: ["unit-test", "mid-term", "final", "practical", "assignment"], default: "unit-test" },
     createdBy: { type: Schema.Types.ObjectId, required: true, refPath: "createdByModel" },
     createdByModel: { type: String, enum: ["Teacher", "Admin"], default: "Teacher" },
     instructions: { type: String, default: "" },
     status: { type: String, enum: ["upcoming", "ongoing", "completed", "cancelled"], default: "upcoming" },
+    scheduledExamId: { type: Schema.Types.ObjectId, ref: "ScheduledExam", default: null },
   },
   { timestamps: true },
 );
