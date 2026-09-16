@@ -342,9 +342,9 @@ export default function ChatPage() {
               {isAdmin && filterType ? "No matches." : "No contacts yet."}
             </p>
           ) : (
-            visibleContacts.map((c) => (
+            visibleContacts.map((c, i) => (
               <button
-                key={`${c.targetUserId}-${c.childId || ""}`}
+                key={`${c.targetUserId}-${c.childId || ""}-${i}`}
                 onClick={() => openContact(c)}
                 className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
                   active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"
@@ -358,7 +358,11 @@ export default function ChatPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.lastMessage || c.subtitle}</p>
+                {isAdmin && filterType === "student" ? (
+                  <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.subtitle}</p>
+                ) : (
+                  <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.lastMessage || c.subtitle}</p>
+                )}
               </button>
             ))
           )}
