@@ -47,6 +47,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         dueDate: h.dueDate,
         maxMarks: h.maxMarks,
         assignedBy: h.assignedBy,
+        attachmentUrl: h.attachmentUrl,
+        attachmentName: h.attachmentName,
         submission,
       };
     });
