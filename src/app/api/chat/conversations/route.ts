@@ -5,6 +5,7 @@ import { Conversation } from "@/models/Conversation";
 import { Teacher } from "@/models/Teacher";
 import { Parent } from "@/models/Parent";
 import { Admin } from "@/models/Admin";
+import { getClassTeacherIdsForChildren, isParentOfTeachersClassStudent } from "@/lib/chatAccess";
 
 // Explicit branching instead of an { role: Model } lookup table — indexing a
 // table of differently-typed Mongoose models produces a union whose
@@ -62,29 +63,52 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { targetUserId, targetRole, childId } = await req.json();
+    const { targetUserId, targetRole } = await req.json();
     if (!targetUserId || !targetRole) {
       return NextResponse.json({ success: false, message: "targetUserId and targetRole required." }, { status: 400 });
+    }
+    if (!["teacher", "parent", "schooladmin"].includes(targetRole)) {
+      return NextResponse.json({ success: false, message: "Invalid targetRole." }, { status: 400 });
     }
 
     await connectDB();
 
+    // A parent may only message the class teacher(s) of their own children
+    // (or the school admin); a teacher may only message parents of students
+    // in a class they are THE class teacher of (or the admin). Admins are
+    // unrestricted.
+    if (auth.role === "parent" && targetRole === "teacher") {
+      const parentDoc = await Parent.findById(auth.id).populate("students", "class section");
+      type PopulatedChild = { class: string; section?: string };
+      const children = (parentDoc?.students as unknown as PopulatedChild[]) || [];
+      const allowedTeacherIds = await getClassTeacherIdsForChildren(children, String(auth.schoolId));
+      if (!allowedTeacherIds.has(String(targetUserId))) {
+        return NextResponse.json(
+          { success: false, message: "You can only message your child's class teacher." },
+          { status: 403 },
+        );
+      }
+    } else if (auth.role === "teacher" && targetRole === "parent") {
+      const allowed = await isParentOfTeachersClassStudent(auth.id, String(targetUserId), String(auth.schoolId));
+      if (!allowed) {
+        return NextResponse.json(
+          { success: false, message: "You can only message parents of students in your class." },
+          { status: 403 },
+        );
+      }
+    }
+
+    // childId scoping (per-child admin threads) has been retired — every
+    // conversation is now a single generic thread per participant pair.
     const query: Record<string, unknown> = {
       school: auth.schoolId,
       "participants.userId": { $all: [auth.id, targetUserId] },
+      childId: null,
     };
-    if (childId && auth.role === "parent" && targetRole === "schooladmin") {
-      query.childId = childId;
-    } else {
-      query.childId = null;
-    }
 
     let conversation = await Conversation.findOne(query);
 
     if (!conversation) {
-      if (!["teacher", "parent", "schooladmin"].includes(targetRole)) {
-        return NextResponse.json({ success: false, message: "Invalid targetRole." }, { status: 400 });
-      }
       const targetName = await findUserName(targetRole, targetUserId);
       if (!targetName) {
         return NextResponse.json({ success: false, message: "Target user not found." }, { status: 404 });
@@ -99,7 +123,7 @@ export async function POST(req: Request) {
           { userId: auth.id, role: auth.role, name: myName || "", unread: 0 },
           { userId: targetUserId, role: targetRole, name: targetName, unread: 0 },
         ],
-        childId: childId && auth.role === "parent" && targetRole === "schooladmin" ? childId : null,
+        childId: null,
         lastMessage: "",
         lastMessageAt: new Date(),
       });
