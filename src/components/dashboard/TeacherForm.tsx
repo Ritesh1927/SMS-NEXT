@@ -22,6 +22,17 @@ interface ClassesResponse {
   data: ClassOption[];
 }
 
+interface SubjectOption {
+  _id: string;
+  name: string;
+  code: string;
+}
+
+interface SubjectsResponse {
+  success: boolean;
+  data: SubjectOption[];
+}
+
 interface TeacherDetail {
   name: string;
   email: string;
@@ -32,6 +43,8 @@ interface TeacherDetail {
   staffType: string;
   department: string;
   subjects: string[];
+  primarySubject: string;
+  secondarySubject: string;
   gender: string;
   dateOfBirth: string | null;
   address: string;
@@ -68,6 +81,7 @@ const EMPTY_FORM = {
   name: "", email: "", phone: "", qualification: "", experience: "", designation: "Teacher",
   staffType: "teaching", department: "",
   subjects: "",
+  primarySubject: "", secondarySubject: "",
   gender: "male", dateOfBirth: "", address: "", bloodGroup: "",
   joiningDate: "", salary: "", employmentType: "full-time",
   emergencyContact: "", emergencyPhone: "", emergencyRelation: "",
@@ -86,6 +100,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [classLoading, setClassLoading] = useState(true);
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
@@ -101,6 +116,9 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
       .then((res) => setClassOptions(res.data))
       .catch(() => toast.error("Could not load classes."))
       .finally(() => setClassLoading(false));
+    apiGet<SubjectsResponse>("/subjects", token)
+      .then((res) => setSubjectOptions(res.data))
+      .catch(() => toast.error("Could not load subjects."));
   }, []);
 
   useEffect(() => {
@@ -116,6 +134,8 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           designation: t.designation || "Teacher",
           staffType: t.staffType || "teaching", department: t.department || "",
           subjects: (t.subjects || []).join(", "),
+          primarySubject: t.primarySubject || "",
+          secondarySubject: t.secondarySubject || "",
           gender: t.gender || "male",
           dateOfBirth: t.dateOfBirth ? t.dateOfBirth.slice(0, 10) : "",
           address: t.address || "", bloodGroup: t.bloodGroup || "",
@@ -184,6 +204,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Name is required.");
     if (!form.email.trim()) return toast.error("Email is required.");
+    if (form.staffType === "teaching" && !form.primarySubject) return toast.error("Primary subject is required.");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) return toast.error("Invalid email format.");
@@ -216,6 +237,8 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         ...form,
         designation: form.staffType === "teaching" ? "Teacher" : (form.department || "Staff"),
         subjects: form.staffType === "teaching" && form.subjects ? form.subjects.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        primarySubject: form.staffType === "teaching" ? form.primarySubject : "",
+        secondarySubject: form.staffType === "teaching" ? form.secondarySubject : "",
         salary: form.salary ? Number(form.salary) : 0,
         classIds: form.staffType === "teaching" ? selectedClassIds : [],
       };
@@ -445,7 +468,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         </Section>
 
         {form.staffType === "teaching" && (
-          <Section title="Classes">
+          <Section title="Classes & Subject">
             <label className="text-sm font-medium text-[#172554] flex items-center gap-1.5 mb-2">
               <School className="h-4 w-4 text-[#4F46E5]" /> Assign Classes
             </label>
@@ -476,6 +499,31 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
             {selectedClassIds.length > 0 && (
               <p className="text-xs text-[#64748B] mt-1">{selectedClassIds.length} class{selectedClassIds.length > 1 ? "es" : ""} selected</p>
             )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+              <Field label="Primary Subject" required>
+                <Select value={form.primarySubject} onValueChange={(v) => update("primarySubject", v || "")}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjectOptions.map((s) => (
+                      <SelectItem key={s._id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-[#64748B]">Used to suggest this teacher first for matching periods on the Timetable.</p>
+              </Field>
+              <Field label="Secondary Subject">
+                <Select value={form.secondarySubject || "__none__"} onValueChange={(v) => update("secondarySubject", !v || v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {subjectOptions.filter((s) => s.name !== form.primarySubject).map((s) => (
+                      <SelectItem key={s._id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
           </Section>
         )}
 

@@ -41,7 +41,18 @@ export async function POST(req: Request) {
     user.resetOTP = otp;
     user.resetOTPExpire = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
-    await sendPasswordResetMail(email, otp);
+
+    try {
+      await sendPasswordResetMail(email, otp);
+    } catch (mailErr) {
+      // Never leak raw mail-provider errors (SMTP credentials, server
+      // banners, etc.) to the client.
+      console.error("Password reset mail failed:", mailErr instanceof Error ? mailErr.message : mailErr);
+      return NextResponse.json(
+        { success: false, message: "Failed to send the reset email. Please try again in a moment." },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ success: true, message: "Password reset OTP sent to email." });
   } catch (err) {

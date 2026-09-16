@@ -24,3 +24,13 @@ export async function teacherHasAccessToClass(teacherId: string, schoolId: strin
   const accessible = await getTeacherAccessibleClasses(teacherId, schoolId);
   return accessible.some((c) => c.name === className);
 }
+
+// Narrower than teacherHasAccessToClass: true only when this teacher is the
+// class's actual classTeacher, not merely a subject teacher assigned to it
+// via assignedClasses. Used to let class teachers act on their own class by
+// default (e.g. assigning homework) without needing a separate permission
+// grant, while subject-only teachers still need one.
+export async function isClassTeacherOf(teacherId: string, schoolId: string, className: string) {
+  const cls = await Class.findOne({ classTeacher: teacherId, school: schoolId, name: className }).select("_id").lean();
+  return !!cls;
+}

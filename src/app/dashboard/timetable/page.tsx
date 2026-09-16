@@ -46,11 +46,15 @@ interface ClassOption {
   _id: string;
   name: string;
   section: string;
+  classTeacher?: { _id: string; name: string } | null;
 }
 
 interface TeacherOption {
   _id: string;
   name: string;
+  assignedClasses?: { _id: string }[];
+  primarySubject?: string;
+  secondarySubject?: string;
 }
 
 interface SubjectOption {
@@ -140,6 +144,33 @@ export default function TimetablePage() {
   }, [entries]);
 
   const uniqueSubjects = useMemo(() => [...new Set(entries.map((e) => e.subject))].sort(), [entries]);
+
+  // Only teachers actually assigned to the selected class — either via
+  // Teacher.assignedClasses or by being that class's own class teacher —
+  // can be scheduled into its periods. Matches the original SMS app's
+  // Timetable page filter (it does the same client-side, keyed off
+  // assignedClasses); a class's classTeacher is included too so the class's
+  // own teacher isn't excluded just for lacking a separate assignedClasses entry.
+  const selectedClass = classes.find((c) => c._id === selectedClassId) || null;
+  const classTeachers = useMemo(() => {
+    if (!selectedClass) return teachers;
+    return teachers.filter(
+      (t) =>
+        t.assignedClasses?.some((c) => c._id === selectedClass._id) ||
+        selectedClass.classTeacher?._id === t._id,
+    );
+  }, [teachers, selectedClass]);
+
+  // Once a period's subject is picked, narrow further to teachers whose
+  // primary or secondary subject actually matches it — if that leaves
+  // nobody (no assigned teacher has declared this subject), fall back to
+  // the full class-assigned list rather than leaving the admin stuck with
+  // only "— None —".
+  const subjectMatchedTeachers = editSubject
+    ? classTeachers.filter((t) => t.primarySubject === editSubject || t.secondarySubject === editSubject)
+    : classTeachers;
+  const usingSubjectFallback = !!editSubject && subjectMatchedTeachers.length === 0 && classTeachers.length > 0;
+  const filteredTeachers = usingSubjectFallback ? classTeachers : subjectMatchedTeachers;
 
   const loadPeriods = () => {
     const token = getToken();
@@ -250,17 +281,23 @@ export default function TimetablePage() {
 
   const handleSave = async () => {
     if (!editCell || !editSubject.trim() || !selectedClassId) return;
+    const token = getToken();
+    if (!token) return;
     setSaving(true);
     try {
       const daysToSave = repeatAllDays ? DAYS : [editCell.day];
       for (const day of daysToSave) {
-        await apiPost("/timetable", {
-          classId: selectedClassId,
-          teacherId: editTeacherId || undefined,
-          day,
-          periodNumber: editCell.periodNumber,
-          subject: editSubject.trim(),
-        });
+        await apiPost(
+          "/timetable",
+          {
+            classId: selectedClassId,
+            teacherId: editTeacherId || undefined,
+            day,
+            periodNumber: editCell.periodNumber,
+            subject: editSubject.trim(),
+          },
+          token,
+        );
       }
       loadTimetable();
       setEditCell(null);
@@ -299,9 +336,11 @@ export default function TimetablePage() {
       toast.error("Label, start time and end time are required.");
       return;
     }
+    const token = getToken();
+    if (!token) return;
     setAddingPeriod(true);
     try {
-      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak });
+      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak }, token);
       setNewLabel("");
       setNewStart("");
       setNewEnd("");
@@ -334,6 +373,8 @@ export default function TimetablePage() {
       toast.error("Please enter valid values.");
       return;
     }
+    const token = getToken();
+    if (!token) return;
     setGenerating(true);
     try {
       const minsToTime = (mins: number) => {
@@ -352,7 +393,7 @@ export default function TimetablePage() {
           cursor += qBreakMin;
         }
       }
-      for (const p of toCreate) await apiPost("/periods", p);
+      for (const p of toCreate) await apiPost("/periods", p, token);
       loadPeriods();
       toast.success(`${toCreate.length} periods generated.`);
     } catch (err) {
@@ -575,7 +616,7 @@ export default function TimetablePage() {
               <div className="space-y-1.5">
                 <Label>Teacher (optional)</Label>
                 <Select
-                  items={[{ value: "__none__", label: "— None —" }, ...teachers.map((t) => ({ value: t._id, label: t.name }))]}
+                  items={[{ value: "__none__", label: "— None —" }, ...filteredTeachers.map((t) => ({ value: t._id, label: t.name }))]}
                   value={editTeacherId || "__none__"}
                   onValueChange={(v) => setEditTeacherId(!v || v === "__none__" ? "" : v)}
                 >
@@ -584,19 +625,26 @@ export default function TimetablePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— None —</SelectItem>
-                    {teachers.map((t) => {
+                    {filteredTeachers.length === 0 && (
+                      <p className="px-2 py-1.5 text-xs text-[#94A3B8]">No teacher assigned to this class.</p>
+                    )}
+                    {filteredTeachers.map((t) => {
                       const busyClass = busyTeachers[t._id];
                       const isBusy = !!busyClass;
                       const isCurrentTeacher = editCell?.entry?.teacherId?._id === t._id;
+                      const isClassTeacher = selectedClass?.classTeacher?._id === t._id;
                       return (
                         <SelectItem key={t._id} value={t._id} disabled={isBusy && !isCurrentTeacher}>
                           {t.name}
-                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : ""}
+                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : isClassTeacher ? " — Class Teacher" : ""}
                         </SelectItem>
                       );
                     })}
                   </SelectContent>
                 </Select>
+                {usingSubjectFallback && (
+                  <p className="text-xs text-[#94A3B8]">No assigned teacher has {editSubject} as a subject — showing everyone assigned to this class.</p>
+                )}
               </div>
             </div>
             {editSubject && !editCell?.entry && (

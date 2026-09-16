@@ -64,7 +64,6 @@ export async function POST(req: Request) {
     } = body;
 
     if (!name || !studentClass) return NextResponse.json({ success: false, message: "Name and class required." }, { status: 400 });
-    if (!phone) return NextResponse.json({ success: false, message: "Student phone is required." }, { status: 400 });
     if (!dateOfBirth) return NextResponse.json({ success: false, message: "Date of birth is required." }, { status: 400 });
     if (!rollNumber) return NextResponse.json({ success: false, message: "Roll number is required." }, { status: 400 });
     if (!parentName) return NextResponse.json({ success: false, message: "Father's name is required." }, { status: 400 });
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
     if (!emailRegex.test(parentEmail)) {
       return NextResponse.json({ success: false, message: "Invalid parent email format." }, { status: 400 });
     }
-    if (!/^\d{10}$/.test(phone)) {
+    if (phone && !/^\d{10}$/.test(phone)) {
       return NextResponse.json({ success: false, message: "Student phone must be exactly 10 digits." }, { status: 400 });
     }
     if (!/^\d{10}$/.test(parentPhone)) {

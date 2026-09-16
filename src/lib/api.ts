@@ -1,12 +1,19 @@
 // Thin fetch wrapper for our own Next.js API routes (same-origin, so no
-// base URL or auth-header plumbing is needed the way SMS-FRONTEND's axios
-// client needed for its separate Express backend).
-export async function apiPost<T = unknown>(path: string, body: unknown): Promise<T> {
+// base URL is needed the way SMS-FRONTEND's axios client needed for its
+// separate Express backend). There's still no server session/cookie to
+// carry auth, though — every authenticated route reads the JWT from the
+// Authorization header, so an authenticated POST must pass its token here
+// the same way apiGet requires one. Token is optional only because a few
+// pre-login call sites (signup, OTP verify, password reset) have none yet.
+export async function apiPost<T = unknown>(path: string, body: unknown, token?: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(body),
     });
   } catch {

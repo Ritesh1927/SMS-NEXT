@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Parent } from "@/models/Parent";
+import "@/models/Student";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);

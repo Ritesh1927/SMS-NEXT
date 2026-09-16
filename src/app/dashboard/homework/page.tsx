@@ -360,6 +360,8 @@ interface ChildHomeworkItem {
   dueDate: string;
   maxMarks: number | null;
   assignedBy?: { name: string } | null;
+  attachmentUrl?: string;
+  attachmentName?: string;
   submission: { status: "submitted" | "late" | "graded"; marks: number | null; feedback: string; submittedAt: string } | null;
 }
 
@@ -501,6 +503,16 @@ function ParentHomework() {
                       {hw.assignedBy ? ` · Assigned by ${hw.assignedBy.name}` : ""}
                     </p>
                     {hw.description && <p className="text-sm text-[#475569] mt-2">{hw.description}</p>}
+                    {hw.attachmentUrl && (
+                      <a
+                        href={hw.attachmentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-[#4F46E5] hover:underline mt-2"
+                      >
+                        <Paperclip className="h-3 w-3" /> {hw.attachmentName || "Attachment"}
+                      </a>
+                    )}
                     {hw.submission?.status === "graded" && (
                       <p className="text-xs text-[#4F46E5] font-semibold mt-2 flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" />

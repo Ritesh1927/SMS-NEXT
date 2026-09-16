@@ -230,7 +230,6 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Student name is required.");
-    if (!form.phone) return toast.error("Student phone is required.");
     if (!form.dateOfBirth) return toast.error("Date of birth is required.");
     if (!form.studentClass) return toast.error("Please select a class.");
     if (!form.rollNumber.trim()) return toast.error("Roll number is required.");
@@ -243,7 +242,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.parentEmail)) return toast.error("Invalid parent email format.");
-    if (!/^\d{10}$/.test(form.phone)) return toast.error("Student phone must be exactly 10 digits.");
+    if (form.phone && !/^\d{10}$/.test(form.phone)) return toast.error("Student phone must be exactly 10 digits.");
     if (!/^\d{10}$/.test(form.parentPhone)) return toast.error("Parent phone must be exactly 10 digits.");
     if (new Date(form.dateOfBirth) > new Date()) return toast.error("Date of birth cannot be in the future.");
     if (form.aadhaarNumber && !/^\d{12}$/.test(form.aadhaarNumber)) return toast.error("Aadhaar must be exactly 12 digits.");
@@ -346,8 +345,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
             <Field label="Full Name" required>
               <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Student name" maxLength={100} required />
             </Field>
-            <Field label="Phone" required>
-              <Input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} required />
+            <Field label="Phone">
+              <Input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} />
             </Field>
             <Field label="Gender" required>
               <Select value={form.gender} onValueChange={(v) => update("gender", v || form.gender)}>

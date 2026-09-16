@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Parent } from "@/models/Parent";
 import { escapeRegex } from "@/lib/helpers";
+import "@/models/Student";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);

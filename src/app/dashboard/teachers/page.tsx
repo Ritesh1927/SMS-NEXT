@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Mail, Phone, Pencil, Trash2, Power, ShieldCheck } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Filter, Building2, GraduationCap, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ClassOption {
   _id: string;
@@ -76,6 +77,7 @@ interface TeacherRow {
   name: string;
   email: string;
   phone?: string;
+  photo?: string;
   teacherId: string;
   designation?: string;
   subjects?: string[];
@@ -236,17 +238,32 @@ export default function TeachersPage() {
       {teachers && teachers.length > 0 && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
-              <p className="text-xs text-[#64748B]">Total Staff</p>
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
+                <p className="text-xs text-[#64748B]">Total Staff</p>
+              </div>
             </div>
-            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-xl font-bold text-[#4F46E5]">{counts.teaching}</p>
-              <p className="text-xs text-[#64748B]">Teaching</p>
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#4F46E5]">{counts.teaching}</p>
+                <p className="text-xs text-[#64748B]">Teaching</p>
+              </div>
             </div>
-            <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-xl font-bold text-amber-600">{counts.nonTeaching}</p>
-              <p className="text-xs text-[#64748B]">Non-Teaching</p>
+            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-amber-600">{counts.nonTeaching}</p>
+                <p className="text-xs text-[#64748B]">Non-Teaching</p>
+              </div>
             </div>
           </div>
 
@@ -262,13 +279,14 @@ export default function TeachersPage() {
                   variant={staffFilter === tab.key ? "default" : "outline"}
                   size="sm"
                   onClick={() => setStaffFilter(tab.key)}
-                  className={staffFilter === tab.key ? "bg-[#4F46E5] hover:bg-[#4338CA]" : ""}
+                  className={`gap-1.5 ${staffFilter === tab.key ? "bg-[#4F46E5] hover:bg-[#4338CA]" : ""}`}
                 >
+                  <Filter className="h-3.5 w-3.5" />
                   {tab.label}
                 </Button>
               ))}
             </div>
-            <Input placeholder="Search by name, email, subject..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+            <Input placeholder="Search by name, email, subject, department..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
           </div>
         </>
       )}
@@ -287,59 +305,85 @@ export default function TeachersPage() {
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
+            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Name</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Type</p>
+            <p className="w-48 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Phone</p>
+            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Subjects</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+          </div>
           {filteredTeachers.map((t) => (
-            <div key={t._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#172554]">{t.name}</p>
-                  {!t.isActive && (
-                    <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                      Inactive
-                    </span>
-                  )}
+            <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
+                  <AvatarImage src={t.photo} alt={t.name} />
+                  <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-sm font-semibold">
+                    {t.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-[#172554] truncate">{t.name}</p>
+                    {!t.isActive && (
+                      <span className="shrink-0 text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#64748B] mt-0.5 truncate">{t.qualification || t.teacherId}</p>
+                  <p className="text-xs text-[#64748B] mt-0.5 sm:hidden truncate">
+                    {t.email}
+                    {t.phone ? ` · ${t.phone}` : ""}
+                  </p>
                 </div>
-                <p className="text-xs text-[#64748B] mt-0.5">
-                  {t.teacherId} · {t.designation || (t.staffType === "teaching" ? "Teacher" : "Staff")}
-                  {t.subjects && t.subjects.length > 0 ? ` · ${t.subjects.join(", ")}` : ""}
-                  {t.classes && t.classes.length > 0 ? ` · Classes: ${t.classes.join(", ")}` : ""}
-                </p>
               </div>
-              <div className="flex items-center gap-4 text-xs text-[#64748B] shrink-0">
-                <span className="hidden sm:flex items-center gap-1">
-                  <Mail className="h-3.5 w-3.5" /> {t.email}
+
+              <div className="hidden sm:block w-28 shrink-0">
+                <span
+                  className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                    t.staffType === "teaching" ? "bg-[#EFF6FF] text-blue-700" : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {t.staffType === "teaching" ? "Teaching" : "Non-Teaching"}
                 </span>
-                {t.phone && (
-                  <span className="hidden md:flex items-center gap-1">
-                    <Phone className="h-3.5 w-3.5" /> {t.phone}
-                  </span>
-                )}
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon-sm" onClick={() => openPermissions(t)} aria-label="Permissions">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => toggleActive(t)}
-                    disabled={busyId === t._id}
-                    aria-label={t.isActive ? "Deactivate" : "Activate"}
-                  >
-                    <Power className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDelete(t)}
-                    disabled={busyId === t._id}
-                    aria-label="Delete"
-                    className="hover:text-red-600"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+              </div>
+              <div className="hidden sm:block w-48 shrink-0">
+                <p className="text-sm text-[#334155] truncate">{t.email}</p>
+              </div>
+              <div className="hidden sm:block w-32 shrink-0">
+                <p className="text-sm text-[#334155]">{t.phone || "—"}</p>
+              </div>
+              <div className="hidden lg:block w-40 shrink-0">
+                <p className="text-sm text-[#334155] truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-1 w-[136px] shrink-0">
+                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon-sm" onClick={() => openPermissions(t)} aria-label="Permissions">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => toggleActive(t)}
+                  disabled={busyId === t._id}
+                  aria-label={t.isActive ? "Deactivate" : "Activate"}
+                >
+                  <Power className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => handleDelete(t)}
+                  disabled={busyId === t._id}
+                  aria-label="Delete"
+                  className="hover:text-red-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           ))}

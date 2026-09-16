@@ -37,7 +37,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/parents", label: "Parents", icon: UserRound, section: "People" },
     { href: "/dashboard/classes", label: "Classes", icon: School, section: "People", featureKey: "classes" },
 
-    { href: "/dashboard/subjects", label: "Subjects", icon: Link2, section: "Academics" },
+    { href: "/dashboard/subjects", label: "Subject & Class", icon: Link2, section: "Academics" },
     { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", featureKey: "attendance" },
     { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", featureKey: "exams" },
     { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", featureKey: "homework" },
@@ -83,6 +83,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
 
     { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", featureKey: "attendance" },
+    { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", featureKey: "exams" },
     { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", featureKey: "homework" },
     { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", featureKey: "timetable" },
     { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", featureKey: "materials" },

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   Users, GraduationCap, UserRound, CalendarCheck, Loader2, IndianRupee,
   CalendarDays, FileText, Bell, CreditCard,
@@ -15,6 +14,7 @@ import {
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
+import { DashboardHero } from "./DashboardHero";
 
 interface DashboardStats {
   totalStudents: number;
@@ -87,23 +87,6 @@ interface DashboardResponse {
   data: DashboardData;
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
-}
-
-const QUOTES: { text: string; author: string }[] = [
-  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
-  { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
-  { text: "Intelligence plus character — that is the goal of true education.", author: "Martin Luther King Jr." },
-  { text: "Teaching is the one profession that creates all other professions.", author: "Unknown" },
-  { text: "The roots of education are bitter, but the fruit is sweet.", author: "Aristotle" },
-  { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
-  { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
-];
-
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: "#fff",
   border: "1px solid #CDD3DD",
@@ -117,8 +100,6 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Snapshot once on mount rather than calling Date.now() during render (impure).
-  const [quoteIndex] = useState(() => Math.floor(Date.now() / 86400000) % QUOTES.length);
 
   useEffect(() => {
     const token = getToken();
@@ -145,7 +126,6 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
     todayAttendance.marked > 0
       ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.marked) * 100)
       : null;
-  const quote = QUOTES[quoteIndex];
   const hasClassPerformance = classPerformance.some((c) => c.avg > 0);
 
   const STAT_CARDS: {
@@ -226,36 +206,10 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
   return (
     <div className="space-y-6">
-      {/* Hero banner */}
-      <div className="relative overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-gradient-to-br from-[#EEF2FF] via-[#F5F3FF] to-white">
-        <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
-
-        <div className="hidden sm:block pointer-events-none absolute inset-y-0 right-2 sm:right-6 w-[58%] sm:w-[62%]">
-          <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
-        </div>
-
-        <div className="relative z-10 flex min-h-[230px] sm:min-h-[250px] flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
-          <div className="max-w-xl">
-            <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#172554]">
-              {getGreeting()}, <span className="text-[#4F46E5]">{adminName || "Admin"}</span>
-            </h1>
-            <p className="text-sm text-[#475569] mt-1.5">
-              Here&apos;s what&apos;s happening at {schoolName || "your school"} today.
-            </p>
-            <p className="text-sm text-[#334155] mt-4 italic border-l-2 border-[#8B5CF6]/40 pl-3">
-              &ldquo;{quote.text}&rdquo;
-              <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md px-4 py-2.5 border border-white/50 shadow-[0_4px_20px_rgba(79,70,229,0.12)] shrink-0 self-start">
-            <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
-            <span className="text-sm font-semibold text-[#172554]">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            </span>
-          </div>
-        </div>
-      </div>
+      <DashboardHero
+        name={adminName || "Admin"}
+        subtitle={`Here's what's happening at ${schoolName || "your school"} today.`}
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">

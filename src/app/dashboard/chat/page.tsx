@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, MessageCircle } from "lucide-react";
+import { Send, Loader2, MessageCircle, Search, Users, GraduationCap, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Contact {
   id: string;
@@ -32,9 +33,20 @@ interface MessageRow {
   createdAt: string;
 }
 
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
+
 interface ContactsResponse {
   success: boolean;
   contacts: Contact[];
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
 }
 
 interface MessagesResponse {
@@ -67,19 +79,66 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastTimestampRef = useRef<string | null>(null);
 
+  // Admin: null = "recent conversations" (default); "teacher"/"student" =
+  // browsing/searching to start a new one. Teacher: search is a client-side
+  // filter over its already-scoped (and always small) contact list. Parent
+  // has no search at all — the set is fixed (class teacher(s) + admin).
+  const [filterType, setFilterType] = useState<"teacher" | "student" | null>(null);
+  const [search, setSearch] = useState("");
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [classFilter, setClassFilter] = useState("");
+
   const loadContacts = () => {
     const token = getToken();
     if (!token) return;
-    apiGet<ContactsResponse>("/chat/contacts", token)
+    let path = "/chat/contacts";
+    if (user?.role === "schooladmin" && filterType) {
+      const params = new URLSearchParams({ type: filterType });
+      if (search.trim()) params.set("search", search.trim());
+      if (filterType === "student") {
+        if (!classFilter) {
+          setContacts([]);
+          return;
+        }
+        const [name, section] = classFilter.split("::");
+        params.set("class", name);
+        params.set("section", section || "");
+      }
+      path = `/chat/contacts?${params.toString()}`;
+    }
+    apiGet<ContactsResponse>(path, token)
       .then((res) => setContacts(res.contacts))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load contacts."));
   };
 
   useEffect(() => {
+    if (user?.role === "schooladmin" && filterType === "student" && classes.length === 0) {
+      const token = getToken();
+      if (token) apiGet<ClassesResponse>("/classes", token).then((res) => setClasses(res.data)).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reload + refetch whenever the filter changes.
     loadContacts();
     const interval = setInterval(loadContacts, POLL_MS * 3);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType, classFilter]);
+
+  // Debounce the search box for schooladmin's server-side search.
+  useEffect(() => {
+    if (user?.role !== "schooladmin" || !filterType) return;
+    const timeout = setTimeout(loadContacts, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const visibleContacts =
+    user?.role === "teacher" && search.trim()
+      ? (contacts || []).filter((c) => c.name.toLowerCase().includes(search.trim().toLowerCase()))
+      : contacts;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -176,40 +235,134 @@ export default function ChatPage() {
 
   if (!user) return null;
 
+  const isAdmin = user.role === "schooladmin";
+  const isTeacher = user.role === "teacher";
+
   return (
     <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden flex h-[70vh]">
-      <div className="w-64 shrink-0 border-r border-[#F1F5F9] overflow-y-auto">
+      <div className="w-72 shrink-0 border-r border-[#F1F5F9] flex flex-col">
         <div className="px-4 py-3 border-b border-[#F1F5F9]">
           <h1 className="text-sm font-semibold text-[#172554]">Communication</h1>
         </div>
-        {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
-        {error ? null : !contacts ? (
-          <div className="flex items-center gap-2 text-xs text-[#64748B] px-4 py-3">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
-          </div>
-        ) : contacts.length === 0 ? (
-          <p className="text-xs text-[#64748B] px-4 py-3">No contacts yet.</p>
-        ) : (
-          contacts.map((c) => (
-            <button
-              key={`${c.targetUserId}-${c.childId || ""}`}
-              onClick={() => openContact(c)}
-              className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
-                active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-[#172554] truncate">{c.name}</p>
-                {c.unread > 0 && (
-                  <span className="text-[10px] font-bold text-white bg-[#4F46E5] rounded-full px-1.5 py-0.5 shrink-0">
-                    {c.unread}
-                  </span>
+
+        {isAdmin && (
+          <div className="px-3 py-2.5 border-b border-[#F1F5F9] space-y-2">
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  setFilterType((t) => (t === "teacher" ? null : "teacher"));
+                  setSearch("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
+                  filterType === "teacher" ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                }`}
+              >
+                <GraduationCap className="h-3 w-3" /> Teachers
+              </button>
+              <button
+                onClick={() => {
+                  setFilterType((t) => (t === "student" ? null : "student"));
+                  setSearch("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
+                  filterType === "student" ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                }`}
+              >
+                <Users className="h-3 w-3" /> Students
+              </button>
+            </div>
+            {filterType === "student" && (
+              <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+                <SelectTrigger className="h-8 text-xs w-full">
+                  <SelectValue placeholder="Select a class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((c) => (
+                    <SelectItem key={c._id} value={`${c.name}::${c.section}`}>
+                      Class {c.name}-{c.section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {filterType && (
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={filterType === "teacher" ? "Search teachers by name..." : "Search students by name..."}
+                  className="h-8 pl-8 pr-7 text-xs"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
-              <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.lastMessage || c.subtitle}</p>
-            </button>
-          ))
+            )}
+          </div>
         )}
+
+        {isTeacher && (
+          <div className="px-3 py-2.5 border-b border-[#F1F5F9]">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search contacts..."
+                className="h-8 pl-8 pr-7 text-xs"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto">
+          {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
+          {error ? null : !visibleContacts ? (
+            <div className="flex items-center gap-2 text-xs text-[#64748B] px-4 py-3">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
+            </div>
+          ) : isAdmin && filterType === "student" && !classFilter ? (
+            <p className="text-xs text-[#64748B] px-4 py-3">Pick a class above to search students.</p>
+          ) : visibleContacts.length === 0 ? (
+            <p className="text-xs text-[#64748B] px-4 py-3">
+              {isAdmin && filterType ? "No matches." : "No contacts yet."}
+            </p>
+          ) : (
+            visibleContacts.map((c, i) => (
+              <button
+                key={`${c.targetUserId}-${c.childId || ""}-${i}`}
+                onClick={() => openContact(c)}
+                className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
+                  active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-[#172554] truncate">{c.name}</p>
+                  {c.unread > 0 && (
+                    <span className="text-[10px] font-bold text-white bg-[#4F46E5] rounded-full px-1.5 py-0.5 shrink-0">
+                      {c.unread}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.subtitle}</p>
+              </button>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col">

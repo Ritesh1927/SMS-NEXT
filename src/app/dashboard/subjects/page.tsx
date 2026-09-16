@@ -121,10 +121,11 @@ export default function SubjectsPage() {
       setNameError("Subject name is required.");
       return;
     }
+    const token = getToken();
+    if (!token) return;
     setSavingSubject(true);
     try {
       if (editSubject) {
-        const token = getToken();
         const res = await fetch(`/api/subjects/${editSubject._id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -134,7 +135,7 @@ export default function SubjectsPage() {
         if (!res.ok || json.success === false) throw new Error(json.message || "Failed to save subject.");
         toast.success("Subject updated.");
       } else {
-        await apiPost("/subjects", { name: subjectForm.name, description: subjectForm.description });
+        await apiPost("/subjects", { name: subjectForm.name, description: subjectForm.description }, token);
         toast.success("Subject created.");
       }
       setSubjectDialog(false);
@@ -178,9 +179,11 @@ export default function SubjectsPage() {
   const assignSingle = async () => {
     if (!singleClassId) return toast.error("Please select a class.");
     if (singleSubjectIds.size === 0) return toast.error("Please select at least one subject.");
+    const token = getToken();
+    if (!token) return;
     setAssigning(true);
     try {
-      await apiPost("/subjects/assign", { classId: singleClassId, subjectIds: Array.from(singleSubjectIds) });
+      await apiPost("/subjects/assign", { classId: singleClassId, subjectIds: Array.from(singleSubjectIds) }, token);
       toast.success("Subjects assigned.");
       setSingleSubjectIds(new Set());
       fetchAssignments();
@@ -194,9 +197,11 @@ export default function SubjectsPage() {
   const assignBulk = async () => {
     if (bulkClassIds.size === 0) return toast.error("Please select at least one class.");
     if (bulkSubjectIds.size === 0) return toast.error("Please select at least one subject.");
+    const token = getToken();
+    if (!token) return;
     setAssigning(true);
     try {
-      await apiPost("/subjects/bulk-assign", { classIds: Array.from(bulkClassIds), subjectIds: Array.from(bulkSubjectIds) });
+      await apiPost("/subjects/bulk-assign", { classIds: Array.from(bulkClassIds), subjectIds: Array.from(bulkSubjectIds) }, token);
       toast.success(`${bulkSubjectIds.size} subject(s) assigned to ${bulkClassIds.size} class(es).`);
       setBulkClassIds(new Set());
       setBulkSubjectIds(new Set());

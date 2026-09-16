@@ -28,7 +28,18 @@ export async function POST(req: Request) {
     admin.otp = otp;
     admin.otpExpire = new Date(Date.now() + 5 * 60 * 1000);
     await admin.save();
-    await sendOTPMail(email, otp);
+
+    try {
+      await sendOTPMail(email, otp);
+    } catch (mailErr) {
+      // Never leak raw mail-provider errors (SMTP credentials, server
+      // banners, etc.) to the client.
+      console.error("OTP mail failed:", mailErr instanceof Error ? mailErr.message : mailErr);
+      return NextResponse.json(
+        { success: false, message: "Failed to send the OTP email. Please try again in a moment." },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ success: true, message: "OTP resent." });
   } catch (err) {

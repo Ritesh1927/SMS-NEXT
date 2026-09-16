@@ -5,6 +5,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { AttendanceRecord, type IAttendanceRecord } from "@/models/AttendanceRecord";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
+import "@/models/Parent";
 import { sendAbsentAlertMail } from "@/lib/mail";
 
 // POST /api/attendance — bulk-mark a class's roster for one date.
