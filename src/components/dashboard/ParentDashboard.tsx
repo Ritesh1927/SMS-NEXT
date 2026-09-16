@@ -7,6 +7,7 @@ import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from "@/lib/razorpay-client";
+import { DashboardHero } from "./DashboardHero";
 
 interface Child {
   _id: string;
@@ -56,14 +57,14 @@ export function ParentDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">Welcome, {data.parent.name}</h1>
-        <p className="text-sm text-[#64748B] mt-1">
-          {children.length === 0
+      <DashboardHero
+        name={data.parent.name}
+        subtitle={
+          children.length === 0
             ? "No children linked to your account yet."
-            : `You have ${children.length} ${children.length === 1 ? "child" : "children"} linked to your account.`}
-        </p>
-      </div>
+            : `Here's how ${children.length === 1 ? children[0].name : `your ${children.length} children`} ${children.length === 1 ? "is" : "are"} doing today.`
+        }
+      />
 
       {children.length === 0 ? (
         <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">

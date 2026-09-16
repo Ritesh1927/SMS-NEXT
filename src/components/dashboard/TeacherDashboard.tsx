@@ -6,6 +6,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { StatCard } from "@/components/StatCard";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { DashboardHero } from "./DashboardHero";
 
 interface TeacherDashboardData {
   teacher: {
@@ -90,12 +91,10 @@ export function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">Welcome, {teacher.name}</h1>
-        <p className="text-sm text-[#64748B] mt-1">
-          {teacher.teacherId} · {teacher.designation || (teacher.staffType === "teaching" ? "Teacher" : "Staff")}
-        </p>
-      </div>
+      <DashboardHero
+        name={teacher.name}
+        subtitle={`${teacher.teacherId} · ${teacher.designation || (teacher.staffType === "teaching" ? "Teacher" : "Staff")}`}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="My Classes" value={String(stats.classCount)} color="#4F46E5" colorDark="#4338CA" icon={Layers} />
