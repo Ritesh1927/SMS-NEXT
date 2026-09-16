@@ -59,7 +59,19 @@ export async function POST(req: Request) {
       });
     }
 
-    await sendOTPMail(email, otp);
+    try {
+      await sendOTPMail(email, otp);
+    } catch (mailErr) {
+      // Never leak raw mail-provider errors (SMTP credentials, server
+      // banners, etc.) to the client. The Admin record above is already
+      // saved as unverified, so a retry (signup or resend-otp) can reuse it.
+      console.error("Signup OTP mail failed:", mailErr instanceof Error ? mailErr.message : mailErr);
+      return NextResponse.json(
+        { success: false, message: "Failed to send the OTP email. Please try again in a moment." },
+        { status: 502 },
+      );
+    }
+
     return NextResponse.json(
       { success: true, message: "OTP sent to email. Verify to complete signup.", email },
       { status: 201 },
