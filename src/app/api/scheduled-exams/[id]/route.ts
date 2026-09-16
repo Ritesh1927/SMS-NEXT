@@ -5,6 +5,7 @@ import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import "@/models/Admin";
+import "@/models/Teacher";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
 
 // Teachers can freely edit/delete a term up to 2 hours before it starts;

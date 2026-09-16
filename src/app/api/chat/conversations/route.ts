@@ -6,6 +6,7 @@ import { Teacher } from "@/models/Teacher";
 import { Parent } from "@/models/Parent";
 import { Admin } from "@/models/Admin";
 import { getClassTeacherIdsForChildren, isParentOfTeachersClassStudent } from "@/lib/chatAccess";
+import "@/models/Student";
 
 // Explicit branching instead of an { role: Model } lookup table — indexing a
 // table of differently-typed Mongoose models produces a union whose

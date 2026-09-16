@@ -4,6 +4,8 @@ import { getAuthUser } from "@/lib/auth-server";
 import { ExamChangeRequest } from "@/models/ExamChangeRequest";
 import { Exam } from "@/models/Exam";
 import { ScheduledExam } from "@/models/ScheduledExam";
+import "@/models/Teacher";
+import "@/models/Admin";
 
 // GET /api/exam-change-requests — admin-only inbox of all change requests.
 export async function GET(req: Request) {
