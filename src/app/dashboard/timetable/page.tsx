@@ -628,16 +628,11 @@ export default function TimetablePage() {
                       const busyClass = busyTeachers[t._id];
                       const isBusy = !!busyClass;
                       const isCurrentTeacher = editCell?.entry?.teacherId?._id === t._id;
-                      const subjectMatch =
-                        editSubject && t.primarySubject === editSubject
-                          ? " — Primary subject"
-                          : editSubject && t.secondarySubject === editSubject
-                          ? " — Secondary subject"
-                          : "";
+                      const isClassTeacher = selectedClass?.classTeacher?._id === t._id;
                       return (
                         <SelectItem key={t._id} value={t._id} disabled={isBusy && !isCurrentTeacher}>
                           {t.name}
-                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : subjectMatch}
+                          {isBusy && !isCurrentTeacher ? ` — Busy (${busyClass})` : isClassTeacher ? " — Class Teacher" : ""}
                         </SelectItem>
                       );
                     })}
