@@ -88,9 +88,10 @@ export async function GET(req: Request) {
         const conversations = await Conversation.find({ school: schoolId, "participants.userId": auth.id })
           .sort({ lastMessageAt: -1 })
           .limit(100);
-        contacts = conversations
-          .map((conv) => conversationToContact(conv, auth.id))
-          .filter((c): c is Contact => c !== null);
+        contacts = await enrichRelationSubtitles(
+          conversations.map((conv) => conversationToContact(conv, auth.id)).filter((c): c is Contact => c !== null),
+          String(schoolId),
+        );
         needsEnrich = false;
       }
     } else if (auth.role === "teacher") {
@@ -197,11 +198,36 @@ export async function GET(req: Request) {
   }
 }
 
+function joinNames(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}
+
 function formatChildrenSubtitle(names: string[]): string {
   if (names.length === 0) return "Class Teacher";
-  if (names.length === 1) return `${names[0]}'s Class Teacher`;
-  const label = `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
-  return `${label}'s Class Teacher`;
+  return `${joinNames(names)}'s Class Teacher`;
+}
+
+// Fills in a relationship-aware subtitle for contacts that were built
+// straight from a Conversation record (which only stores the other
+// participant's role, not who they are to the viewer) — so the sidebar
+// shows "Class Teacher — Class 5-A" / "Parent of Krishna" instead of a
+// last-message snippet standing in for identity.
+async function enrichRelationSubtitles(contacts: Contact[], schoolId: string): Promise<Contact[]> {
+  return Promise.all(
+    contacts.map(async (c) => {
+      if (c.role === "schooladmin") return { ...c, subtitle: "School Administration" };
+      if (c.role === "teacher") {
+        const cls = await Class.findOne({ school: schoolId, classTeacher: c.targetUserId }).select("name section").lean();
+        return { ...c, subtitle: cls ? `Class Teacher — ${formatClassName(cls.name, cls.section)}` : "Teacher" };
+      }
+      const parentDoc = await Parent.findById(c.targetUserId).populate("students", "name");
+      type PopulatedChild = { name: string };
+      const children = (parentDoc?.students as unknown as PopulatedChild[]) || [];
+      return { ...c, subtitle: children.length > 0 ? `Parent of ${joinNames(children.map((ch) => ch.name))}` : "Parent" };
+    }),
+  );
 }
 
 function baseContact(id: string, name: string, role: Contact["role"], subtitle: string): Contact {
@@ -278,5 +304,5 @@ async function appendOrphanConversations(contacts: Contact[], userId: string, sc
     known.add(key);
     extra.push(contact);
   }
-  return [...contacts, ...extra];
+  return [...contacts, ...(await enrichRelationSubtitles(extra, schoolId))];
 }

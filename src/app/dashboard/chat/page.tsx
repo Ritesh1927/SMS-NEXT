@@ -358,11 +358,7 @@ export default function ChatPage() {
                     </span>
                   )}
                 </div>
-                {isAdmin && filterType === "student" ? (
-                  <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.subtitle}</p>
-                ) : (
-                  <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.lastMessage || c.subtitle}</p>
-                )}
+                <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.subtitle}</p>
               </button>
             ))
           )}
