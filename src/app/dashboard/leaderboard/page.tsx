@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Flame, Loader2, Medal } from "lucide-react";
+import { Trophy, Flame, Medal } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Row {
   rank: number;
@@ -48,14 +50,6 @@ export default function LeaderboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -65,11 +59,22 @@ export default function LeaderboardPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {loading ? (
+        <div className="space-y-6">
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
       {star && (
         <Card className="border-[#FDE68A] bg-gradient-to-br from-[#FFFBEB] to-white">
           <CardContent className="flex items-center gap-4 py-5">
             <div className="h-12 w-12 rounded-full bg-[#F59E0B]/10 flex items-center justify-center shrink-0">
-              <Trophy className="h-6 w-6 text-[#F59E0B]" />
+              <Trophy className="h-5 w-5 text-[#F59E0B]" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-[#B45309]">Star Student</p>
@@ -88,7 +93,7 @@ export default function LeaderboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           {rows.length === 0 ? (
-            <p className="px-6 pb-6 text-sm text-[#64748B]">No points earned yet.</p>
+            <EmptyState icon={Trophy} message="No points earned yet." />
           ) : (
             <div className="divide-y divide-[#E2E8F0]">
               {rows.map((r) => (
@@ -114,6 +119,8 @@ export default function LeaderboardPage() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

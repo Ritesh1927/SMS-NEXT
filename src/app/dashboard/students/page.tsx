@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface StudentRow {
   _id: string;
@@ -58,6 +62,7 @@ export default function StudentsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<StudentRow | null>(null);
 
   // Teachers get a read-only view scoped to their own classes — matches
   // SMS-BACKEND, where the student create/update/delete routes are
@@ -102,8 +107,9 @@ export default function StudentsPage() {
     }
   };
 
-  const handleDelete = async (s: StudentRow) => {
-    if (!confirm(`Delete ${s.name}? This cannot be undone.`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const s = pendingDelete;
     const token = getToken();
     if (!token) return;
     setBusyId(s._id);
@@ -115,6 +121,7 @@ export default function StudentsPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete student.");
       toast.success("Student deleted");
+      setPendingDelete(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -213,18 +220,40 @@ export default function StudentsPage() {
       )}
 
       {error ? null : !students ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
+            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Student</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Class</p>
+            <p className="w-16 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Roll No.</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Attendance</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Skeleton className="h-11 w-11 rounded-full shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="hidden sm:block w-28 shrink-0"><Skeleton className="h-4 w-16" /></div>
+              <div className="hidden sm:block w-16 shrink-0"><Skeleton className="h-4 w-8" /></div>
+              <div className="hidden sm:block w-32 shrink-0"><Skeleton className="h-4 w-20" /></div>
+              <div className="w-[104px] shrink-0" />
+            </div>
+          ))}
         </div>
       ) : students.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">
-            {isTeacher ? "No students in your classes yet." : "No students yet. Add your first admission to get started."}
-          </p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState
+            icon={Users}
+            message={isTeacher ? "No students in your classes yet." : "No students yet. Add your first admission to get started."}
+          />
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No students match your filters.</p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Users} message="No students match your filters." />
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -248,9 +277,7 @@ export default function StudentsPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-[#172554] truncate">{s.name}</p>
                     {!s.isActive && (
-                      <span className="shrink-0 text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                        Inactive
-                      </span>
+                      <span className={`shrink-0 ${statusPillClass("destructive")}`}>Inactive</span>
                     )}
                   </div>
                   <p className="text-xs text-[#64748B] mt-0.5 truncate">{s.studentId}</p>
@@ -302,7 +329,7 @@ export default function StudentsPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => handleDelete(s)}
+                      onClick={() => setPendingDelete(s)}
                       disabled={busyId === s._id}
                       aria-label="Delete"
                       className="hover:text-red-600"
@@ -316,6 +343,16 @@ export default function StudentsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.name ?? "Student"}?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        loading={busyId === pendingDelete?._id}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

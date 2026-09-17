@@ -8,6 +8,8 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { PERMISSION_GROUPS, PAGE_GROUPS } from "@/lib/permissions";
 
 interface TeacherItem {
@@ -122,11 +124,19 @@ export default function RolesPermissionsPage() {
             <h2 className="text-sm font-semibold text-[#172554]">Teachers</h2>
           </div>
           {loading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
+            <div className="divide-y divide-[#F1F5F9]">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : teachers.length === 0 ? (
-            <p className="text-sm text-[#64748B] text-center py-8">No teachers found.</p>
+            <EmptyStateCompact message="No teachers found." />
           ) : (
             <div className="divide-y divide-[#F1F5F9]">
               {teachers.map((t) => (
@@ -157,10 +167,7 @@ export default function RolesPermissionsPage() {
         <div className="lg:col-span-2">
           {!selected ? (
             <div className="rounded-2xl border border-[#E2E8F0] bg-white h-full flex items-center justify-center min-h-[300px]">
-              <div className="text-center text-[#94A3B8]">
-                <Shield className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Select a teacher to manage permissions</p>
-              </div>
+              <EmptyState icon={Shield} message="Select a teacher to manage permissions" />
             </div>
           ) : (
             <div className="rounded-2xl border border-[#E2E8F0] bg-white">
@@ -181,8 +188,17 @@ export default function RolesPermissionsPage() {
               </div>
               <div className="p-4">
                 {loadingPerms ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
+                  <div className="space-y-6">
+                    {Array.from({ length: 2 }).map((_, g) => (
+                      <div key={g}>
+                        <Skeleton className="h-4 w-32 mb-3" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <Skeleton key={i} className="h-10 w-full rounded-xl" />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="space-y-6">

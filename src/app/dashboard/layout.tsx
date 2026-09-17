@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   if (loading || !user) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-[#F8FAFC] min-h-screen">
+      <div className="flex flex-1 items-center justify-center bg-background min-h-screen">
         <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
       </div>
     );
@@ -78,10 +78,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar user={user} unreadCount={unread} onLogout={handleLogout} />
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
         <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
-        <main className="flex-1 px-6 py-8 overflow-auto">
-          <div className="mx-auto max-w-6xl w-full">{children}</div>
+        <main className="flex-1 p-6 overflow-auto">
+          <div className="mx-auto max-w-6xl w-full space-y-6">{children}</div>
         </main>
       </div>
     </SidebarProvider>

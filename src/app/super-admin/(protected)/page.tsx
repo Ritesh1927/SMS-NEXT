@@ -11,6 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { statusPillClass } from "@/lib/statusStyles";
 import { getSuperAdminToken, clearSuperAdminAuth } from "@/lib/superAdminAuth";
 
 interface PlanRecord {
@@ -72,6 +76,11 @@ export default function SuperAdminDashboardPage() {
   const [renewOpen, setRenewOpen] = useState(false);
   const [renewSchool, setRenewSchool] = useState<SchoolRecord | null>(null);
   const [renewForm, setRenewForm] = useState({ endDate: "", extraUsers: 0 });
+
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deletingSchool, setDeletingSchool] = useState(false);
 
   const fetchStats = useCallback(async () => {
     const token = getSuperAdminToken();
@@ -206,28 +215,38 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
-  const handleResetPassword = async (id: string, name: string) => {
+  const handleResetPassword = async () => {
+    if (!resetPasswordTarget) return;
     const token = getSuperAdminToken();
-    if (!token || !confirm(`Reset admin password for "${name}"?`)) return;
+    if (!token) return;
+    setResettingPassword(true);
     try {
-      const res = await fetch(`/api/superadmin/schools/${id}/reset-password`, { method: "POST", headers: authHeaders(token) });
+      const res = await fetch(`/api/superadmin/schools/${resetPasswordTarget.id}/reset-password`, { method: "POST", headers: authHeaders(token) });
       const json = await parseJson(res);
       toast.success("Password Reset", { description: `New password: ${json.newPassword}` });
+      setResetPasswordTarget(null);
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
+    } finally {
+      setResettingPassword(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     const token = getSuperAdminToken();
-    if (!token || !confirm("Delete this school? This cannot be undone.")) return;
+    if (!token) return;
+    setDeletingSchool(true);
     try {
-      const res = await fetch(`/api/superadmin/schools/${id}`, { method: "DELETE", headers: authHeaders(token) });
+      const res = await fetch(`/api/superadmin/schools/${deleteTarget.id}`, { method: "DELETE", headers: authHeaders(token) });
       await parseJson(res);
       toast.success("Deleted", { description: "School deleted." });
+      setDeleteTarget(null);
       fetchSchools(); fetchStats();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
+    } finally {
+      setDeletingSchool(false);
     }
   };
 
@@ -388,9 +407,11 @@ export default function SuperAdminDashboardPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-400 text-sm">Loading...</td></tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}><td colSpan={8} className="px-4 py-3"><Skeleton className="h-10 w-full rounded-lg" /></td></tr>
+                  ))
                 ) : schools.length === 0 ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-400 text-sm">No schools found.</td></tr>
+                  <tr><td colSpan={8}><EmptyState icon={School} message="No schools found." /></td></tr>
                 ) : schools.map((s) => {
                   const totalU = s.userCounts.usersTotal || s.license?.totalUsers || 0;
                   const usersUsed = s.userCounts.usersUsed || 0;
@@ -448,7 +469,7 @@ export default function SuperAdminDashboardPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${s.isActive ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+                        <span className={statusPillClass(s.isActive ? "success" : "destructive")}>
                           {s.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
@@ -463,7 +484,7 @@ export default function SuperAdminDashboardPage() {
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50"
-                            title="Reset Admin Password" onClick={() => handleResetPassword(s._id, s.name)}>
+                            title="Reset Admin Password" onClick={() => setResetPasswordTarget({ id: s._id, name: s.name })}>
                             <Key className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className={`h-8 w-8 ${s.isActive ? "text-amber-500 hover:bg-amber-50" : "text-green-500 hover:bg-green-50"}`}
@@ -471,7 +492,7 @@ export default function SuperAdminDashboardPage() {
                             <Power className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50"
-                            title="Delete" onClick={() => handleDelete(s._id)}>
+                            title="Delete" onClick={() => setDeleteTarget({ id: s._id, name: s.name })}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>

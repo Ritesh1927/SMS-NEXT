@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, Award, BookOpen, BarChart3, Loader2 } from "lucide-react";
+import { TrendingUp, Award, BookOpen, BarChart3, Users } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -12,6 +12,8 @@ import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 interface ProgressData {
   overallGPA: string;
@@ -91,9 +93,8 @@ export default function ProgressPage() {
 
       {children.length === 0 && !loading ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-            <BarChart3 className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-sm">No child linked to your account yet.</p>
+          <CardContent>
+            <EmptyState icon={Users} message="No child linked to your account yet." />
           </CardContent>
         </Card>
       ) : (
@@ -120,14 +121,17 @@ export default function ProgressPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-64 rounded-md" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Skeleton className="h-[280px] w-full rounded-lg" />
+                <Skeleton className="h-[280px] w-full rounded-lg" />
+              </div>
             </div>
           ) : !data?.hasResults ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-                <BarChart3 className="h-12 w-12 mb-3 opacity-30" />
-                <p className="text-sm">No exam results yet. Results will appear here once exams are graded.</p>
+              <CardContent>
+                <EmptyState icon={TrendingUp} message="No exam results yet. Results will appear here once exams are graded." />
               </CardContent>
             </Card>
           ) : (
@@ -227,9 +231,8 @@ export default function ProgressPage() {
               <TabsContent value="remarks">
                 {remarks.length === 0 ? (
                   <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-                      <BookOpen className="h-10 w-10 mb-3 opacity-30" />
-                      <p className="text-sm">No teacher remarks yet.</p>
+                    <CardContent>
+                      <EmptyState icon={BookOpen} message="No teacher remarks yet." />
                     </CardContent>
                   </Card>
                 ) : (

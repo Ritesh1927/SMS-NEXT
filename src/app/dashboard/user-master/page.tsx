@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Users, Search, Key, ShieldCheck, ShieldOff, GraduationCap,
-  Heart, Loader2, Eye, EyeOff, RefreshCw, Trash2,
+  Heart, Loader2, Eye, EyeOff, RefreshCw, Trash2, UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
@@ -11,6 +11,10 @@ import { apiGet } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface UserRecord {
   userId: string;
@@ -226,9 +230,24 @@ export default function UserMasterPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="p-8 text-center text-[#64748B] text-sm">Loading users...</td></tr>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="p-3 border-b border-[#F1F5F9]">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-36" /></td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-20" /></td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-14" /></td>
+                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                  </tr>
+                ))
               ) : users.length === 0 ? (
-                <tr><td colSpan={7} className="p-8 text-center text-[#64748B] text-sm">No users found.</td></tr>
+                <tr><td colSpan={7} className="p-0"><EmptyState icon={UserCog} message="No users found." /></td></tr>
               ) : (
                 users.map((u) => (
                   <tr key={`${u.role}-${u.userId}`} className="hover:bg-[#F8FAFC]/60 transition-colors">
@@ -247,7 +266,7 @@ export default function UserMasterPage() {
                     </td>
                     <td className="p-3 border-b border-[#F1F5F9] text-xs font-mono text-[#64748B]">{u.teacherId || "-"}</td>
                     <td className="p-3 border-b border-[#F1F5F9]">
-                      <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${u.isActive ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+                      <span className={statusPillClass(u.isActive ? "success" : "destructive")}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
@@ -316,33 +335,15 @@ export default function UserMasterPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={delDialog.open} onOpenChange={(open) => { if (!open) setDelDialog({ open: false, user: null }); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-500" /> Delete User
-            </DialogTitle>
-          </DialogHeader>
-          {delDialog.user && (
-            <div className="space-y-4 mt-2">
-              <div className="p-3 rounded-lg bg-red-50 border border-red-100">
-                <p className="text-sm font-medium text-[#172554]">{delDialog.user.name}</p>
-                <p className="text-xs text-[#64748B]">{delDialog.user.email} · <span className="capitalize">{delDialog.user.role}</span></p>
-              </div>
-              <p className="text-sm text-[#64748B]">
-                This action cannot be undone. If this user has existing records (payments, homework, classes), deletion will be blocked.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setDelDialog({ open: false, user: null })} disabled={deleting}>Cancel</Button>
-                <Button variant="destructive" className="gap-2" onClick={handleDelete} disabled={deleting}>
-                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  {deleting ? "Deleting..." : "Delete Permanently"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={delDialog.open}
+        onOpenChange={(open) => { if (!open) setDelDialog({ open: false, user: null }); }}
+        title={`Delete "${delDialog.user?.name ?? "User"}"?`}
+        description="This action cannot be undone. If this user has existing records (payments, homework, classes), deletion will be blocked."
+        confirmLabel="Delete Permanently"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

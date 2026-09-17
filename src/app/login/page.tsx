@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   GraduationCap, Mail, Lock, Eye, EyeOff, ArrowRight,
   KeyRound, ArrowLeft, CheckCircle, Loader2, Building2,
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiPost } from "@/lib/api";
+import loginImage from "@/assets/login-img.png";
 
 interface SignupFormData {
   schoolName: string;
@@ -322,9 +324,42 @@ export default function LoginPage() {
           transition: "all 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
         }}
       >
-        <div className="pointer-events-none absolute -top-16 -right-16 w-72 h-72 rounded-full bg-blue-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 -left-20 w-72 h-72 rounded-full bg-violet-500/25 blur-3xl" />
-        <div className="pointer-events-none absolute top-1/3 left-1/2 w-64 h-64 -translate-x-1/2 rounded-full bg-white/5 blur-3xl hidden sm:block" />
+        {/* ── Premium layered background ── */}
+        <div className="pointer-events-none absolute inset-0">
+          {/* fine dot-grid texture, faded toward the edges */}
+          <div
+            className="absolute inset-0 bg-dot-grid opacity-[0.14]"
+            style={{
+              maskImage: "radial-gradient(ellipse 75% 55% at 50% 38%, black 0%, transparent 85%)",
+              WebkitMaskImage: "radial-gradient(ellipse 75% 55% at 50% 38%, black 0%, transparent 85%)",
+            }}
+          />
+          {/* film-grain for depth */}
+          <div className="absolute inset-0 bg-grain opacity-[0.05] mix-blend-overlay" />
+
+          {/* breathing gradient orbs */}
+          <div className="absolute -top-16 -right-16 w-80 h-80 rounded-full bg-blue-400/25 blur-3xl animate-orb-breathe" />
+          <div
+            className="absolute bottom-0 -left-24 w-80 h-80 rounded-full bg-violet-500/30 blur-3xl animate-orb-breathe"
+            style={{ animationDelay: "3s" }}
+          />
+          <div
+            className="absolute top-1/3 left-1/2 w-72 h-72 -translate-x-1/2 rounded-full bg-fuchsia-400/15 blur-3xl animate-orb-breathe hidden sm:block"
+            style={{ animationDelay: "6s" }}
+          />
+
+          {/* diagonal light sheen sweep */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.07] to-transparent animate-sheen-sweep" />
+          </div>
+
+          {/* top sheen + bottom vignette to ground content */}
+          <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-white/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#241a5e]/50 to-transparent" />
+
+          {/* hairline inner border for a premium framed edge */}
+          <div className="absolute inset-0 ring-1 ring-inset ring-white/10" />
+        </div>
 
         <div className="relative z-10 shrink-0">
           <h2 className="text-2xl sm:text-2xl lg:text-[28px] font-semibold leading-tight tracking-tight">
@@ -341,9 +376,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="relative z-10 flex-1 flex items-center justify-center py-2 min-h-0">
-          <div className="h-40 w-40 sm:h-48 sm:w-48 lg:h-56 lg:w-56 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 flex items-center justify-center">
-            <GraduationCap className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 text-white/90" strokeWidth={1.25} />
+        <div className="relative z-10 flex-1 flex items-center justify-center min-h-0 py-5 sm:py-6 lg:py-8">
+          <div className="relative w-full max-w-[400px] animate-float-soft">
+            <div className="pointer-events-none absolute inset-[6%] rounded-full bg-white/10 blur-3xl" />
+            <Image
+              src={loginImage}
+              alt="Students learning together with books"
+              sizes="(max-width: 767px) 68vw, (max-width: 1279px) 30vw, 400px"
+              className="relative h-auto w-full drop-shadow-[0_30px_50px_rgba(15,10,50,0.45)] transition-transform duration-500 ease-out hover:scale-[1.03]"
+              priority
+            />
           </div>
         </div>
 

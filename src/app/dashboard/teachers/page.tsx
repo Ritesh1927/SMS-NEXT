@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Filter, Building2, GraduationCap, Briefcase } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Filter, Building2, GraduationCap, Briefcase, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface ClassOption {
   _id: string;
@@ -116,6 +120,7 @@ export default function TeachersPage() {
 
   const [staffFilter, setStaffFilter] = useState<"" | "teaching" | "non-teaching">("");
   const [search, setSearch] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<TeacherRow | null>(null);
 
   const load = () => {
     const token = getToken();
@@ -179,8 +184,9 @@ export default function TeachersPage() {
     }
   };
 
-  const handleDelete = async (t: TeacherRow) => {
-    if (!confirm(`Delete ${t.name}? This cannot be undone.`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const t = pendingDelete;
     const token = getToken();
     if (!token) return;
     setBusyId(t._id);
@@ -192,6 +198,7 @@ export default function TeachersPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete teacher.");
       toast.success("Teacher deleted");
+      setPendingDelete(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -292,16 +299,39 @@ export default function TeachersPage() {
       )}
 
       {error ? null : !teachers ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
+            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Name</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Type</p>
+            <p className="w-48 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Phone</p>
+            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Subjects</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Skeleton className="h-11 w-11 rounded-full shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="hidden sm:block w-28 shrink-0"><Skeleton className="h-4 w-16" /></div>
+              <div className="hidden sm:block w-48 shrink-0"><Skeleton className="h-4 w-36" /></div>
+              <div className="hidden sm:block w-32 shrink-0"><Skeleton className="h-4 w-20" /></div>
+              <div className="hidden lg:block w-40 shrink-0"><Skeleton className="h-4 w-28" /></div>
+              <div className="w-[136px] shrink-0" />
+            </div>
+          ))}
         </div>
       ) : teachers.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No teachers yet. Add your first one to get started.</p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Users} message="No teachers yet. Add your first one to get started." />
         </div>
       ) : filteredTeachers.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No staff match your filters.</p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Users} message="No staff match your filters." />
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -326,9 +356,7 @@ export default function TeachersPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-[#172554] truncate">{t.name}</p>
                     {!t.isActive && (
-                      <span className="shrink-0 text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                        Inactive
-                      </span>
+                      <span className={`shrink-0 ${statusPillClass("destructive")}`}>Inactive</span>
                     )}
                   </div>
                   <p className="text-xs text-[#64748B] mt-0.5 truncate">{t.qualification || t.teacherId}</p>
@@ -377,7 +405,7 @@ export default function TeachersPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => handleDelete(t)}
+                  onClick={() => setPendingDelete(t)}
                   disabled={busyId === t._id}
                   aria-label="Delete"
                   className="hover:text-red-600"
@@ -389,6 +417,16 @@ export default function TeachersPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.name ?? "Teacher"}?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        loading={busyId === pendingDelete?._id}
+        onConfirm={confirmDelete}
+      />
 
       <Dialog open={!!permTeacher} onOpenChange={(o) => { if (!o) setPermTeacher(null); }}>
         <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">

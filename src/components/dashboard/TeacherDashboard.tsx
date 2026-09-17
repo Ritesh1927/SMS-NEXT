@@ -7,6 +7,8 @@ import { StatCard } from "@/components/StatCard";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { DashboardHero } from "./DashboardHero";
+import { EmptyStateCompact } from "@/components/EmptyState";
+import { statusPillClass, type StatusTone } from "@/lib/statusStyles";
 
 interface TeacherDashboardData {
   teacher: {
@@ -52,11 +54,11 @@ interface FeeSummaryResponse {
   summary: { totalDue: number; totalPaid: number; totalPending: number; paidCount: number; pendingCount: number };
 }
 
-const FEE_STATUS_STYLE: Record<FeeRow["feeStatus"], string> = {
-  paid: "bg-green-100 text-green-700",
-  clear: "bg-green-100 text-green-700",
-  partial: "bg-blue-100 text-blue-700",
-  pending: "bg-orange-100 text-orange-700",
+const FEE_STATUS_TONE: Record<FeeRow["feeStatus"], StatusTone> = {
+  paid: "success",
+  clear: "success",
+  partial: "info",
+  pending: "warning",
 };
 
 const panelClass = "rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]";
@@ -147,7 +149,7 @@ export function TeacherDashboard() {
             </h2>
           </div>
           {weeklyTrend.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No attendance data yet.</p>
+            <EmptyStateCompact message="No attendance data yet." />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={weeklyTrend}>
@@ -167,7 +169,7 @@ export function TeacherDashboard() {
             <h2 className="text-sm font-semibold text-[#172554]">Class Performance Average</h2>
           </div>
           {classPerformance.length === 0 ? (
-            <p className="text-sm text-[#64748B]">No result data yet.</p>
+            <EmptyStateCompact message="No result data yet." />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={classPerformance}>
@@ -200,9 +202,7 @@ export function TeacherDashboard() {
           <BookOpen className="h-4 w-4 text-[#4F46E5]" /> My Classes
         </h2>
         {classBreakdown.length === 0 ? (
-          <p className="text-sm text-[#64748B]">
-            No classes assigned yet. Ask your school admin to assign classes on your profile.
-          </p>
+          <EmptyStateCompact message="No classes assigned yet. Ask your school admin to assign classes on your profile." />
         ) : (
           <div className="space-y-3">
             {classBreakdown.map((c) => (
@@ -244,7 +244,7 @@ export function TeacherDashboard() {
                     <td className="p-2 text-right font-mono text-green-600">₹{s.totalPaid.toLocaleString("en-IN")}</td>
                     <td className="p-2 text-right font-mono text-amber-600">₹{Math.max(0, s.pendingAmount).toLocaleString("en-IN")}</td>
                     <td className="p-2 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${FEE_STATUS_STYLE[s.feeStatus]}`}>{s.feeStatus}</span>
+                      <span className={statusPillClass(FEE_STATUS_TONE[s.feeStatus])}>{s.feeStatus}</span>
                     </td>
                   </tr>
                 ))}

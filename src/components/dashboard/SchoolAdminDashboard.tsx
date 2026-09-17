@@ -15,6 +15,7 @@ import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 import { DashboardHero } from "./DashboardHero";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface DashboardStats {
   totalStudents: number;
@@ -335,7 +336,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
           <div className="glass-panel">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-[#0F172A]">Pending Fees</h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FEE2E2] text-[#DC2626]">{pendingFeeStudents.length} pending</span>
+              <span className={statusPillClass("warning")}>{pendingFeeStudents.length} pending</span>
             </div>
             {pendingFeeStudents.length === 0 ? (
               <p className="text-sm text-[#64748B] text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
@@ -429,7 +430,7 @@ function EmptyPanel({ icon: Icon, title, subtitle }: { icon: typeof BarChart3; t
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center" style={{ height: 280 }}>
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
-        <Icon className="h-6 w-6 text-[#64748B]" />
+        <Icon className="h-5 w-5 text-[#64748B]" />
       </div>
       <p className="text-sm font-semibold text-[#475569]">{title}</p>
       <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">{subtitle}</p>
@@ -629,7 +630,7 @@ function UpcomingEvents() {
       <div className="flex flex-1 flex-col bg-white p-6 sm:p-7">
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
-            <CalendarDays className="h-6 w-6 text-[#64748B]" />
+            <CalendarDays className="h-5 w-5 text-[#64748B]" />
           </div>
           <p className="text-sm font-semibold text-[#475569]">No Upcoming Events</p>
           <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">New events will appear here once scheduled.</p>

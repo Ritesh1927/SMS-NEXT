@@ -9,6 +9,10 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface ChildRef {
   _id: string;
@@ -53,6 +57,7 @@ export default function ParentsPage() {
   const [editingParent, setEditingParent] = useState<ParentRow | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ParentRow | null>(null);
 
   const load = () => {
     const token = getToken();
@@ -116,8 +121,9 @@ export default function ParentsPage() {
     }
   };
 
-  const handleDelete = async (p: ParentRow) => {
-    if (!confirm(`Delete ${p.name}? This cannot be undone.`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const p = pendingDelete;
     const token = getToken();
     if (!token) return;
     setBusyId(p._id);
@@ -126,6 +132,7 @@ export default function ParentsPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete parent.");
       toast.success("Parent deleted");
+      setPendingDelete(null);
       load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
@@ -149,14 +156,24 @@ export default function ParentsPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : !parents ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+              <div className="min-w-0 space-y-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <Skeleton className="hidden sm:block h-3 w-32" />
+                <Skeleton className="hidden md:block h-3 w-24" />
+                <Skeleton className="h-7 w-20" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : parents.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">
-            No parents yet. They&apos;re created automatically when you admit a student.
-          </p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Users} message="No parents yet. They're created automatically when you admit a student." />
         </div>
       ) : (
         <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -166,9 +183,7 @@ export default function ParentsPage() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-[#172554]">{p.name}</p>
                   {!p.isActive && (
-                    <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                      Inactive
-                    </span>
+                    <span className={statusPillClass("destructive")}>Inactive</span>
                   )}
                 </div>
                 <p className="text-xs text-[#64748B] mt-0.5 flex items-center gap-1">
@@ -203,7 +218,7 @@ export default function ParentsPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => handleDelete(p)}
+                    onClick={() => setPendingDelete(p)}
                     disabled={busyId === p._id}
                     aria-label="Delete"
                     className="hover:text-red-600"
@@ -216,6 +231,16 @@ export default function ParentsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.name ?? "Parent"}?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        loading={busyId === pendingDelete?._id}
+        onConfirm={confirmDelete}
+      />
 
       <Dialog open={!!editingParent} onOpenChange={(o) => { if (!o) setEditingParent(null); }}>
         <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">

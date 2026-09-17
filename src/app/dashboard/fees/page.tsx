@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Trash2, DollarSign, Pencil, Tag, TrendingUp, AlertCircle } from "lucide-react";
+import { Plus, Loader2, Trash2, DollarSign, Pencil, Tag, TrendingUp, AlertCircle, IndianRupee, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { statusPillClass, type StatusTone } from "@/lib/statusStyles";
 
 type Frequency = "monthly" | "quarterly" | "yearly" | "one-time";
 type FeeStatus = "paid" | "pending" | "partial" | "overdue";
@@ -118,11 +122,11 @@ interface ApiMessageResponse {
   message?: string;
 }
 
-const STATUS_STYLES: Record<FeeStatus, string> = {
-  paid: "bg-green-100 text-green-700",
-  pending: "bg-slate-100 text-slate-600",
-  partial: "bg-amber-100 text-amber-700",
-  overdue: "bg-red-100 text-red-700",
+const FEE_STATUS_TONE: Record<FeeStatus, StatusTone> = {
+  paid: "success",
+  pending: "neutral",
+  partial: "warning",
+  overdue: "destructive",
 };
 
 const EMPTY_STRUCTURE_FORM = { class: "", title: "", amount: "", dueDate: "", frequency: "monthly" as Frequency, description: "" };
@@ -155,6 +159,10 @@ export default function FeesPage() {
   const [conSubmitting, setConSubmitting] = useState(false);
 
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+
+  const [pendingDeleteCon, setPendingDeleteCon] = useState<ConcessionRow | null>(null);
+  const [pendingDeleteStructure, setPendingDeleteStructure] = useState<StructureRow | null>(null);
+  const [pendingDeletePayment, setPendingDeletePayment] = useState<PaymentRow | null>(null);
 
   const load = () => {
     const token = getToken();
@@ -242,7 +250,6 @@ export default function FeesPage() {
   };
 
   const handleDeleteConcession = async (c: ConcessionRow) => {
-    if (!confirm(`Delete this concession for ${c.student?.name || "student"}?`)) return;
     const token = getToken();
     if (!token) return;
     try {
@@ -250,6 +257,7 @@ export default function FeesPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete concession.");
       toast.success("Concession deleted");
+      setPendingDeleteCon(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -284,7 +292,6 @@ export default function FeesPage() {
   };
 
   const handleDeleteStructure = async (s: StructureRow) => {
-    if (!confirm(`Delete "${s.title}"? Existing payment records are kept.`)) return;
     const token = getToken();
     if (!token) return;
     setBusyId(s._id);
@@ -293,6 +300,7 @@ export default function FeesPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete fee structure.");
       toast.success("Fee structure deleted");
+      setPendingDeleteStructure(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -335,7 +343,6 @@ export default function FeesPage() {
   };
 
   const handleDeletePayment = async (p: PaymentRow) => {
-    if (!confirm(`Delete this payment record for ${p.student?.name || "student"}?`)) return;
     const token = getToken();
     if (!token) return;
     setBusyId(p._id);
@@ -344,6 +351,7 @@ export default function FeesPage() {
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete payment.");
       toast.success("Payment deleted");
+      setPendingDeletePayment(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -444,12 +452,17 @@ export default function FeesPage() {
 
         <TabsContent value="payments" className="mt-4">
           {error ? null : !payments ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+                  <Skeleton className="h-4 w-1/3 mb-2" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : payments.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-sm text-[#64748B]">No fee payments yet. Create a fee structure to get started.</p>
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <EmptyState icon={IndianRupee} message="No fee payments yet. Create a fee structure to get started." />
             </div>
           ) : (
             <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -463,7 +476,7 @@ export default function FeesPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[p.status]}`}>{p.status}</span>
+                    <span className={statusPillClass(FEE_STATUS_TONE[p.status])}>{p.status}</span>
                     {p.status !== "paid" && (
                       <Button variant="outline" size="sm" onClick={() => openCollect(p)} className="gap-1">
                         <DollarSign className="h-3.5 w-3.5" /> Collect
@@ -472,7 +485,7 @@ export default function FeesPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => handleDeletePayment(p)}
+                      onClick={() => setPendingDeletePayment(p)}
                       disabled={busyId === p._id}
                       aria-label="Delete"
                       className="hover:text-red-600"
@@ -493,12 +506,17 @@ export default function FeesPage() {
             </Button>
           </div>
           {error ? null : !structures ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+                  <Skeleton className="h-4 w-1/3 mb-2" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : structures.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-sm text-[#64748B]">No fee structures yet.</p>
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <EmptyState icon={IndianRupee} message="No fee structures yet." />
             </div>
           ) : (
             <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -513,7 +531,7 @@ export default function FeesPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => handleDeleteStructure(s)}
+                    onClick={() => setPendingDeleteStructure(s)}
                     disabled={busyId === s._id}
                     aria-label="Delete"
                     className="hover:text-red-600 shrink-0"
@@ -535,12 +553,17 @@ export default function FeesPage() {
             </Button>
           </div>
           {!concessions ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+                  <Skeleton className="h-4 w-1/3 mb-2" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : concessions.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-sm text-[#64748B]">No concessions configured yet.</p>
+            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <EmptyState icon={Tag} message="No concessions configured yet." />
             </div>
           ) : (
             <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
@@ -569,7 +592,7 @@ export default function FeesPage() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={() => handleDeleteConcession(c)}
+                        onClick={() => setPendingDeleteCon(c)}
                         aria-label="Delete"
                         className="hover:text-red-600"
                       >

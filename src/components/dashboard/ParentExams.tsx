@@ -8,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Child {
   _id: string;
@@ -162,9 +164,8 @@ export function ParentExams() {
 
       {!loadingChildren && children.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-            <BookOpen className="h-12 w-12 mb-3 opacity-30" />
-            <p className="text-sm">No child linked to your account yet.</p>
+          <CardContent className="py-4">
+            <EmptyState icon={BookOpen} message="No child linked to your account yet." />
           </CardContent>
         </Card>
       ) : (
@@ -176,12 +177,15 @@ export function ParentExams() {
 
           <TabsContent value="upcoming">
             {!upcoming ? (
-              <div className="flex items-center gap-2 text-sm text-[#64748B] py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
             ) : upcoming.length === 0 ? (
               <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-                  <CalendarClock className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">No upcoming exams scheduled.</p>
+                <CardContent className="py-4">
+                  <EmptyState icon={CalendarClock} message="No upcoming exams scheduled." />
                 </CardContent>
               </Card>
             ) : (
@@ -240,12 +244,15 @@ export function ParentExams() {
 
           <TabsContent value="results">
             {!results ? (
-              <div className="flex items-center gap-2 text-sm text-[#64748B] py-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
             ) : results.results.length === 0 ? (
               <Card>
-                <CardContent className="flex flex-col items-center justify-center py-16 text-[#64748B]">
-                  <Award className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">No published results yet.</p>
+                <CardContent className="py-4">
+                  <EmptyState icon={Award} message="No published results yet." />
                 </CardContent>
               </Card>
             ) : (

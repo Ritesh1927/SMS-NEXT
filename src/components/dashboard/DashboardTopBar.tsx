@@ -151,19 +151,28 @@ export function DashboardTopBar({
   const hasResults = students.length + teachers.length + classes.length > 0;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-[#E2E8F0] bg-white/80 backdrop-blur px-4 sm:px-6">
-      <SidebarTrigger className="text-[#475569] hover:text-[#4F46E5] hover:bg-[#F1F5F9] rounded-lg" />
+    <header className="sticky top-0 z-30 relative flex h-16 items-center gap-4 bg-gradient-to-r from-[#0F172A] via-[#1E1B4B] to-[#312E81] backdrop-blur-md px-4 sm:px-6">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-12 left-1/4 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute -top-12 right-1/4 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" />
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+
+      <SidebarTrigger className="h-10 w-10 rounded-full text-white/70 hover:text-white hover:bg-white/10" />
 
       {canSearch && (
         <div className="relative hidden md:block" ref={boxRef}>
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <Input
             placeholder="Search students, classes, teachers..."
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
-            className="w-80 h-10 pl-10 rounded-full bg-[#F8FAFC] border-[#E2E8F0]"
+            className="w-80 h-10 pl-10 pr-14 rounded-2xl border border-white/10 bg-white/[0.06] text-white placeholder:text-white/50 focus-visible:ring-white/30 focus-visible:ring-offset-0"
           />
+          <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/40 sm:inline-flex">
+            Ctrl K
+          </kbd>
 
           {open && query.trim().length >= 2 && (
             <div className="absolute top-full mt-2 w-full bg-white rounded-xl border border-[#E2E8F0] shadow-lg z-40 max-h-96 overflow-y-auto py-2">
@@ -237,9 +246,9 @@ export function DashboardTopBar({
         <DropdownMenu onOpenChange={handleBellOpen}>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full text-[#475569] hover:text-[#4F46E5] hover:bg-[#F1F5F9]">
+              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full text-white/70 hover:text-white hover:bg-white/10">
                 <Bell className="h-[18px] w-[18px]" />
-                {hasUnseen && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#EF4444] ring-2 ring-white" />}
+                {hasUnseen && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#EF4444] ring-2 ring-[#0F172A]" />}
               </Button>
             }
           />
@@ -276,7 +285,7 @@ export function DashboardTopBar({
           <DropdownMenuTrigger
             nativeButton={false}
             render={
-              <div className="flex items-center gap-2 cursor-pointer rounded-full hover:bg-[#F1F5F9] p-1 pr-2 transition-colors">
+              <div className="flex items-center gap-2 cursor-pointer rounded-full hover:bg-white/10 p-1 pr-2 transition-colors">
                 <Avatar className="h-9 w-9 ring-2 ring-[#E0E7FF]">
                   <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-xs font-semibold">
                     {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U"}

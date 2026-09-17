@@ -12,6 +12,9 @@ import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
+import { statusPillClass } from "@/lib/statusStyles";
 
 type Tab = "overview" | "attendance" | "exams" | "finance";
 
@@ -188,8 +191,13 @@ export default function ReportsPage() {
       {tab === "overview" && (
         <div className="space-y-6">
           {loadingInit ? (
-            <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                ))}
+              </div>
+              <Skeleton className="h-[280px] w-full rounded-lg" />
             </div>
           ) : (
             <>
@@ -342,16 +350,16 @@ export default function ReportsPage() {
           </div>
 
           {loadingAtt ? (
-            <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+            <div className="space-y-5">
+              <Skeleton className="h-[300px] w-full rounded-lg" />
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
             </div>
           ) : attData.length === 0 ? (
-            <div className="text-center py-16 text-[#64748B]">
-              <CalendarCheck className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">
-                No attendance data for {MONTHS[attMonth - 1]} {attYear}.
-              </p>
-            </div>
+            <EmptyState icon={CalendarCheck} message={`No attendance data for ${MONTHS[attMonth - 1]} ${attYear}.`} />
           ) : (
             <>
               <Card>
@@ -387,11 +395,7 @@ export default function ReportsPage() {
                             {d.present} present out of {d.total} total
                           </p>
                         </div>
-                        <span
-                          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                            d.rate >= 90 ? "bg-green-100 text-green-700" : d.rate >= 75 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                          }`}
-                        >
+                        <span className={statusPillClass(d.rate >= 90 ? "success" : d.rate >= 75 ? "warning" : "destructive")}>
                           {d.rate}%
                         </span>
                       </div>
@@ -442,15 +446,18 @@ export default function ReportsPage() {
           </div>
 
           {!selectedExam && (
-            <div className="text-center py-16 text-[#64748B]">
-              <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Select an exam above to view results and grade distribution.</p>
-            </div>
+            <EmptyState icon={GraduationCap} message="Select an exam above to view results and grade distribution." />
           )}
 
           {loadingResults && (
-            <div className="flex items-center justify-center h-48">
-              <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                ))}
+              </div>
+              <Skeleton className="h-[240px] w-full rounded-lg" />
+              <Skeleton className="h-64 w-full rounded-lg" />
             </div>
           )}
 
@@ -530,13 +537,13 @@ export default function ReportsPage() {
                               <span className="text-xs px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155]">{r.grade}</span>
                             </td>
                             <td className="px-4 py-2.5">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${r.isPassed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{r.isPassed ? "Pass" : "Fail"}</span>
+                              <span className={statusPillClass(r.isPassed ? "success" : "destructive")}>{r.isPassed ? "Pass" : "Fail"}</span>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    {examResults.results.length === 0 && <p className="text-center text-sm text-[#64748B] py-10">No results entered for this exam yet.</p>}
+                    {examResults.results.length === 0 && <EmptyStateCompact message="No results entered for this exam yet." />}
                   </div>
                 </CardContent>
               </Card>
@@ -636,11 +643,13 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {loadingPending ? (
-                <div className="flex items-center justify-center h-24">
-                  <Loader2 className="h-5 w-5 animate-spin text-[#4F46E5]" />
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-md" />
+                  ))}
                 </div>
               ) : pendingFees.length === 0 ? (
-                <p className="text-center text-sm text-[#64748B] py-10">No pending fees.</p>
+                <EmptyStateCompact message="No pending fees." />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -664,7 +673,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-2.5 text-red-600 font-medium">₹{(f.amount - f.paidAmount)?.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-[#64748B]">{f.dueDate?.slice(0, 10) || "—"}</td>
                           <td className="px-4 py-2.5">
-                            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${f.status === "overdue" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{f.status}</span>
+                            <span className={`${statusPillClass(f.status === "overdue" ? "destructive" : "warning")} capitalize`}>{f.status}</span>
                           </td>
                         </tr>
                       ))}

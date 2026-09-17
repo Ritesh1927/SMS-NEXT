@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface LoginLogRow {
   _id: string;
@@ -60,6 +63,7 @@ export default function LoginActivityPage() {
   const [purgeFrom, setPurgeFrom] = useState("");
   const [purgeTo, setPurgeTo] = useState("");
   const [purging, setPurging] = useState(false);
+  const [purgeDialogOpen, setPurgeDialogOpen] = useState(false);
 
   const fetchLogs = (p: number) => {
     const token = getToken();
@@ -85,12 +89,15 @@ export default function LoginActivityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, roleFilter, fromDate, toDate]);
 
-  const handlePurge = async () => {
+  const handlePurgeClick = () => {
     if (!purgeFrom || !purgeTo) {
       toast.error("Please select both from and to dates.");
       return;
     }
-    if (!confirm(`Delete all login logs from ${purgeFrom} to ${purgeTo}?`)) return;
+    setPurgeDialogOpen(true);
+  };
+
+  const confirmPurge = async () => {
     const token = getToken();
     if (!token) return;
     setPurging(true);
@@ -105,6 +112,7 @@ export default function LoginActivityPage() {
       toast.success(json.message);
       setPurgeFrom("");
       setPurgeTo("");
+      setPurgeDialogOpen(false);
       fetchLogs(1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to purge logs.");
@@ -117,7 +125,7 @@ export default function LoginActivityPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-[#4F46E5]/10 rounded-xl">
-          <Activity className="h-6 w-6 text-[#4F46E5]" />
+          <Activity className="h-5 w-5 text-[#4F46E5]" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#172554]">Login Activity</h1>
@@ -192,15 +200,17 @@ export default function LoginActivityPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-[#64748B]">
-                    Loading…
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={8}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-[#64748B]">
-                    No login records found.
+                  <TableCell colSpan={8}>
+                    <EmptyState icon={Activity} message="No login records found." />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -286,12 +296,22 @@ export default function LoginActivityPage() {
               <label className="text-xs font-medium text-[#64748B] mb-1 block">To</label>
               <Input type="date" value={purgeTo} onChange={(e) => setPurgeTo(e.target.value)} />
             </div>
-            <Button variant="destructive" disabled={purging || !purgeFrom || !purgeTo} onClick={handlePurge}>
+            <Button variant="destructive" disabled={purging || !purgeFrom || !purgeTo} onClick={handlePurgeClick}>
               {purging ? "Purging…" : "Purge Logs"}
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={purgeDialogOpen}
+        onOpenChange={setPurgeDialogOpen}
+        title="Purge Login Logs?"
+        description={`Delete all login logs from ${purgeFrom} to ${purgeTo}?`}
+        confirmLabel="Purge"
+        loading={purging}
+        onConfirm={confirmPurge}
+      />
     </div>
   );
 }

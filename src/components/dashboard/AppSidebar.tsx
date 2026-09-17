@@ -115,8 +115,8 @@ type SectionTheme = { icon: string; activeBg: string; activeText: string; label:
 // not a different color per section).
 const DEFAULT_THEME: SectionTheme = {
   icon: "text-[#4F46E5]/60",
-  activeBg: "bg-[#4F46E5]/10",
-  activeText: "text-[#4F46E5]",
+  activeBg: "bg-[#F4F1FF] border border-[#E7DEFF]",
+  activeText: "text-[#6D5DF6]",
   label: "text-[#64748B]",
 };
 
@@ -172,8 +172,8 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
   const sections = groupBySection(navItems);
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-[#E2E8F0]">
-      <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-5 group-data-[collapsible=icon]:pr-2 border-b border-[#E2E8F0] overflow-hidden">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border/70 rounded-br-[20px]">
+      <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-5 group-data-[collapsible=icon]:pr-2 border-b border-sidebar-border/70 overflow-hidden">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
           <Logo className="h-5 w-5 text-white" />
         </div>
@@ -204,11 +204,16 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
                             render={
                               <Link
                                 href={item.href}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                                className={`relative flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-medium transition-colors ${
                                   isActive ? `${theme.activeBg} ${theme.activeText} font-semibold` : "text-[#475569] hover:bg-[#F1F5F9] hover:text-[#172554]"
                                 }`}
                               >
-                                <item.icon className={`h-4 w-4 shrink-0 ${isActive ? theme.activeText : theme.icon}`} />
+                                {isActive && (
+                                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-[#6D5DF6]" />
+                                )}
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]">
+                                  <item.icon className={`h-4 w-4 shrink-0 ${isActive ? theme.activeText : theme.icon}`} />
+                                </span>
                                 <span className="truncate">{item.label}</span>
                               </Link>
                             }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BookOpen, Search, Download, FileText, File, Plus, Eye, Loader2, Trash2, Upload, X, BookMarked } from "lucide-react";
+import { BookOpen, Search, Download, FileText, File, Plus, Eye, Loader2, Trash2, Upload, X, BookMarked, Users } from "lucide-react";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 type MaterialType = "pdf" | "notes" | "paper" | "worksheet";
 
@@ -276,19 +278,15 @@ export default function StudyMaterialsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full rounded-lg" />
+          ))}
         </div>
       ) : isParent && !selectedChildId ? (
-        <div className="text-center py-16 text-[#64748B]">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No child linked to your account yet.</p>
-        </div>
+        <EmptyState icon={Users} message="No child linked to your account yet." />
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-[#64748B]">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No materials found.</p>
-        </div>
+        <EmptyState icon={BookOpen} message="No materials found." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((mat) => {

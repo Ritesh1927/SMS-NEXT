@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 type Category = "general" | "exam" | "fee" | "holiday" | "event" | "urgent" | "other";
 type TargetRole = "all" | "teacher" | "student" | "parent";
@@ -72,6 +75,7 @@ export default function NoticesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<NoticeRow | null>(null);
 
   const permissions = user?.permissions as { canPostNotice?: boolean } | undefined;
   const canPost = user?.role === "schooladmin" || permissions?.canPostNotice === true;
@@ -138,16 +142,17 @@ export default function NoticesPage() {
     }
   };
 
-  const handleDelete = async (n: NoticeRow) => {
-    if (!confirm(`Delete "${n.title}"? This cannot be undone.`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
     const token = getToken();
     if (!token) return;
-    setBusyId(n._id);
+    setBusyId(pendingDelete._id);
     try {
-      const res = await fetch(`/api/notices/${n._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/notices/${pendingDelete._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete notice.");
       toast.success("Notice deleted");
+      setPendingDelete(null);
       load();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -175,13 +180,14 @@ export default function NoticesPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : !notices ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-[18px]" />
+          ))}
         </div>
       ) : notices.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <Megaphone className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-          <p className="text-sm text-[#64748B]">No notices yet.</p>
+        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Megaphone} message="No notices yet." />
         </div>
       ) : (
         <div className="space-y-3">
@@ -204,7 +210,7 @@ export default function NoticesPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => handleDelete(n)}
+                      onClick={() => setPendingDelete(n)}
                       disabled={busyId === n._id}
                       aria-label="Delete"
                       className="hover:text-red-600"
@@ -296,6 +302,16 @@ export default function NoticesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title="Delete Notice?"
+        description={`Delete "${pendingDelete?.title ?? ""}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={busyId === pendingDelete?._id}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
