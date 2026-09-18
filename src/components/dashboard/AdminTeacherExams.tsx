@@ -27,6 +27,17 @@ interface ClassOption {
   section: string;
 }
 
+interface SubjectOption {
+  _id: string;
+  name: string;
+  code: string;
+}
+
+interface SubjectsResponse {
+  success: boolean;
+  data: SubjectOption[];
+}
+
 interface ExamRow {
   _id: string;
   title: string;
@@ -135,6 +146,8 @@ function isEditWindowOpen(dateIso: string) {
   return new Date() <= twoHoursBefore;
 }
 
+const todayISO = () => new Date().toISOString().split("T")[0];
+
 function mergeRosterAndResults(roster: RosterEntry[], results: ResultRow[]): MergedResultRow[] {
   const byStudent = new Map(results.map((r) => [r.student._id, r]));
   return roster.map((entry) => {
@@ -165,6 +178,8 @@ export function AdminTeacherExams() {
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [terms, setTerms] = useState<TermRow[] | null>(null);
   const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
+  const [passPercentage, setPassPercentage] = useState(35);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -179,6 +194,7 @@ export function AdminTeacherExams() {
   const [editingTermId, setEditingTermId] = useState<string | null>(null);
   const [termForm, setTermForm] = useState(EMPTY_TERM_FORM);
   const [termSubjects, setTermSubjects] = useState<TermSubjectDraft[]>([{ subject: "", date: "", totalMarks: "100", duration: "60" }]);
+  const [termSubjectOptions, setTermSubjectOptions] = useState<SubjectOption[]>([]);
   const [termSubmitting, setTermSubmitting] = useState(false);
 
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set());
@@ -237,8 +253,25 @@ export function AdminTeacherExams() {
 
   useEffect(() => {
     load();
+    const token = getToken();
+    if (token) {
+      apiGet<{ success: boolean; data: { settings?: { passPercentage?: number } } }>("/school", token)
+        .then((res) => { if (res.data?.settings?.passPercentage) setPassPercentage(res.data.settings.passPercentage); })
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!form.class) { setSubjectOptions([]); return; }
+    const token = getToken();
+    if (!token) return;
+    const cls = classes.find((c) => c.name === form.class && c.section === form.section);
+    if (!cls) { setSubjectOptions([]); return; }
+    apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
+      .then((res) => setSubjectOptions(res.data))
+      .catch(() => setSubjectOptions([]));
+  }, [form.class, form.section, classes]);
 
   // ── Single exam ("Test") create/edit ─────────────────────────────────────
   const openAdd = () => {
@@ -259,11 +292,24 @@ export function AdminTeacherExams() {
       passingMarks: String(exam.passingMarks),
       examType: exam.examType,
     });
+    const cls = classes.find((c) => c.name === exam.class && c.section === (exam.section || ""));
+    if (cls) {
+      const token = getToken();
+      if (token) {
+        apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
+          .then((res) => setSubjectOptions(res.data))
+          .catch(() => setSubjectOptions([]));
+      }
+    }
     setOpen(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!editingExamId && form.date && new Date(form.date) < new Date(new Date().toDateString())) {
+      toast.error("Test date cannot be a past date.");
+      return;
+    }
     const token = getToken();
     if (!token) return;
     setSubmitting(true);
@@ -328,6 +374,11 @@ export function AdminTeacherExams() {
       description: term.description || "",
     });
     try {
+      const cls = classes.find((c) => c.name === term.class && c.section === (term.section || ""));
+      if (cls) {
+        const subRes = await apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token);
+        setTermSubjectOptions(subRes.data);
+      }
       const res = await apiGet<{ success: boolean; data: TermRow }>(`/scheduled-exams/${term._id}`, token);
       const subs = res.data.subjects || [];
       setTermSubjects(
@@ -1256,7 +1307,7 @@ export function AdminTeacherExams() {
                     value={form.class && form.section ? `${form.class}::${form.section}` : ""}
                     onValueChange={(v) => {
                       const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                      if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                      if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "" }));
                     }}
                   >
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
@@ -1271,12 +1322,23 @@ export function AdminTeacherExams() {
                 )}
               </Field>
               <Field label="Subject" required>
-                <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} required />
+                {subjectOptions.length > 0 ? (
+                  <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map((s) => (
+                        <SelectItem key={s._id} value={s.name}>{s.name} ({s.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder={form.class ? "No subjects assigned" : "Select class first"} disabled={!form.class} required />
+                )}
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date" required>
-                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required />
+                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
               </Field>
               <Field label="Type">
                 <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
@@ -1291,7 +1353,10 @@ export function AdminTeacherExams() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Total Marks" required>
-                <Input type="number" min={1} value={form.totalMarks} onChange={(e) => setForm((f) => ({ ...f, totalMarks: e.target.value }))} required />
+                <Input type="number" min={1} value={form.totalMarks} onChange={(e) => {
+                  const tm = e.target.value;
+                  setForm((f) => ({ ...f, totalMarks: tm, passingMarks: tm ? String(Math.round(Number(tm) * passPercentage / 100)) : "" }));
+                }} required />
               </Field>
               <Field label="Passing Marks" required>
                 <Input type="number" min={0} value={form.passingMarks} onChange={(e) => setForm((f) => ({ ...f, passingMarks: e.target.value }))} required />
@@ -1321,7 +1386,18 @@ export function AdminTeacherExams() {
                     value={termForm.class && termForm.section ? `${termForm.class}::${termForm.section}` : ""}
                     onValueChange={(v) => {
                       const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                      if (cls) setTermForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                      if (cls) {
+                        setTermForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                        const token = getToken();
+                        if (token) {
+                          apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
+                            .then((res) => {
+                              setTermSubjectOptions(res.data);
+                              setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", duration: "60" })));
+                            })
+                            .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", duration: "60" }]); });
+                        }
+                      }
                     }}
                   >
                     <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
@@ -1364,13 +1440,26 @@ export function AdminTeacherExams() {
                 <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
               <div className="space-y-2">
-                {termSubjects.map((s, i) => (
+                {termSubjects.map((s, i) => {
+                  const selectedSubjects = new Set(termSubjects.filter((row, idx) => idx !== i && row.subject).map((row) => row.subject));
+                  return (
                   <div key={i} className="grid grid-cols-[1.4fr_1fr_0.8fr_0.8fr_auto] gap-2 items-end">
                     <Field label={i === 0 ? "Subject" : undefined}>
-                      <Input placeholder="Mathematics" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
+                      {termSubjectOptions.length > 0 ? (
+                        <Select value={s.subject} onValueChange={(v) => updateTermSubjectRow(i, { subject: v || "" })}>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                          <SelectContent>
+                            {termSubjectOptions.filter((sub) => !selectedSubjects.has(sub.name) || sub.name === s.subject).map((sub) => (
+                              <SelectItem key={sub._id} value={sub.name}>{sub.name} ({sub.code})</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input placeholder="Mathematics" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
+                      )}
                     </Field>
                     <Field label={i === 0 ? "Date" : undefined}>
-                      <Input type="date" value={s.date} onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })} />
+                      <Input type="date" value={s.date} onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })} min={termForm.startDate || undefined} max={termForm.endDate || undefined} />
                     </Field>
                     <Field label={i === 0 ? "Marks" : undefined}>
                       <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} />
@@ -1382,7 +1471,8 @@ export function AdminTeacherExams() {
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

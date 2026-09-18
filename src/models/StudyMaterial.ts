@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
-export type MaterialType = "pdf" | "notes" | "paper" | "worksheet";
+export type MaterialType = "notes" | "paper" | "worksheet";
 
 export interface IStudyMaterial extends Document {
   school: mongoose.Types.ObjectId;
@@ -27,7 +27,7 @@ const studyMaterialSchema = new Schema<IStudyMaterial>(
     subject: { type: String, required: true, trim: true },
     class: { type: String, required: true },
     section: { type: String, default: "" },
-    type: { type: String, enum: ["pdf", "notes", "paper", "worksheet"], default: "pdf" },
+    type: { type: String, enum: ["notes", "paper", "worksheet"], default: "notes" },
     fileUrl: { type: String, required: true },
     filePublicId: { type: String, default: "" },
     fileName: { type: String, default: "" },

@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       $or: accessible.map((c) => ({ class: c.name, section: c.section })),
     })
       .select("-password")
-      .populate("parent", "name motherName motherPhone email phone")
+      .populate("parent", "name motherName motherPhone email phone occupation motherOccupation")
       .sort({ class: 1, rollNumber: 1 })
       .lean();
 

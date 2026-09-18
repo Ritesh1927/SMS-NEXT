@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 
-type MaterialType = "pdf" | "notes" | "paper" | "worksheet";
+type MaterialType = "notes" | "paper" | "worksheet";
 
 interface Material {
   _id: string;
@@ -53,9 +53,8 @@ interface Child {
   section?: string;
 }
 
-const TYPE_ICON: Record<MaterialType, typeof FileText> = { pdf: FileText, notes: BookMarked, paper: File, worksheet: BookOpen };
+const TYPE_ICON: Record<MaterialType, typeof FileText> = { notes: BookMarked, paper: File, worksheet: BookOpen };
 const TYPE_COLOR: Record<MaterialType, string> = {
-  pdf: "bg-[#4F46E5]/10 text-[#4F46E5] border-[#4F46E5]/20",
   notes: "bg-blue-50 text-blue-700 border-blue-200",
   paper: "bg-amber-50 text-amber-700 border-amber-200",
   worksheet: "bg-green-50 text-green-700 border-green-200",
@@ -84,7 +83,7 @@ export default function StudyMaterialsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({ title: "", description: "", subject: "", classId: "", type: "pdf" as MaterialType });
+  const [form, setForm] = useState({ title: "", description: "", subject: "", classId: "", type: "notes" as MaterialType });
 
   const fetchMaterials = () => {
     const token = getToken();
@@ -151,7 +150,7 @@ export default function StudyMaterialsPage() {
   const resetModal = () => {
     setShowModal(false);
     setSelectedFile(null);
-    setForm({ title: "", description: "", subject: "", classId: "", type: "pdf" });
+    setForm({ title: "", description: "", subject: "", classId: "", type: "notes" });
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -269,7 +268,7 @@ export default function StudyMaterialsPage() {
           <Input placeholder="Search by title or subject…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-2 flex-wrap">
-          {(["all", "pdf", "notes", "paper", "worksheet"] as const).map((t) => (
+          {(["all", "notes", "paper", "worksheet"] as const).map((t) => (
             <Button key={t} variant={typeFilter === t ? "default" : "outline"} size="sm" onClick={() => setTypeFilter(t)}>
               {t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}
             </Button>
@@ -433,12 +432,11 @@ export default function StudyMaterialsPage() {
 
               <div className="space-y-1.5">
                 <Label>Material Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: (v || "pdf") as MaterialType }))}>
+                <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: (v || "notes") as MaterialType }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pdf">PDF Document</SelectItem>
                     <SelectItem value="notes">Notes</SelectItem>
                     <SelectItem value="paper">Past Paper</SelectItem>
                     <SelectItem value="worksheet">Worksheet</SelectItem>

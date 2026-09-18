@@ -7,7 +7,7 @@ import { Admin } from "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { uploadDocument } from "@/lib/cloudinary";
 
-const MATERIAL_TYPES: MaterialType[] = ["pdf", "notes", "paper", "worksheet"];
+const MATERIAL_TYPES: MaterialType[] = ["notes", "paper", "worksheet"];
 
 // GET /api/study-materials — admin (optional class/section filters) or
 // teacher (scoped to their accessible classes, same two-path check as
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
     const subject = String(form.get("subject") || "").trim();
     const cls = String(form.get("class") || "").trim();
     const section = String(form.get("section") || "").trim();
-    const typeRaw = String(form.get("type") || "pdf");
-    const type: MaterialType = MATERIAL_TYPES.includes(typeRaw as MaterialType) ? (typeRaw as MaterialType) : "pdf";
+    const typeRaw = String(form.get("type") || "notes");
+    const type: MaterialType = MATERIAL_TYPES.includes(typeRaw as MaterialType) ? (typeRaw as MaterialType) : "notes";
     const file = form.get("file");
 
     if (!title || !subject || !cls) {

@@ -11,6 +11,7 @@ export interface IParent extends Document {
   alternatePhone: string;
   address: string;
   occupation: string;
+  motherOccupation: string;
   relation: "father" | "mother" | "guardian";
   school: mongoose.Types.ObjectId;
   students: mongoose.Types.ObjectId[];
@@ -32,6 +33,7 @@ const parentSchema = new Schema<IParent>(
     alternatePhone: { type: String, default: "" },
     address: { type: String, default: "" },
     occupation: { type: String, default: "" },
+    motherOccupation: { type: String, default: "" },
     relation: { type: String, enum: ["father", "mother", "guardian"], default: "father" },
     school: { type: Schema.Types.ObjectId, ref: "Admin" },
     students: [{ type: Schema.Types.ObjectId, ref: "Student" }],
