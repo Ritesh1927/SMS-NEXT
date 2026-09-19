@@ -6,13 +6,9 @@ import { FeePayment } from "@/models/FeePayment";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// GET /api/fees/analytics — admin-only, for the Reports page's Overview and
-// Finance tabs: collected vs. pending totalled per calendar month this
-// year, plus an overall summary. sms-next's FeePayment has no separate
-// late-fee tracking (no lateFee field on the model), so — unlike
-// SMS-BACKEND's feeSummary.totalLateFees — that figure is left out
-// entirely rather than faked; the client only ever shows that card when
-// the field is present and > 0, so omitting it is a clean degradation.
+// GET /api/fees/analytics — admin-only, for the Fees page's Dashboard tab:
+// collected vs. pending totalled per calendar month this year, plus an
+// overall summary including late fees collected.
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "schooladmin") {
@@ -35,7 +31,7 @@ export async function GET(req: Request) {
         { $match: { school: schoolId, status: { $ne: "paid" }, dueDate: { $gte: yearStart, $lte: yearEnd } } },
         { $group: { _id: { $month: "$dueDate" }, total: { $sum: { $subtract: ["$amount", "$paidAmount"] } } } },
       ]),
-      FeePayment.find({ school: schoolId }).select("status amount paidAmount"),
+      FeePayment.find({ school: schoolId }).select("status amount paidAmount lateFee"),
       FeePayment.aggregate([
         { $match: { school: schoolId, status: "paid" } },
         { $lookup: { from: "students", localField: "student", foreignField: "_id", as: "s" } },
@@ -56,13 +52,18 @@ export async function GET(req: Request) {
 
     const totalCollected = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.paidAmount, 0);
     const totalPending = allPayments.filter((p) => p.status !== "paid").reduce((s, p) => s + (p.amount - p.paidAmount), 0);
+    const totalLateFees = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + (p.lateFee || 0), 0);
     const classWise = classWiseRaw.map((c) => ({ class: String(c._id), collected: Math.round(c.collected) }));
 
     return NextResponse.json({
       success: true,
       data,
       classWise,
-      summary: { totalCollected: Math.round(totalCollected), totalPending: Math.round(totalPending) },
+      summary: {
+        totalCollected: Math.round(totalCollected),
+        totalPending: Math.round(totalPending),
+        totalLateFees: Math.round(totalLateFees),
+      },
     });
   } catch (err) {
     return NextResponse.json(

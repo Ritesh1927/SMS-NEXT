@@ -405,6 +405,17 @@ export function AdminTeacherExams() {
       toast.error("Add at least one subject with a date and total marks.");
       return;
     }
+    if (!editingTermId) {
+      const today = new Date(new Date().toDateString());
+      if (termForm.startDate && new Date(termForm.startDate) < today) {
+        toast.error("Start date cannot be a past date.");
+        return;
+      }
+      if (validSubjects.some((s) => new Date(s.date) < today)) {
+        toast.error("Subject dates cannot be in the past.");
+        return;
+      }
+    }
     const token = getToken();
     if (!token) return;
     setTermSubmitting(true);
@@ -504,6 +515,10 @@ export function AdminTeacherExams() {
   const submitChangeRequest = async () => {
     if (!requestTarget || !requestReason.trim() || !requestField || !requestValue.trim()) {
       toast.error("Reason and the change you're requesting are both required.");
+      return;
+    }
+    if (requestField.toLowerCase().includes("date") && new Date(requestValue) < new Date(new Date().toDateString())) {
+      toast.error("The requested date cannot be in the past.");
       return;
     }
     const token = getToken();
@@ -1425,10 +1440,22 @@ export function AdminTeacherExams() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start Date" required>
-                <Input type="date" value={termForm.startDate} onChange={(e) => setTermForm((f) => ({ ...f, startDate: e.target.value }))} required />
+                <Input
+                  type="date"
+                  value={termForm.startDate}
+                  onChange={(e) => setTermForm((f) => ({ ...f, startDate: e.target.value, endDate: f.endDate && f.endDate < e.target.value ? "" : f.endDate }))}
+                  min={editingTermId ? undefined : todayISO()}
+                  required
+                />
               </Field>
               <Field label="End Date" required>
-                <Input type="date" value={termForm.endDate} onChange={(e) => setTermForm((f) => ({ ...f, endDate: e.target.value }))} required />
+                <Input
+                  type="date"
+                  value={termForm.endDate}
+                  onChange={(e) => setTermForm((f) => ({ ...f, endDate: e.target.value }))}
+                  min={termForm.startDate || (editingTermId ? undefined : todayISO())}
+                  required
+                />
               </Field>
             </div>
             <Field label="Description">
@@ -1460,7 +1487,13 @@ export function AdminTeacherExams() {
                       )}
                     </Field>
                     <Field label={i === 0 ? "Date" : undefined}>
-                      <Input type="date" value={s.date} onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })} min={termForm.startDate || undefined} max={termForm.endDate || undefined} />
+                      <Input
+                        type="date"
+                        value={s.date}
+                        onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })}
+                        min={termForm.startDate || (editingTermId ? undefined : todayISO())}
+                        max={termForm.endDate || undefined}
+                      />
                     </Field>
                     <Field label={i === 0 ? "Marks" : undefined}>
                       <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} />
@@ -1534,6 +1567,7 @@ export function AdminTeacherExams() {
                 type={requestField.toLowerCase().includes("date") ? "date" : requestField === "totalMarks" ? "number" : "text"}
                 value={requestValue}
                 onChange={(e) => setRequestValue(e.target.value)}
+                min={requestField.toLowerCase().includes("date") ? todayISO() : undefined}
               />
             </Field>
             <Field label="Reason" required>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, GraduationCap, Hash, CalendarCheck, Award, Wallet, CreditCard, BookOpen, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from "@/lib/razorpay-client";
 import { DashboardHero } from "./DashboardHero";
@@ -253,17 +253,33 @@ function ChildUpcomingExams({ studentClass, studentSection }: { studentClass: st
   );
 }
 
-interface FeeLine {
-  _id: string;
-  title: string;
+interface FeeMonthStatus {
+  month: string;
+  paid: boolean;
   amount: number;
   paidAmount: number;
-  status: "paid" | "pending" | "partial" | "overdue";
+  lateFee: number;
+  concession: number;
 }
 
-interface FeesResponse {
+interface FeeHeadStatus {
+  _id: string;
+  title: string;
+  frequency: string;
+  months: FeeMonthStatus[];
+}
+
+interface FeeStatusResponse {
   success: boolean;
-  data: { fees: FeeLine[]; summary: { paid: number; pending: number; total: number } };
+  data: { feeHeads: FeeHeadStatus[] };
+}
+
+interface PendingLine {
+  key: string;
+  feeStructureId: string;
+  title: string;
+  month: string;
+  amount: number;
 }
 
 interface ApiMessageResponse {
@@ -271,35 +287,54 @@ interface ApiMessageResponse {
   message?: string;
 }
 
+interface PayMultiResponse {
+  success: boolean;
+  message?: string;
+  data: { payments: { _id: string }[] };
+}
+
 function ChildFees({ studentId, childName }: { studentId: string; childName: string }) {
-  const [fees, setFees] = useState<FeeLine[] | null>(null);
-  const [summary, setSummary] = useState<{ paid: number; pending: number; total: number } | null>(null);
-  const [payingId, setPayingId] = useState<string | null>(null);
+  const [feeHeads, setFeeHeads] = useState<FeeHeadStatus[] | null>(null);
+  const [payingKey, setPayingKey] = useState<string | null>(null);
 
   const load = () => {
     const token = getToken();
     if (!token) return;
-    apiGet<FeesResponse>(`/fees/student/${studentId}`, token)
-      .then((res) => {
-        setFees(res.data.fees);
-        setSummary(res.data.summary);
-      })
+    apiGet<FeeStatusResponse>(`/fees/student-status/${studentId}`, token)
+      .then((res) => setFeeHeads(res.data.feeHeads))
       .catch(() => {});
   };
 
   useEffect(load, [studentId]);
 
-  const handlePay = async (fee: FeeLine) => {
+  const pendingLines: PendingLine[] = (feeHeads || []).flatMap((fh) =>
+    fh.months
+      .filter((m) => !m.paid)
+      .map((m) => ({ key: `${fh._id}|${m.month}`, feeStructureId: fh._id, title: fh.title, month: m.month, amount: m.amount })),
+  );
+  const paid = (feeHeads || []).reduce((s, fh) => s + fh.months.filter((m) => m.paid).reduce((s2, m) => s2 + (m.paidAmount || 0), 0), 0);
+  const pending = pendingLines.reduce((s, l) => s + l.amount, 0);
+  const total = paid + pending;
+
+  const handlePay = async (line: PendingLine) => {
     const token = getToken();
     if (!token) return;
-    setPayingId(fee._id);
+    setPayingKey(line.key);
     try {
+      const payRes = await apiPost<PayMultiResponse>(
+        "/fees/pay-multi",
+        { studentId, items: [{ feeStructureId: line.feeStructureId, months: [line.month] }], paymentMode: "online" },
+        token,
+      );
+      const feePaymentId = payRes.data.payments[0]?._id;
+      if (!feePaymentId) throw new Error("Payment record not created.");
+
       await loadRazorpayScript();
 
       const orderRes = await fetch("/api/payments/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ feePaymentId: fee._id, amount: fee.amount - fee.paidAmount }),
+        body: JSON.stringify({ feePaymentId, amount: line.amount }),
       });
       const orderJson: RazorpayOrderResponse & { message?: string } = await orderRes.json();
       if (!orderRes.ok || !orderJson.success) throw new Error(orderJson.message || "Failed to start payment.");
@@ -311,7 +346,7 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
         amount: Math.round(amount * 100),
         currency,
         name: childName,
-        description: fee.title,
+        description: line.title,
         order_id: orderId,
         theme: { color: "#4F46E5" },
         prefill: { name: childName },
@@ -320,7 +355,7 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
             const verifyRes = await fetch("/api/payments/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ ...response, feePaymentId: fee._id }),
+              body: JSON.stringify({ ...response, feePaymentId }),
             });
             const verifyJson: ApiMessageResponse = await verifyRes.json();
             if (!verifyRes.ok || !verifyJson.success) throw new Error(verifyJson.message || "Verification failed.");
@@ -329,49 +364,48 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
           } catch (err) {
             toast.error("Payment verification failed", { description: err instanceof Error ? err.message : "Contact the school." });
           } finally {
-            setPayingId(null);
+            setPayingKey(null);
           }
         },
       });
       rzp.on("payment.failed", (response) => {
         toast.error("Payment failed", { description: response.error?.description || "Please try again." });
-        setPayingId(null);
+        setPayingKey(null);
       });
       rzp.open();
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Failed to start payment." });
-      setPayingId(null);
+      setPayingKey(null);
     }
   };
 
-  if (!summary || summary.total === 0) return null;
+  if (!feeHeads || total === 0) return null;
 
-  const color = summary.pending === 0 ? "text-green-600" : "text-amber-600";
-  const pendingFees = (fees || []).filter((f) => f.status !== "paid");
+  const color = pending === 0 ? "text-green-600" : "text-amber-600";
 
   return (
     <div className="mt-2">
       <div className="flex items-center gap-1.5 text-xs">
         <Wallet className={`h-3.5 w-3.5 ${color}`} />
         <span className={`font-semibold ${color}`}>
-          {summary.pending === 0 ? "Fully paid" : `₹${summary.pending.toLocaleString()} pending`}
+          {pending === 0 ? "Fully paid" : `₹${pending.toLocaleString()} pending`}
         </span>
-        <span className="text-[#94A3B8]">of ₹{summary.total.toLocaleString()}</span>
+        <span className="text-[#94A3B8]">of ₹{total.toLocaleString()}</span>
       </div>
-      {pendingFees.length > 0 && (
+      {pendingLines.length > 0 && (
         <div className="mt-2 space-y-1.5">
-          {pendingFees.map((f) => (
-            <div key={f._id} className="flex items-center justify-between gap-2">
+          {pendingLines.map((l) => (
+            <div key={l.key} className="flex items-center justify-between gap-2">
               <span className="text-[11px] text-[#64748B]">
-                {f.title} — ₹{(f.amount - f.paidAmount).toLocaleString()}
+                {l.title} — ₹{l.amount.toLocaleString()}
               </span>
               <Button
                 size="xs"
-                onClick={() => handlePay(f)}
-                disabled={payingId === f._id}
+                onClick={() => handlePay(l)}
+                disabled={payingKey === l.key}
                 className="gap-1 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6"
               >
-                {payingId === f._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
+                {payingKey === l.key ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
                 Pay
               </Button>
             </div>

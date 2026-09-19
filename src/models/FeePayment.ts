@@ -11,6 +11,8 @@ export interface IFeePayment extends Document {
   month: string | null;
   amount: number;
   paidAmount: number;
+  lateFee: number;
+  concession: number;
   dueDate: Date | null;
   paidDate: Date | null;
   status: FeeStatus;
@@ -29,6 +31,8 @@ const feePaymentSchema = new Schema<IFeePayment>(
     month: { type: String, default: null },
     amount: { type: Number, required: true },
     paidAmount: { type: Number, default: 0 },
+    lateFee: { type: Number, default: 0 },
+    concession: { type: Number, default: 0 },
     dueDate: { type: Date, default: null },
     paidDate: { type: Date, default: null },
     status: { type: String, enum: ["paid", "pending", "partial", "overdue"], default: "pending" },

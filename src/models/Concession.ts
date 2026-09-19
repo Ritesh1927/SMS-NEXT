@@ -13,6 +13,7 @@ export interface IConcession extends Document {
   description: string;
   duration: ConcessionDuration;
   validUntil: Date | null;
+  appliedMonths: string[];
 }
 
 const concessionSchema = new Schema<IConcession>(
@@ -26,6 +27,7 @@ const concessionSchema = new Schema<IConcession>(
     description: { type: String, default: "" },
     duration: { type: String, enum: ["recurring", "one-time", "until-date"], default: "recurring" },
     validUntil: { type: Date, default: null },
+    appliedMonths: { type: [String], default: [] },
   },
   { timestamps: true },
 );
