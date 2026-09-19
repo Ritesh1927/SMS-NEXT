@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
     const students = await Student.find(query)
       .select("-password")
-      .populate("parent", "name motherName motherPhone email phone")
+      .populate("parent", "name motherName motherPhone email phone occupation motherOccupation")
       .sort({ class: 1, rollNumber: 1 })
       .lean();
 
@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     const {
       name, phone, studentClass, section, rollNumber, dateOfBirth, gender, address, bloodGroup,
       parentName, motherName, motherPhone, parentEmail, parentPhone, parentRelation,
+      fatherOccupation, motherOccupation,
       admissionDate, admissionNo, previousSchool, aadhaarNumber,
       emergencyContact, emergencyPhone, emergencyRelation,
       religion, category,
@@ -185,6 +186,8 @@ export async function POST(req: Request) {
         existingParent.students.push(student._id);
         if (motherName) existingParent.motherName = motherName;
         if (motherPhone) existingParent.motherPhone = motherPhone;
+        if (fatherOccupation) existingParent.occupation = fatherOccupation;
+        if (motherOccupation) existingParent.motherOccupation = motherOccupation;
         await existingParent.save();
         parent = existingParent;
       } else {
@@ -196,6 +199,8 @@ export async function POST(req: Request) {
           motherPhone: motherPhone || "",
           email: parentEmail,
           phone: parentPhone || "",
+          occupation: fatherOccupation || "",
+          motherOccupation: motherOccupation || "",
           relation: parentRelation || "father",
           school: auth.schoolId,
           students: [student._id],

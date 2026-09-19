@@ -62,6 +62,13 @@ export default function ClassesPage() {
 
   const isTeacher = user?.role === "teacher";
 
+  const assignedTeacherIds = new Set(
+    (classes || [])
+      .filter((c) => c.classTeacher && c._id !== editingId)
+      .map((c) => c.classTeacher!._id),
+  );
+  const availableTeachers = teachers.filter((t) => !assignedTeacherIds.has(t._id));
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -268,14 +275,13 @@ export default function ClassesPage() {
             </Field>
             <Field label="Class Teacher">
               <Select
-                items={[{ value: NO_TEACHER, label: "None" }, ...teachers.map((t) => ({ value: t._id, label: `${t.name} (${t.teacherId})` }))]}
                 value={form.classTeacher}
                 onValueChange={(v) => setForm((f) => ({ ...f, classTeacher: v || NO_TEACHER }))}
               >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_TEACHER}>None</SelectItem>
-                  {teachers.map((t) => (
+                  {availableTeachers.map((t) => (
                     <SelectItem key={t._id} value={t._id}>{t.name} ({t.teacherId})</SelectItem>
                   ))}
                 </SelectContent>

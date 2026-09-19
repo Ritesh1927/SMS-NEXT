@@ -28,7 +28,7 @@ interface StudentDetail {
   section: string;
   rollNumber: string;
   phone: string;
-  parent: { name: string; motherName?: string; motherPhone?: string; email: string; phone?: string } | null;
+  parent: { name: string; motherName?: string; motherPhone?: string; email: string; phone?: string; occupation?: string; motherOccupation?: string } | null;
   address: string;
   dateOfBirth: string | null;
   gender: string;
@@ -55,6 +55,7 @@ interface ParentLookupResponse {
   found: boolean;
   data?: {
     name: string; motherName: string; motherPhone: string; phone: string; relation: string;
+    occupation: string; motherOccupation: string;
     address: string; emergencyContact: string; emergencyPhone: string; emergencyRelation: string;
     religion: string; category: string;
   };
@@ -69,6 +70,7 @@ interface ApiMessageResponse {
 const EMPTY_FORM = {
   name: "", studentClass: "", section: "", rollNumber: "",
   phone: "", parentName: "", motherName: "", motherPhone: "", parentEmail: "", parentPhone: "",
+  fatherOccupation: "", motherOccupation: "",
   address: "", dateOfBirth: "", gender: "male", bloodGroup: "",
   admissionDate: "", admissionNo: "", previousSchool: "", aadhaarNumber: "",
   emergencyContact: "", emergencyPhone: "", emergencyRelation: "",
@@ -118,6 +120,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           motherPhone: s.parent?.motherPhone || "",
           parentEmail: s.parent?.email || "",
           parentPhone: s.parent?.phone || "", address: s.address || "",
+          fatherOccupation: s.parent?.occupation || "", motherOccupation: s.parent?.motherOccupation || "",
           dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : "",
           gender: s.gender || "male", bloodGroup: s.bloodGroup || "",
           admissionDate: s.admissionDate ? s.admissionDate.slice(0, 10) : "",
@@ -169,6 +172,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           motherName: d.motherName || f.motherName,
           motherPhone: d.motherPhone || f.motherPhone,
           parentPhone: d.phone || f.parentPhone,
+          fatherOccupation: d.occupation || f.fatherOccupation,
+          motherOccupation: d.motherOccupation || f.motherOccupation,
           address: d.address || f.address,
           emergencyContact: d.emergencyContact || f.emergencyContact,
           emergencyPhone: d.emergencyPhone || f.emergencyPhone,
@@ -417,18 +422,24 @@ export function StudentForm({ studentId }: { studentId?: string }) {
         </Section>
 
         <Section title="Parent / Guardian">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Father's Name" required>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Field label="Father Name" required>
               <Input value={form.parentName} onChange={(e) => update("parentName", e.target.value)} placeholder="Father's name" maxLength={100} required />
             </Field>
-            <Field label="Mother's Name" required>
+            <Field label="Father Mobile No" required>
+              <Input value={form.parentPhone} onChange={(e) => update("parentPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Father's phone" inputMode="numeric" maxLength={10} required />
+            </Field>
+            <Field label="Father Occupation">
+              <Input value={form.fatherOccupation} onChange={(e) => update("fatherOccupation", e.target.value)} placeholder="Father's occupation" maxLength={100} />
+            </Field>
+            <Field label="Mother Name" required>
               <Input value={form.motherName} onChange={(e) => update("motherName", e.target.value)} placeholder="Mother's name" maxLength={100} required />
             </Field>
-            <Field label="Mother's Mobile No">
+            <Field label="Mother Mobile No">
               <Input value={form.motherPhone} onChange={(e) => update("motherPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Mother's phone" inputMode="numeric" maxLength={10} />
             </Field>
-            <Field label="Parent Phone" required>
-              <Input value={form.parentPhone} onChange={(e) => update("parentPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} required />
+            <Field label="Mother Occupation">
+              <Input value={form.motherOccupation} onChange={(e) => update("motherOccupation", e.target.value)} placeholder="Mother's occupation" maxLength={100} />
             </Field>
           </div>
         </Section>

@@ -20,6 +20,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { name, section, classTeacher, room } = await req.json();
 
     await connectDB();
+
+    if (room && room.trim()) {
+      const dupRoom = await Class.findOne({ school: auth.schoolId, room: room.trim(), _id: { $ne: id } });
+      if (dupRoom) {
+        return NextResponse.json({ success: false, message: `Room "${room.trim()}" is already assigned to Class ${dupRoom.name}-${dupRoom.section}.` }, { status: 400 });
+      }
+    }
+
+    if (classTeacher) {
+      const dupTeacher = await Class.findOne({ school: auth.schoolId, classTeacher, _id: { $ne: id } });
+      if (dupTeacher) {
+        return NextResponse.json({ success: false, message: "This teacher is already assigned as class teacher to another class." }, { status: 400 });
+      }
+    }
+
     const cls = await Class.findOneAndUpdate(
       { _id: id, school: auth.schoolId },
       { name, section, classTeacher: classTeacher || null, room },

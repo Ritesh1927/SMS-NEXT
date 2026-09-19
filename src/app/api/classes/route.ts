@@ -70,6 +70,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Class already exists." }, { status: 400 });
     }
 
+    if (room && room.trim()) {
+      const dupRoom = await Class.findOne({ school: auth.schoolId, room: room.trim() });
+      if (dupRoom) {
+        return NextResponse.json({ success: false, message: `Room "${room.trim()}" is already assigned to Class ${dupRoom.name}-${dupRoom.section}.` }, { status: 400 });
+      }
+    }
+
+    if (classTeacher) {
+      const dupTeacher = await Class.findOne({ school: auth.schoolId, classTeacher });
+      if (dupTeacher) {
+        return NextResponse.json({ success: false, message: "This teacher is already assigned as class teacher to another class." }, { status: 400 });
+      }
+    }
+
     const cls = await Class.create({
       name, section, classTeacher: classTeacher || null, room: room || "", school: auth.schoolId,
     });

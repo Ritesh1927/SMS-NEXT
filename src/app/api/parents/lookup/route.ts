@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
     await connectDB();
     const parent = await Parent.findOne({ email, school: auth.schoolId }).select(
-      "name motherName motherPhone phone relation",
+      "name motherName motherPhone phone relation occupation motherOccupation",
     );
 
     if (!parent) {
@@ -49,6 +49,8 @@ export async function GET(req: Request) {
         motherPhone: parent.motherPhone,
         phone: parent.phone,
         relation: parent.relation,
+        occupation: parent.occupation,
+        motherOccupation: parent.motherOccupation,
         address: latestSibling?.address || "",
         emergencyContact: latestSibling?.emergencyContact || "",
         emergencyPhone: latestSibling?.emergencyPhone || "",

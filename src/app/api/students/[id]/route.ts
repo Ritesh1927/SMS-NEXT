@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const student = await Student.findOne({ _id: id, school: auth.schoolId })
       .select("-password")
-      .populate("parent", "name motherName motherPhone email phone relation");
+      .populate("parent", "name motherName motherPhone email phone relation occupation motherOccupation");
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, data: student });
@@ -38,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-const PARENT_SYNC_FIELDS = ["parentName", "motherName", "motherPhone", "parentPhone", "parentEmail"] as const;
+const PARENT_SYNC_FIELDS = ["parentName", "motherName", "motherPhone", "parentPhone", "parentEmail", "fatherOccupation", "motherOccupation"] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireSchoolAdmin(req);
@@ -107,6 +107,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (parentBody.motherPhone !== undefined) parentUpdates.motherPhone = parentBody.motherPhone;
       if (parentBody.parentPhone) parentUpdates.phone = parentBody.parentPhone;
       if (parentBody.parentEmail) parentUpdates.email = parentBody.parentEmail;
+      if (parentBody.fatherOccupation !== undefined) parentUpdates.occupation = parentBody.fatherOccupation;
+      if (parentBody.motherOccupation !== undefined) parentUpdates.motherOccupation = parentBody.motherOccupation;
       await Parent.findOneAndUpdate({ _id: student.parent, school: auth.schoolId }, parentUpdates);
     }
 

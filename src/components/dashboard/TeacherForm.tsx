@@ -212,6 +212,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
     if (form.dateOfBirth && new Date(form.dateOfBirth) > new Date()) return toast.error("Date of birth cannot be in the future.");
     if (form.aadhaarNumber && !/^\d{12}$/.test(form.aadhaarNumber)) return toast.error("Aadhaar must be exactly 12 digits.");
     if (form.emergencyPhone && !/^\d{10}$/.test(form.emergencyPhone)) return toast.error("Emergency phone must be exactly 10 digits.");
+    if (!isEdit && form.joiningDate && new Date(form.joiningDate) < new Date(new Date().toDateString())) return toast.error("Joining date cannot be a past date.");
     if (form.accountNumber && (form.accountNumber.length < 9 || form.accountNumber.length > 18)) {
       return toast.error("Account number should be 9-18 digits.");
     }
@@ -235,7 +236,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
     try {
       const payload = {
         ...form,
-        designation: form.staffType === "teaching" ? "Teacher" : (form.department || "Staff"),
+        designation: form.staffType === "teaching" ? "Teacher" : (form.designation || "Staff"),
         subjects: form.staffType === "teaching" && form.subjects ? form.subjects.split(",").map((s) => s.trim()).filter(Boolean) : [],
         primarySubject: form.staffType === "teaching" ? form.primarySubject : "",
         secondarySubject: form.staffType === "teaching" ? form.secondarySubject : "",
@@ -336,7 +337,26 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           {form.staffType === "non-teaching" && (
             <div className="mt-4 space-y-1.5">
               <label className="text-sm font-medium text-[#172554]">Department</label>
-              <Select value={form.department} onValueChange={(v) => update("department", v || "")} disabled={isEdit}>
+              <Select
+                value={form.department}
+                onValueChange={(v) => {
+                  const dept = v || "";
+                  update("department", dept);
+                  const deptJobMap: Record<string, string> = {
+                    Administration: "Administrator",
+                    Accounts: "Accountant",
+                    Library: "Librarian",
+                    Lab: "Lab Assistant",
+                    Office: "Office Staff",
+                    Transport: "Transport Incharge",
+                    Canteen: "Canteen Staff",
+                    Security: "Security Guard",
+                    Other: "Staff",
+                  };
+                  update("designation", deptJobMap[dept] || "");
+                }}
+                disabled={isEdit}
+              >
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
                 <SelectContent>
                   {["Administration", "Accounts", "Library", "Lab", "Office", "Transport", "Canteen", "Security", "Other"].map((d) => (
@@ -427,11 +447,10 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         <Section title="Employment Details">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Job Title">
-              <Input value={form.designation} onChange={(e) => update("designation", e.target.value)} placeholder="e.g. Senior Teacher, Vice Principal, HOD" maxLength={50} />
-              <p className="text-xs text-[#64748B]">Their title at school — separate from their system role.</p>
+              <Input value={form.designation} placeholder="Job title" maxLength={50} disabled className="opacity-60 cursor-not-allowed" />
             </Field>
             <Field label="Qualification">
-              <Input value={form.qualification} onChange={(e) => update("qualification", e.target.value)} placeholder="e.g. BSc, MSc, B.Ed" maxLength={100} />
+              <Input value={form.qualification} onChange={(e) => update("qualification", e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1))} placeholder="e.g. BSc, MSc, B.Ed" maxLength={100} />
             </Field>
             <Field label="Experience">
               <Input value={form.experience} onChange={(e) => update("experience", e.target.value)} placeholder="e.g. 5 years" maxLength={20} />
@@ -444,6 +463,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
                 type="date"
                 value={form.joiningDate}
                 onChange={(e) => update("joiningDate", e.target.value)}
+                min={todayISO()}
                 disabled={isEdit}
                 className={isEdit ? "opacity-60 cursor-not-allowed" : ""}
               />
