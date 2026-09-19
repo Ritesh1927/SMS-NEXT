@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 interface LoginLogRow {
   _id: string;
@@ -123,15 +124,7 @@ export default function LoginActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#4F46E5]/10 rounded-xl">
-          <Activity className="h-5 w-5 text-[#4F46E5]" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Login Activity</h1>
-          <p className="text-sm text-[#64748B]">Track all user logins across your school</p>
-        </div>
-      </div>
+      <PageHeader icon={Activity} title="Login Activity" subtitle="Track all user logins across your school" accent="slate" />
 
       <Card>
         <CardContent className="pt-4">

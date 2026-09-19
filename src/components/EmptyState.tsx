@@ -7,12 +7,14 @@ interface EmptyStateProps {
   className?: string;
 }
 
-/** Standard empty-state recipe (Design.md §25): icon at opacity-30 + one muted line, centered. */
+/** Standard empty-state recipe: soft tinted icon circle + one muted line, centered. */
 export function EmptyState({ icon: Icon, message, className }: EmptyStateProps) {
   return (
-    <div className={cn("py-12 text-center text-muted-foreground", className)}>
-      <Icon className="mx-auto mb-2 h-10 w-10 opacity-30" />
-      <p className="text-sm">{message}</p>
+    <div className={cn("py-14 text-center", className)}>
+      <div className="mx-auto mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/8">
+        <Icon className="h-6 w-6 text-primary/60" />
+      </div>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

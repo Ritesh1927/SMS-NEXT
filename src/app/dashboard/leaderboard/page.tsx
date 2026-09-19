@@ -7,6 +7,7 @@ import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 interface Row {
   rank: number;
@@ -52,12 +53,9 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">Leaderboard</h1>
-        <p className="text-sm text-[#64748B]">Top students ranked by points earned from attendance, exams, fees and homework.</p>
-      </div>
+      <PageHeader icon={Trophy} title="Leaderboard" subtitle="Top students ranked by points earned from attendance, exams, fees and homework." accent="fuchsia" />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
         <div className="space-y-6">

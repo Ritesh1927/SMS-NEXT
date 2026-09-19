@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
 
 // Lightweight markdown-ish renderer for AI responses — bold/italic/inline
 // code/line breaks, ported from SMS-FRONTEND's AiPage.tsx (dropped its
@@ -409,12 +410,7 @@ Format with clear headings and bullet points.`;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554] flex items-center gap-2">
-          AI Assistant <Sparkles className="h-5 w-5 text-[#4F46E5]" />
-        </h1>
-        <p className="text-sm text-[#64748B]">AI-powered tools to help you run the school.</p>
-      </div>
+      <PageHeader icon={Sparkles} title="AI Assistant" subtitle="AI-powered tools to help you run the school." accent="fuchsia" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-2">

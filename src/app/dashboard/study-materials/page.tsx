@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 type MaterialType = "notes" | "paper" | "worksheet";
 
@@ -228,39 +229,39 @@ export default function StudyMaterialsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Study Materials</h1>
-          <p className="text-sm text-[#64748B]">
-            {materials.length} resource{materials.length !== 1 ? "s" : ""} available.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isParent && children.length > 1 && (
-            <Select
-              items={children.map((c) => ({ value: c._id, label: c.name }))}
-              value={selectedChildId}
-              onValueChange={(v) => setSelectedChildId(v || "")}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select child" />
-              </SelectTrigger>
-              <SelectContent>
-                {children.map((c) => (
-                  <SelectItem key={c._id} value={c._id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {isUploader && (
-            <Button className="gap-2" onClick={openModal}>
-              <Plus className="h-4 w-4" /> Upload Material
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        icon={BookMarked}
+        title="Study Materials"
+        subtitle={`${materials.length} resource${materials.length !== 1 ? "s" : ""} available.`}
+        accent="violet"
+        actions={
+          <>
+            {isParent && children.length > 1 && (
+              <Select
+                items={children.map((c) => ({ value: c._id, label: c.name }))}
+                value={selectedChildId}
+                onValueChange={(v) => setSelectedChildId(v || "")}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select child" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {isUploader && (
+              <Button className="gap-2" onClick={openModal}>
+                <Plus className="h-4 w-4" /> Upload Material
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">

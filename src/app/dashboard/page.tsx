@@ -1,10 +1,12 @@
 "use client";
 
+import { UserCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SchoolAdminDashboard } from "@/components/dashboard/SchoolAdminDashboard";
 import { ParentDashboard } from "@/components/dashboard/ParentDashboard";
 import { TeacherDashboard } from "@/components/dashboard/TeacherDashboard";
+import { PageHeader } from "@/components/PageHeader";
 
 const ROLE_LABELS: Record<string, string> = {
   schooladmin: "School Admin",
@@ -31,15 +33,15 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-[#172554]">Welcome, {user.name}</h1>
-      <p className="text-sm text-[#64748B] mt-1">
-        You&apos;re signed in as {ROLE_LABELS[user.role] || user.role}
-        {user.schoolName ? ` at ${user.schoolName}` : ""}.
-      </p>
+      <PageHeader
+        icon={UserCircle}
+        title={`Welcome, ${user.name}`}
+        subtitle={`You're signed in as ${ROLE_LABELS[user.role] || user.role}${user.schoolName ? ` at ${user.schoolName}` : ""}.`}
+      />
 
-      <Card className="mt-6 rounded-2xl border-[#E2E8F0]">
+      <Card className="mt-6 rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-base text-[#172554]">Account</CardTitle>
+          <CardTitle className="text-base text-foreground">Account</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <Row label="Name" value={user.name} />
@@ -51,7 +53,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-xs text-[#94A3B8]">
+      <p className="mt-6 text-xs text-muted-foreground">
         A full dashboard for this role hasn&apos;t been built yet — school admin is first.
       </p>
     </div>
@@ -60,9 +62,9 @@ export default function DashboardPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#F1F5F9] py-1.5 last:border-0">
-      <span className="text-[#64748B]">{label}</span>
-      <span className="font-medium text-[#172554]">{value}</span>
+    <div className="flex items-center justify-between border-b border-border py-1.5 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

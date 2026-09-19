@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -406,12 +407,12 @@ export default function TimetablePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Timetable</h1>
-          <p className="text-sm text-[#64748B]">
-            {isAdmin ? "View and manage class schedules" : isTeacher ? "Your weekly teaching schedule" : "Your child's class schedule"}
-          </p>
-        </div>
+        <PageHeader
+          icon={Clock}
+          title="Timetable"
+          subtitle={isAdmin ? "View and manage class schedules" : isTeacher ? "Your weekly teaching schedule" : "Your child's class schedule"}
+          accent="violet"
+        />
         <div className="flex items-center gap-2">
           {isAdmin && (
             <>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Check, X, Clock, Save, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
+import { Loader2, Check, X, Clock, Save, ChevronLeft, ChevronRight, CalendarCheck, ClipboardCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -9,6 +9,8 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
 type Status = "present" | "absent" | "late";
 
@@ -135,98 +137,103 @@ export default function AttendancePage() {
   }
 
   if (user.role !== "schooladmin" && user.role !== "teacher") {
-    return <p className="text-sm text-[#64748B]">Attendance isn&apos;t available for your role.</p>;
+    return <p className="text-sm text-muted-foreground">Attendance isn&apos;t available for your role.</p>;
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#172554]">Attendance</h1>
-        <p className="text-sm text-[#64748B] mt-1">Mark daily attendance for a class.</p>
-      </div>
+      <PageHeader icon={ClipboardCheck} title="Attendance" subtitle="Mark daily attendance for a class." accent="amber" className="mb-6" />
 
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      <div className="flex flex-wrap items-end gap-3 mb-6">
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-[#172554]">Class</label>
-          {error ? null : classOptions === null ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B] h-8">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
-            </div>
-          ) : classOptions.length === 0 ? (
-            <p className="text-sm text-[#64748B]">
-              {user.role === "teacher" ? "No classes assigned to you yet." : "No classes created yet."}
-            </p>
-          ) : (
-            <Select value={classId} onValueChange={(v) => setClassId(v || "")}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Select a class" /></SelectTrigger>
-              <SelectContent>
-                {classOptions.map((c) => (
-                  <SelectItem key={c._id} value={c._id}>Class {c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="rounded-2xl bg-card border border-border shadow-sm p-4 sm:p-5 mb-6">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-foreground">Class</label>
+            {error ? null : classOptions === null ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground h-10">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
+              </div>
+            ) : classOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground h-10 flex items-center">
+                {user.role === "teacher" ? "No classes assigned to you yet." : "No classes created yet."}
+              </p>
+            ) : (
+              <Select value={classId} onValueChange={(v) => setClassId(v || "")}>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                <SelectContent>
+                  {classOptions.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>Class {c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-foreground">Date</label>
+            <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="w-40" />
+          </div>
+          {roster && roster.length > 0 && (
+            <>
+              <Button variant="outline" onClick={() => markAll("present")} className="text-success border-success/30 hover:bg-success/10">
+                Mark All Present
+              </Button>
+              <Button variant="outline" onClick={() => markAll("absent")} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                Mark All Absent
+              </Button>
+              <Button onClick={handleSave} disabled={saving} className="gap-1.5 ml-auto">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
+              </Button>
+            </>
           )}
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-[#172554]">Date</label>
-          <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="w-40" />
-        </div>
-        {roster && roster.length > 0 && (
-          <>
-            <Button variant="outline" onClick={() => markAll("present")} className="text-green-700 border-green-300 hover:bg-green-50">
-              Mark All Present
-            </Button>
-            <Button variant="outline" onClick={() => markAll("absent")} className="text-red-700 border-red-300 hover:bg-red-50">
-              Mark All Absent
-            </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] ml-auto">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
-            </Button>
-          </>
-        )}
       </div>
+
+      {!classId && (
+        <div className="rounded-2xl bg-card border border-border shadow-sm">
+          <EmptyState icon={Users} message="Select a class above to mark or review attendance." />
+        </div>
+      )}
 
       {roster && roster.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-2xl font-bold text-green-600">{roster.filter((r) => r.status === "present").length}</p>
-            <p className="text-xs text-[#64748B]">Present</p>
+          <div className="rounded-2xl bg-card p-4 text-center border border-border shadow-sm">
+            <p className="text-2xl font-bold text-success">{roster.filter((r) => r.status === "present").length}</p>
+            <p className="text-xs text-muted-foreground">Present</p>
           </div>
-          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-2xl font-bold text-red-600">{roster.filter((r) => r.status === "absent").length}</p>
-            <p className="text-xs text-[#64748B]">Absent</p>
+          <div className="rounded-2xl bg-card p-4 text-center border border-border shadow-sm">
+            <p className="text-2xl font-bold text-destructive">{roster.filter((r) => r.status === "absent").length}</p>
+            <p className="text-xs text-muted-foreground">Absent</p>
           </div>
-          <div className="rounded-[18px] bg-white p-4 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-2xl font-bold text-amber-600">{roster.filter((r) => r.status === "late").length}</p>
-            <p className="text-xs text-[#64748B]">Late</p>
+          <div className="rounded-2xl bg-card p-4 text-center border border-border shadow-sm">
+            <p className="text-2xl font-bold text-warning">{roster.filter((r) => r.status === "late").length}</p>
+            <p className="text-xs text-muted-foreground">Late</p>
           </div>
         </div>
       )}
 
       {loadingRoster && (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading roster...
         </div>
       )}
 
       {!loadingRoster && roster && roster.length === 0 && (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No active students in this class.</p>
+        <div className="rounded-2xl bg-card border border-border shadow-sm">
+          <EmptyState icon={Users} message="No active students in this class." />
         </div>
       )}
 
       {!loadingRoster && roster && roster.length > 0 && (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+        <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
           {roster.map((entry) => (
             <div
               key={entry.student._id}
-              className="flex items-center justify-between px-5 py-3 border-b border-[#F1F5F9] last:border-0"
+              className="flex items-center justify-between px-5 py-3 border-b border-border last:border-0 hover:bg-muted/40 transition-colors"
             >
               <div>
-                <p className="text-sm font-medium text-[#172554]">{entry.student.name}</p>
-                <p className="text-xs text-[#64748B]">Roll {entry.student.rollNumber || "—"}</p>
+                <p className="text-sm font-medium text-foreground">{entry.student.name}</p>
+                <p className="text-xs text-muted-foreground">Roll {entry.student.rollNumber || "—"}</p>
               </div>
               <div className="flex items-center gap-1.5">
                 {(["present", "late", "absent"] as Status[]).map((s) => (
@@ -235,7 +242,7 @@ export default function AttendancePage() {
                     type="button"
                     onClick={() => setStatus(entry.student._id, s)}
                     className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                      entry.status === s ? STATUS_STYLES[s] : "bg-transparent text-[#94A3B8] border-[#E2E8F0]"
+                      entry.status === s ? STATUS_STYLES[s] : "bg-transparent text-muted-foreground border-border"
                     }`}
                   >
                     {s === "present" && <Check className="h-3 w-3" />}
@@ -345,10 +352,7 @@ function ParentAttendance() {
   return (
     <div>
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Attendance Record</h1>
-          <p className="text-sm text-[#64748B] mt-1">Monthly attendance history for your child.</p>
-        </div>
+        <PageHeader icon={CalendarCheck} title="Attendance Record" subtitle="Monthly attendance history for your child." accent="amber" />
         {children && children.length > 1 && (
           <Select value={childId} onValueChange={(v) => setChildId(v || "")}>
             <SelectTrigger className="w-56"><SelectValue placeholder="Select a child" /></SelectTrigger>

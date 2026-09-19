@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageHeader } from "@/components/PageHeader";
 
 interface UserRecord {
   userId: string;
@@ -166,10 +167,7 @@ export default function UserMasterPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">User Master</h1>
-        <p className="text-sm text-[#64748B] mt-1">{counts.total} registered users.</p>
-      </div>
+      <PageHeader icon={UserCog} title="User Master" subtitle={`${counts.total} registered users.`} accent="slate" />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[

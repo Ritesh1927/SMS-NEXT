@@ -9,6 +9,7 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
 
 interface Contact {
   id: string;
@@ -239,12 +240,10 @@ export default function ChatPage() {
   const isTeacher = user.role === "teacher";
 
   return (
-    <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden flex h-[70vh]">
-      <div className="w-72 shrink-0 border-r border-[#F1F5F9] flex flex-col">
-        <div className="px-4 py-3 border-b border-[#F1F5F9]">
-          <h1 className="text-sm font-semibold text-[#172554]">Communication</h1>
-        </div>
-
+    <div>
+      <PageHeader icon={MessageCircle} title="Communication" subtitle="Message teachers, students and parents." accent="amber" className="mb-6" />
+      <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden flex h-[70vh]">
+      <div className="w-72 shrink-0 border-r border-border flex flex-col">
         {isAdmin && (
           <div className="px-3 py-2.5 border-b border-[#F1F5F9] space-y-2">
             <div className="flex gap-1.5">
@@ -254,7 +253,7 @@ export default function ChatPage() {
                   setSearch("");
                 }}
                 className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
-                  filterType === "teacher" ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                  filterType === "teacher" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
                 }`}
               >
                 <GraduationCap className="h-3 w-3" /> Teachers
@@ -265,7 +264,7 @@ export default function ChatPage() {
                   setSearch("");
                 }}
                 className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
-                  filterType === "student" ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                  filterType === "student" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
                 }`}
               >
                 <Users className="h-3 w-3" /> Students
@@ -346,19 +345,24 @@ export default function ChatPage() {
               <button
                 key={`${c.targetUserId}-${c.childId || ""}-${i}`}
                 onClick={() => openContact(c)}
-                className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
-                  active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"
+                className={`w-full flex items-center gap-2.5 text-left px-4 py-3 border-b border-border transition-colors ${
+                  active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-primary/5" : "hover:bg-muted/50"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-[#172554] truncate">{c.name}</p>
-                  {c.unread > 0 && (
-                    <span className="text-[10px] font-bold text-white bg-[#4F46E5] rounded-full px-1.5 py-0.5 shrink-0">
-                      {c.unread}
-                    </span>
-                  )}
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  {c.name.slice(0, 1).toUpperCase()}
                 </div>
-                <p className="text-[11px] text-[#64748B] truncate mt-0.5">{c.subtitle}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-foreground truncate">{c.name}</p>
+                    {c.unread > 0 && (
+                      <span className="text-[10px] font-bold text-primary-foreground bg-primary rounded-full px-1.5 py-0.5 shrink-0">
+                        {c.unread}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{c.subtitle}</p>
+                </div>
               </button>
             ))
           )}
@@ -367,23 +371,30 @@ export default function ChatPage() {
 
       <div className="flex-1 flex flex-col">
         {!active ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-[#94A3B8]">
-            <MessageCircle className="h-8 w-8 mb-2" />
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+            <div className="icon-chip h-14 w-14 bg-primary/8 mb-3">
+              <MessageCircle className="h-6 w-6 text-primary/60" />
+            </div>
             <p className="text-sm">Select a conversation to start chatting.</p>
           </div>
         ) : (
           <>
-            <div className="px-5 py-3 border-b border-[#F1F5F9]">
-              <p className="text-sm font-semibold text-[#172554]">{active.name}</p>
-              <p className="text-xs text-[#64748B]">{active.subtitle}</p>
+            <div className="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                {active.name.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{active.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{active.subtitle}</p>
+              </div>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {loadingThread ? (
-                <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                 </div>
               ) : messages.length === 0 ? (
-                <p className="text-sm text-[#94A3B8]">No messages yet. Say hello!</p>
+                <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
               ) : (
                 messages.map((m) => {
                   const mine = m.senderRole === user.role && m.sender === user.id;
@@ -391,11 +402,11 @@ export default function ChatPage() {
                     <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div
                         className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
-                          mine ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#172554]"
+                          mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                         }`}
                       >
                         <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                        <p className={`text-[10px] mt-1 ${mine ? "text-white/70" : "text-[#94A3B8]"}`}>
+                        <p className={`text-[10px] mt-1 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
@@ -409,7 +420,7 @@ export default function ChatPage() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-2 px-4 py-3 border-t border-[#F1F5F9]"
+              className="flex items-center gap-2 px-4 py-3 border-t border-border"
             >
               <Input
                 value={draft}
@@ -418,12 +429,13 @@ export default function ChatPage() {
                 className="flex-1"
                 maxLength={2000}
               />
-              <Button type="submit" size="icon" disabled={sending || !draft.trim()} className="bg-[#4F46E5] hover:bg-[#4338CA]">
+              <Button type="submit" size="icon" disabled={sending || !draft.trim()}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
           </>
         )}
+      </div>
       </div>
     </div>
   );

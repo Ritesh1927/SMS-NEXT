@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageHeader } from "@/components/PageHeader";
 
 type Tab = "overview" | "attendance" | "exams" | "finance";
 
@@ -168,10 +169,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">Reports</h1>
-        <p className="text-sm text-[#64748B]">Live data across attendance, exams and finances.</p>
-      </div>
+      <PageHeader icon={BarChart3} title="Reports" subtitle="Live data across attendance, exams and finances." accent="fuchsia" />
 
       <div className="flex gap-0 border-b border-[#E2E8F0] overflow-x-auto">
         {TABS.map((t) => (

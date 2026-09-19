@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power, Users, UserCheck, UserX } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PageHeader } from "@/components/PageHeader";
 import { statusPillClass } from "@/lib/statusStyles";
 
 interface StudentRow {
@@ -156,19 +157,20 @@ export default function StudentsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Students</h1>
-          <p className="text-sm text-[#64748B] mt-1">
-            {isTeacher ? "Students in your classes." : "Manage student admissions and records."}
-          </p>
-        </div>
-        {!isTeacher && (
-          <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
-            <Plus className="h-4 w-4" /> Add Student
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Students"
+        subtitle={isTeacher ? "Students in your classes." : "Manage student admissions and records."}
+        accent="blue"
+        actions={
+          !isTeacher && (
+            <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Add Student
+            </Button>
+          )
+        }
+        className="mb-6"
+      />
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 

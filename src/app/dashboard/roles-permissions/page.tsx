@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { PERMISSION_GROUPS, PAGE_GROUPS } from "@/lib/permissions";
+import { PageHeader } from "@/components/PageHeader";
 
 interface TeacherItem {
   _id: string;
@@ -107,15 +108,7 @@ export default function RolesPermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-[#4F46E5]" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-[#172554]">Roles & Permissions</h1>
-          <p className="text-sm text-[#64748B]">Assign page access and permissions to teachers</p>
-        </div>
-      </div>
+      <PageHeader icon={Shield} title="Roles & Permissions" subtitle="Assign page access and permissions to teachers" accent="slate" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Teacher list */}

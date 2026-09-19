@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/PageHeader";
 
 interface SubjectRow {
   _id: string;
@@ -242,10 +243,7 @@ export default function SubjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#172554]">Subject &amp; Class Assignment</h1>
-        <p className="text-sm text-[#64748B]">Manage subjects and assign them to existing classes.</p>
-      </div>
+      <PageHeader icon={BookOpen} title="Subject & Class Assignment" subtitle="Manage subjects and assign them to existing classes." accent="violet" />
 
       <Tabs defaultValue="subjects" className="space-y-4">
         <TabsList>

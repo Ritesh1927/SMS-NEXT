@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { PageHeader } from "@/components/PageHeader";
 
 type ExamType = "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -789,12 +790,9 @@ export function AdminTeacherExams() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#172554]">Exams</h1>
-        <p className="text-sm text-[#64748B] mt-1">Create tests and exams, and enter and publish results.</p>
-      </div>
+      <PageHeader icon={FileText} title="Exams" subtitle="Create tests and exams, and enter and publish results." accent="violet" className="mb-6" />
 
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {exams && exams.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -1614,11 +1612,11 @@ export function AdminTeacherExams() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
-      <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center shrink-0">{icon}</div>
+    <div className="rounded-2xl bg-card border border-border shadow-sm p-4 flex items-center gap-3">
+      <div className="icon-chip h-10 w-10 bg-primary/10 text-primary shrink-0">{icon}</div>
       <div>
-        <p className="text-lg font-bold text-[#172554] leading-none">{value}</p>
-        <p className="text-xs text-[#64748B] mt-1">{label}</p>
+        <p className="text-lg font-bold text-foreground leading-none">{value}</p>
+        <p className="text-xs text-muted-foreground mt-1">{label}</p>
       </div>
     </div>
   );

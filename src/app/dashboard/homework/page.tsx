@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
 
 interface ClassOption {
   _id: string;
@@ -164,15 +165,18 @@ export default function HomeworkPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Homework</h1>
-          <p className="text-sm text-[#64748B] mt-1">{(homework || []).length} assignment{(homework || []).length === 1 ? "" : "s"} total.</p>
-        </div>
-        <Button onClick={() => router.push("/dashboard/homework/new")} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
-          <Plus className="h-4 w-4" /> New Assignment
-        </Button>
-      </div>
+      <PageHeader
+        icon={BookOpen}
+        title="Homework"
+        subtitle={`${(homework || []).length} assignment${(homework || []).length === 1 ? "" : "s"} total.`}
+        accent="violet"
+        actions={
+          <Button onClick={() => router.push("/dashboard/homework/new")} className="gap-1.5">
+            <Plus className="h-4 w-4" /> New Assignment
+          </Button>
+        }
+        className="mb-6"
+      />
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
@@ -431,10 +435,7 @@ function ParentHomework() {
   return (
     <div>
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Homework</h1>
-          <p className="text-sm text-[#64748B] mt-1">Assignments for your child.</p>
-        </div>
+        <PageHeader icon={BookOpen} title="Homework" subtitle="Assignments for your child." accent="violet" />
         {children && children.length > 1 && (
           <Select value={childId} onValueChange={(v) => setChildId(v || "")}>
             <SelectTrigger className="w-56"><SelectValue placeholder="Select a child" /></SelectTrigger>

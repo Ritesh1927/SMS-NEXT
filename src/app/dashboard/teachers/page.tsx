@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageHeader } from "@/components/PageHeader";
 
 interface ClassOption {
   _id: string;
@@ -228,17 +229,18 @@ export default function TeachersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Staff</h1>
-          <p className="text-sm text-[#64748B] mt-1">
-            {counts.total} staff member{counts.total === 1 ? "" : "s"} ({counts.teaching} teaching, {counts.nonTeaching} non-teaching).
-          </p>
-        </div>
-        <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
-          <Plus className="h-4 w-4" /> Add Staff
-        </Button>
-      </div>
+      <PageHeader
+        icon={Briefcase}
+        title="Staff"
+        subtitle={`${counts.total} staff member${counts.total === 1 ? "" : "s"} (${counts.teaching} teaching, ${counts.nonTeaching} non-teaching).`}
+        accent="blue"
+        actions={
+          <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Add Staff
+          </Button>
+        }
+        className="mb-6"
+      />
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 

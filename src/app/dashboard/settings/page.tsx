@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/PageHeader";
 
 interface SchoolProfile {
   schoolName: string;
@@ -204,15 +205,18 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Settings</h1>
-          <p className="text-sm text-[#64748B] mt-1">Manage your school configuration and preferences.</p>
-        </div>
-        <Button form="settings-form" type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Changes
-        </Button>
-      </div>
+      <PageHeader
+        icon={SlidersHorizontal}
+        title="Settings"
+        subtitle="Manage your school configuration and preferences."
+        accent="slate"
+        actions={
+          <Button form="settings-form" type="submit" className="gap-1.5" disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Changes
+          </Button>
+        }
+        className="mb-6"
+      />
 
       <form id="settings-form" onSubmit={handleSubmit}>
         <Tabs defaultValue="school" className="space-y-4">
@@ -558,10 +562,10 @@ export default function SettingsPage() {
 
 function Panel({ icon: Icon, title, children }: { icon: typeof School; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[18px] bg-white p-5 sm:p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] space-y-4">
-      <h2 className="text-sm font-bold text-[#172554] flex items-center gap-2">
-        <div className="h-8 w-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
-          <Icon className="h-4 w-4 text-[#4F46E5]" />
+    <div className="rounded-2xl bg-card border border-border shadow-sm p-5 sm:p-6 space-y-4">
+      <h2 className="text-sm font-bold text-foreground flex items-center gap-2.5 pb-3 border-b border-border">
+        <div className="icon-chip h-9 w-9 bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
         </div>
         {title}
       </h2>

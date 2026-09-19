@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageHeader } from "@/components/PageHeader";
 
 interface ChildRef {
   _id: string;
@@ -146,12 +147,13 @@ export default function ParentsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#172554]">Parents</h1>
-        <p className="text-sm text-[#64748B] mt-1">
-          Parent accounts are created automatically during student admission — manage them here.
-        </p>
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Parents"
+        subtitle="Parent accounts are created automatically during student admission — manage them here."
+        accent="blue"
+        className="mb-6"
+      />
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 

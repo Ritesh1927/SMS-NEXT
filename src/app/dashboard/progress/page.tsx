@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 interface ProgressData {
   overallGPA: string;
@@ -67,10 +68,7 @@ export default function ProgressPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Progress Tracking</h1>
-          <p className="text-sm text-[#64748B]">Detailed insights into academic performance and growth.</p>
-        </div>
+        <PageHeader icon={TrendingUp} title="Progress Tracking" subtitle="Detailed insights into academic performance and growth." accent="fuchsia" />
         {children.length > 1 && (
           <Select
             items={children.map((c) => ({ value: c._id, label: c.name }))}

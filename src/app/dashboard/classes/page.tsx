@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search, School } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -11,6 +11,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState } from "@/components/EmptyState";
 
 interface ClassRow {
   _id: string;
@@ -169,59 +171,68 @@ export default function ClassesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Classes</h1>
-          <p className="text-sm text-[#64748B] mt-1">
-            {isTeacher ? "Your assigned classes." : "Manage class sections and assign class teachers."}
-          </p>
-        </div>
-        {!isTeacher && (
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
-              <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
-            </Link>
-            <Button onClick={openAdd} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
-              <Plus className="h-4 w-4" /> Add Class
-            </Button>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        icon={School}
+        title="Classes"
+        subtitle={isTeacher ? "Your assigned classes." : "Manage class sections and assign class teachers."}
+        accent="blue"
+        actions={
+          !isTeacher && (
+            <>
+              <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
+                <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
+              </Link>
+              <Button onClick={openAdd} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Class
+              </Button>
+            </>
+          )
+        }
+        className="mb-6"
+      />
 
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {classes && classes.length > 0 && (
         <div className="relative max-w-sm mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search classes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
       )}
 
       {error ? null : !classes ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>
       ) : classes.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No classes yet. Add your first one to get started.</p>
+        <div className="rounded-2xl bg-card shadow-sm border border-border">
+          <EmptyState icon={School} message="No classes yet. Add your first one to get started." />
         </div>
       ) : filteredClasses.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No classes match your search.</p>
+        <div className="rounded-2xl bg-card shadow-sm border border-border">
+          <EmptyState icon={Search} message="No classes match your search." />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClasses.map((c) => (
-            <div key={c._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div
+              key={c._id}
+              className="group rounded-2xl bg-card p-5 border border-border shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/30"
+            >
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-[#172554]">Class {c.name}-{c.section}</p>
-                  <p className="text-xs text-[#64748B] mt-0.5">
-                    {c.classTeacher ? `${c.classTeacher.name} (${c.classTeacher.teacherId})` : "No class teacher assigned"}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="icon-chip h-10 w-10 bg-blue-500/10 text-blue-600 font-heading font-bold text-sm">
+                    {c.name}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Class {c.name}-{c.section}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {c.classTeacher ? `${c.classTeacher.name} (${c.classTeacher.teacherId})` : "No class teacher assigned"}
+                    </p>
+                  </div>
                 </div>
                 {!isTeacher && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -231,21 +242,21 @@ export default function ClassesPage() {
                       onClick={() => handleDelete(c)}
                       disabled={busyId === c._id}
                       aria-label="Delete"
-                      className="hover:text-red-600"
+                      className="hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 )}
               </div>
-              <div className="mt-3 flex items-center gap-4 text-xs text-[#64748B] border-t border-[#F1F5F9] pt-3">
+              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-3">
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.studentCount} students</span>
                 {c.room && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" /> {c.room}</span>}
               </div>
               {c.assignedSubjects && c.assignedSubjects.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {c.assignedSubjects.map((s) => (
-                    <span key={s._id} className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155] font-medium">
+                    <span key={s._id} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">
                       {s.name}
                     </span>
                   ))}
@@ -259,7 +270,7 @@ export default function ClassesPage() {
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingId(null); }}>
         <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">{editingId ? "Edit Class" : "Add Class"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">{editingId ? "Edit Class" : "Add Class"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
             <div className="grid grid-cols-2 gap-3">
@@ -287,7 +298,7 @@ export default function ClassesPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Add Class"}
             </Button>
           </form>
@@ -300,7 +311,7 @@ export default function ClassesPage() {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">
+      <label className="text-xs font-semibold text-foreground">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
