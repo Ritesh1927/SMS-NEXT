@@ -255,7 +255,7 @@ export function AdminTeacherExams() {
     load();
     const token = getToken();
     if (token) {
-      apiGet<{ success: boolean; data: { settings?: { passPercentage?: number } } }>("/school", token)
+      apiGet<{ success: boolean; data: { settings?: { passPercentage?: number } } }>("/school/profile", token)
         .then((res) => { if (res.data?.settings?.passPercentage) setPassPercentage(res.data.settings.passPercentage); })
         .catch(() => {});
     }
@@ -263,6 +263,7 @@ export function AdminTeacherExams() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected class changes.
     if (!form.class) { setSubjectOptions([]); return; }
     const token = getToken();
     if (!token) return;
