@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Layers, Loader2, BookOpen, CalendarCheck, ClipboardList, TrendingUp, IndianRupee } from "lucide-react";
+import { Users, Layers, BookOpen, CalendarCheck, ClipboardList, TrendingUp, IndianRupee } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { getToken } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { apiGet } from "@/lib/api";
 import { DashboardHero } from "./DashboardHero";
 import { EmptyStateCompact } from "@/components/EmptyState";
 import { statusPillClass, type StatusTone } from "@/lib/statusStyles";
+import { PageLoader } from "@/components/PageLoader";
 
 interface TeacherDashboardData {
   teacher: {
@@ -82,11 +83,7 @@ export function TeacherDashboard() {
   if (error) return <p className="text-sm text-red-600">{error}</p>;
 
   if (!data) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
-      </div>
-    );
+    return <PageLoader label="Loading dashboard..." />;
   }
 
   const { teacher, stats, classBreakdown, weeklyTrend, weeklyTrendMonth, classPerformance } = data;

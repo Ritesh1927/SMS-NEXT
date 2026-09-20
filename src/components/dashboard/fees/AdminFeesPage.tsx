@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 import CollectFeeTab from "./CollectFeeTab";
 import ReportsTab from "./ReportsTab";
 
@@ -342,11 +343,7 @@ export default function AdminFeesPage() {
   const conFeeStructureOptions = structures.filter((s) => s.class === selectedConStudent?.class);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
-      </div>
-    );
+    return <PageLoader label="Loading fees..." />;
   }
 
   return (

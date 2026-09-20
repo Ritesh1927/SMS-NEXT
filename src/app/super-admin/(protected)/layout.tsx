@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { getSuperAdminToken } from "@/lib/superAdminAuth";
+import { PageLoader } from "@/components/PageLoader";
 
 export default function SuperAdminProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -19,11 +19,7 @@ export default function SuperAdminProtectedLayout({ children }: { children: Reac
   }, [router]);
 
   if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-foreground">
-        <Loader2 className="h-6 w-6 animate-spin text-white/70" />
-      </div>
-    );
+    return <PageLoader fullScreen dark />;
   }
 
   return <>{children}</>;

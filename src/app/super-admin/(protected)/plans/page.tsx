@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getSuperAdminToken, clearSuperAdminAuth } from "@/lib/superAdminAuth";
+import { PageLoader } from "@/components/PageLoader";
 
 interface PlanRecord {
   _id: string;
@@ -175,9 +176,7 @@ export default function PlansManagementPage() {
 
       <div className="max-w-6xl mx-auto p-6">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <PageLoader label="Loading plans..." />
         ) : plans.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground">No plans created yet.</p>

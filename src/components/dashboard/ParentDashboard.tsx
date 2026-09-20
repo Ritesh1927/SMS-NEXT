@@ -8,6 +8,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from "@/lib/razorpay-client";
 import { DashboardHero } from "./DashboardHero";
+import { PageLoader } from "@/components/PageLoader";
 
 interface Child {
   _id: string;
@@ -46,11 +47,7 @@ export function ParentDashboard() {
   if (error) return <p className="text-sm text-red-600">{error}</p>;
 
   if (!data) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
-      </div>
-    );
+    return <PageLoader label="Loading dashboard..." />;
   }
 
   const { children } = data;

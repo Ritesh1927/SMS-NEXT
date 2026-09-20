@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RefreshCw, Check, CalendarCheck, CalendarRange, Calendar, TrendingUp, AlertCircle, Clock, Tag, AlertTriangle } from "lucide-react";
+import { Check, CalendarCheck, CalendarRange, Calendar, TrendingUp, AlertCircle, Clock, Tag, AlertTriangle } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox, ComboboxInputGroup, ComboboxInput, ComboboxContent, ComboboxEmpty, ComboboxItem } from "@/components/ui/combobox";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 
 interface ClassOption { _id: string; name: string; section: string }
 interface StudentOption { _id: string; name: string; class: string; section: string; studentId: string }
@@ -21,11 +22,7 @@ const getMonthLabel = (month: string) => {
 };
 
 function Spinner() {
-  return (
-    <div className="flex justify-center py-12">
-      <RefreshCw className="h-6 w-6 text-muted-foreground/70 animate-spin" />
-    </div>
-  );
+  return <PageLoader />;
 }
 
 function Th({ children }: { children: React.ReactNode }) {

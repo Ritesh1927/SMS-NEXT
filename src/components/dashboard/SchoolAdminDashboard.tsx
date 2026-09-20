@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users, GraduationCap, UserRound, CalendarCheck, Loader2, IndianRupee,
+  Users, GraduationCap, UserRound, CalendarCheck, IndianRupee,
   CalendarDays, FileText, Bell, CreditCard,
   UserPlus, Inbox, ArrowRight, ArrowUpRight,
   BarChart3,
@@ -16,6 +16,7 @@ import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 import { DashboardHero } from "./DashboardHero";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageLoader } from "@/components/PageLoader";
 
 interface DashboardStats {
   totalStudents: number;
@@ -115,11 +116,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
   }
 
   if (!data) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
-      </div>
-    );
+    return <PageLoader label="Loading dashboard..." />;
   }
 
   const { stats, studentsByClass, todayAttendance, attendanceTrend, feeMonthly, classPerformance, upcomingExams, pendingFeeStudents, recentActivity } = data;

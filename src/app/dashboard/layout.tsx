@@ -2,12 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar";
+import { PageLoader } from "@/components/PageLoader";
 
 interface UnreadResponse {
   success: boolean;
@@ -63,11 +63,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [user]);
 
   if (loading || !user) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-background min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader fullScreen />;
   }
 
   const handleLogout = () => {
