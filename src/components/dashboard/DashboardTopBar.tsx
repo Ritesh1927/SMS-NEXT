@@ -97,10 +97,13 @@ export function DashboardTopBar({
   const boxRef = useRef<HTMLDivElement>(null);
 
   const [notices, setNotices] = useState<NoticeItem[]>([]);
-  // The lastSeen cutoff used to bold/highlight "new" rows in the open panel
-  // -- captured once per load so it doesn't shift under the user's cursor
-  // the instant they open the panel (only the bell's own badge should react
-  // immediately; the highlighted rows should stay readable for this view).
+  // The lastSeen cutoff that decides which rows are bolded as "new" and how
+  // many the bell's badge shows. Left untouched while the panel is merely
+  // open (so a freshly-opened panel still shows you what's new), and only
+  // committed -- in state, not just localStorage, so it takes effect
+  // immediately rather than on the next full page load -- once the user
+  // actually acts on it: closes the panel, clicks a notice, or hits "View
+  // all notices".
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const lastSeenKey = `notif_lastSeen_${user.id}`;
 
@@ -120,15 +123,24 @@ export function DashboardTopBar({
   const isNew = (n: NoticeItem) => !lastSeen || new Date(n.createdAt) > new Date(lastSeen);
   const newCount = notices.filter(isNew).length;
 
-  const handleBellOpen = (isOpen: boolean) => {
+  const markAllSeen = () => {
+    if (notices.length === 0) return;
     // notices is sorted pinned/urgent-first, not by recency, so the cutoff
     // has to be the max createdAt across the whole list -- not notices[0],
     // which could be an older pinned/urgent notice sitting ahead of a
     // newer plain one.
-    if (isOpen && notices.length > 0) {
-      const newest = notices.reduce((max, n) => (n.createdAt > max ? n.createdAt : max), notices[0].createdAt);
-      localStorage.setItem(lastSeenKey, newest);
-    }
+    const newest = notices.reduce((max, n) => (n.createdAt > max ? n.createdAt : max), notices[0].createdAt);
+    localStorage.setItem(lastSeenKey, newest);
+    setLastSeen(newest);
+  };
+
+  const handleBellOpen = (isOpen: boolean) => {
+    if (!isOpen) markAllSeen();
+  };
+
+  const goToNotice = () => {
+    markAllSeen();
+    router.push("/dashboard/notices");
   };
 
   useEffect(() => {
@@ -304,7 +316,7 @@ export function DashboardTopBar({
                   return (
                     <button
                       key={n._id}
-                      onClick={() => router.push("/dashboard/notices")}
+                      onClick={goToNotice}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${unread ? "bg-primary/5" : ""}`}
                     >
                       <div
@@ -329,7 +341,7 @@ export function DashboardTopBar({
             )}
             <div className="border-t border-border p-2">
               <button
-                onClick={() => router.push("/dashboard/notices")}
+                onClick={goToNotice}
                 className="w-full rounded-lg py-2 text-center text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
               >
                 View all notices
