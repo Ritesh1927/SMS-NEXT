@@ -273,13 +273,3 @@
   background-clip: text;
   color: transparent;
 }
-
-/* Vertical version of the same navy-to-violet gradient the top bar used
-   to carry, now on the sidebar instead so the rich color still has a
-   home without doubling up on flat dark chrome. Covers both the desktop
-   sidebar (gradient lands on a descendant) and the mobile Sheet (lands
-   on the same element), hence the two selectors. */
-.sidebar-gradient[data-sidebar="sidebar"],
-.sidebar-gradient [data-sidebar="sidebar"] {
-  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%) !important;
-}
