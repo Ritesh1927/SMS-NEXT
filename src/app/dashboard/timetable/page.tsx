@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Trash2, Settings, Plus, Zap } from "lucide-react";
+import { Clock, Trash2, Settings, Plus, Zap, BookOpen, Users, CalendarClock } from "lucide-react";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -459,6 +460,15 @@ export default function TimetablePage() {
         </div>
       </div>
 
+      {entries.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatFilterCard icon={CalendarClock} color="#4F46E5" colorDark="#4338CA" value={entries.length} label="Total Periods" />
+          <StatFilterCard icon={BookOpen} color="#8B5CF6" colorDark="#7C3AED" value={uniqueSubjects.length} label="Subjects" />
+          <StatFilterCard icon={Users} color="#0EA5E9" colorDark="#0284C7" value={new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size} label="Teachers" />
+          <StatFilterCard icon={Clock} color="#F59E0B" colorDark="#D97706" value={periods.length} label="Period Rows" />
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
@@ -549,7 +559,7 @@ export default function TimetablePage() {
                                 isAdmin ? "cursor-pointer hover:bg-primary/5" : ""
                               }`}
                             >
-                              <span className="text-muted-foreground/70/50 text-xs">—</span>
+                              <span className="text-muted-foreground/40 text-xs">—</span>
                             </div>
                           )}
                         </td>
@@ -562,27 +572,6 @@ export default function TimetablePage() {
           </table>
         </div>
       </div>
-
-      {entries.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-foreground">{entries.length}</p>
-            <p className="text-xs text-muted-foreground">Total Periods</p>
-          </div>
-          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-primary">{uniqueSubjects.length}</p>
-            <p className="text-xs text-muted-foreground">Subjects</p>
-          </div>
-          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-accent">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
-            <p className="text-xs text-muted-foreground">Teachers</p>
-          </div>
-          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-amber-600">{periods.length}</p>
-            <p className="text-xs text-muted-foreground">Period Rows</p>
-          </div>
-        </div>
-      )}
 
       {isAdmin && (
         <Dialog open={!!editCell} onOpenChange={(open) => !open && setEditCell(null)}>
