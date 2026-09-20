@@ -6,6 +6,7 @@ import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { Student } from "@/models/Student";
 import { Teacher } from "@/models/Teacher";
+import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 
 // POST /api/exams/[id]/marks — bulk-save marks for an exam (upsert per
 // student), mirroring SMS-BACKEND's enterMarks: marks the exam completed
@@ -20,15 +21,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     await connectDB();
 
-    if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      if (!teacher?.permissions?.canEnterMarks) {
-        return NextResponse.json({ success: false, message: "You don't have permission to enter marks." }, { status: 403 });
-      }
-    }
-
     const exam = await Exam.findOne({ _id: id, school: auth.schoolId });
     if (!exam) return NextResponse.json({ success: false, message: "Exam not found." }, { status: 404 });
+
+    if (auth.role === "teacher") {
+      const teacher = await Teacher.findById(auth.id).select("permissions");
+      const isSubjectTeacher = await isSubjectTeacherOf(auth.id, auth.schoolId, exam.class, exam.section, exam.subject);
+      if (!teacher?.permissions?.canEnterMarks && !isSubjectTeacher) {
+        return NextResponse.json(
+          { success: false, message: "You don't have permission to enter marks for this subject/class." },
+          { status: 403 },
+        );
+      }
+    }
 
     const { results } = await req.json();
     if (!Array.isArray(results) || results.length === 0) {

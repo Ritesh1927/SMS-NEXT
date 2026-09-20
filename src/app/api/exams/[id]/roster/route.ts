@@ -37,7 +37,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       };
     });
 
-    return NextResponse.json({ success: true, data, exam: { title: exam.title, totalMarks: exam.totalMarks, subject: exam.subject } });
+    return NextResponse.json({
+      success: true,
+      data,
+      exam: { title: exam.title, totalMarks: exam.totalMarks, subject: exam.subject, class: exam.class, section: exam.section },
+    });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load roster." },

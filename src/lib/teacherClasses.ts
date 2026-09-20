@@ -1,5 +1,7 @@
 import { Class } from "@/models/Class";
 import { Teacher } from "@/models/Teacher";
+import { TimetableEntry } from "@/models/TimetableEntry";
+import { escapeRegex } from "@/lib/helpers";
 
 // A teacher can act on a class if they're its Class.classTeacher OR it's in
 // their assignedClasses — same two-path access SMS-BACKEND's
@@ -33,4 +35,30 @@ export async function teacherHasAccessToClass(teacherId: string, schoolId: strin
 export async function isClassTeacherOf(teacherId: string, schoolId: string, className: string) {
   const cls = await Class.findOne({ classTeacher: teacherId, school: schoolId, name: className }).select("_id").lean();
   return !!cls;
+}
+
+// True when this teacher has at least one timetable period putting them in
+// front of this exact class+section for this exact subject -- lets a
+// subject teacher enter/publish marks for their own subject without needing
+// the separate, manually-granted canEnterMarks permission. Subject names are
+// matched case-insensitively since they're free-text on both TimetableEntry
+// and Exam rather than a shared reference.
+export async function isSubjectTeacherOf(
+  teacherId: string,
+  schoolId: string,
+  className: string,
+  section: string,
+  subject: string,
+) {
+  const cls = await Class.findOne({ school: schoolId, name: className, section: section || "" }).select("_id").lean();
+  if (!cls) return false;
+  const entry = await TimetableEntry.findOne({
+    school: schoolId,
+    teacherId,
+    classId: cls._id,
+    subject: { $regex: `^${escapeRegex(subject)}$`, $options: "i" },
+  })
+    .select("_id")
+    .lean();
+  return !!entry;
 }
