@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Pin, AlertTriangle, Pencil, Trash2, Megaphone } from "lucide-react";
+import { Plus, Loader2, Pin, AlertTriangle, Pencil, Trash2, Megaphone, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 type Category = "general" | "exam" | "fee" | "holiday" | "event" | "urgent" | "other";
 type TargetRole = "all" | "teacher" | "student" | "parent";
@@ -51,6 +52,16 @@ const CATEGORY_STYLES: Record<Category, string> = {
   other: "bg-slate-100 text-slate-700",
 };
 
+const CATEGORY_PALETTE: Record<Category, { color: string; colorDark: string }> = {
+  general: { color: "#64748B", colorDark: "#475569" },
+  exam: { color: "#8B5CF6", colorDark: "#7C3AED" },
+  fee: { color: "#F59E0B", colorDark: "#D97706" },
+  holiday: { color: "#0EA5E9", colorDark: "#0284C7" },
+  event: { color: "#EC4899", colorDark: "#DB2777" },
+  urgent: { color: "#DC2626", colorDark: "#B91C1C" },
+  other: { color: "#64748B", colorDark: "#475569" },
+};
+
 const ROLE_OPTIONS: { value: TargetRole; label: string }[] = [
   { value: "all", label: "Everyone" },
   { value: "teacher", label: "Teachers" },
@@ -77,6 +88,7 @@ export default function NoticesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<NoticeRow | null>(null);
+  const [filter, setFilter] = useState<"" | "pinned" | "urgent">("");
 
   const permissions = user?.permissions as { canPostNotice?: boolean } | undefined;
   const canPost = user?.role === "schooladmin" || permissions?.canPostNotice === true;
@@ -164,6 +176,15 @@ export default function NoticesPage() {
 
   if (!user) return null;
 
+  const allNotices = notices || [];
+  const pinnedCount = allNotices.filter((n) => n.isPinned).length;
+  const urgentCount = allNotices.filter((n) => n.isUrgent).length;
+  const filteredNotices = allNotices.filter((n) => {
+    if (filter === "pinned") return n.isPinned;
+    if (filter === "urgent") return n.isUrgent;
+    return true;
+  });
+
   return (
     <div>
       <PageHeader
@@ -183,6 +204,51 @@ export default function NoticesPage() {
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
+      {notices && notices.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <StatFilterCard
+              icon={Megaphone}
+              color="#4F46E5"
+              colorDark="#4338CA"
+              value={allNotices.length}
+              label="Total Notices"
+              active={filter === ""}
+              onClick={() => setFilter("")}
+            />
+            <StatFilterCard
+              icon={Pin}
+              color="#8B5CF6"
+              colorDark="#7C3AED"
+              value={pinnedCount}
+              label="Pinned"
+              active={filter === "pinned"}
+              onClick={() => setFilter(filter === "pinned" ? "" : "pinned")}
+            />
+            <StatFilterCard
+              icon={AlertTriangle}
+              color="#DC2626"
+              colorDark="#B91C1C"
+              value={urgentCount}
+              label="Urgent"
+              active={filter === "urgent"}
+              onClick={() => setFilter(filter === "urgent" ? "" : "urgent")}
+            />
+          </div>
+
+          {filter !== "" && (
+            <button
+              type="button"
+              onClick={() => setFilter("")}
+              className="inline-flex items-center gap-1.5 mb-4 rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary/15 transition-colors"
+            >
+              {filter === "pinned" ? "Pinned only" : "Urgent only"}
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </>
+      )}
+
       {error ? null : !notices ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -193,44 +259,66 @@ export default function NoticesPage() {
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Megaphone} message="No notices yet." />
         </div>
+      ) : filteredNotices.length === 0 ? (
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <EmptyState icon={Megaphone} message="No notices match this filter." />
+        </div>
       ) : (
         <div className="space-y-3">
-          {notices.map((n) => (
-            <div key={n._id} className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {n.isPinned && <Pin className="h-3.5 w-3.5 text-primary" />}
-                  {n.isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-red-600" />}
-                  <p className="text-sm font-semibold text-foreground">{n.title}</p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[n.category]}`}>
-                    {n.category}
-                  </span>
-                </div>
-                {canPost && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(n)} aria-label="Edit">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setPendingDelete(n)}
-                      disabled={busyId === n._id}
-                      aria-label="Delete"
-                      className="hover:text-red-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+          {filteredNotices.map((n) => {
+            const palette = CATEGORY_PALETTE[n.category];
+            return (
+              <div key={n._id} className="group relative overflow-hidden rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] transition-shadow hover:shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_8px_20px_-12px_rgba(15,23,42,0.15)]">
+                <Megaphone
+                  className="pointer-events-none absolute -bottom-4 -right-4 h-20 w-20 rotate-[-12deg]"
+                  style={{ color: palette.color, opacity: 0.06 }}
+                />
+                <div className="relative flex items-start gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white"
+                    style={{ background: `linear-gradient(135deg, ${palette.color}, ${palette.colorDark})`, boxShadow: `0 6px 14px -4px ${palette.color}80` }}
+                  >
+                    <Megaphone className="h-5 w-5" />
                   </div>
-                )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {n.isPinned && <Pin className="h-3.5 w-3.5 text-primary shrink-0" />}
+                        {n.isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-red-600 shrink-0" />}
+                        <p className="text-sm font-semibold text-foreground">{n.title}</p>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[n.category]}`}>
+                          {n.category}
+                        </span>
+                      </div>
+                      {canPost && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEdit(n)} aria-label="Edit">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setPendingDelete(n)}
+                            disabled={busyId === n._id}
+                            aria-label="Delete"
+                            className="hover:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{n.content}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-3">
+                      {n.postedBy?.name ? `${n.postedBy.name} · ` : ""}
+                      {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at{" "}
+                      {new Date(n.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{n.content}</p>
-              <p className="text-xs text-muted-foreground/70 mt-3">
-                {n.postedBy?.name ? `${n.postedBy.name} · ` : ""}
-                {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
