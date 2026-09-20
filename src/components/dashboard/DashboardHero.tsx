@@ -54,9 +54,9 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
           <p className="text-sm sm:text-[15px] font-medium text-muted-foreground mt-1.5">{subtitle}</p>
           <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-white/40 backdrop-blur-md border-2 border-primary/30 shadow-[0_4px_20px_rgba(79,70,229,0.18)] px-4 py-3 max-w-md">
             <Quote className="h-4 w-4 text-primary shrink-0 mt-0.5 fill-primary/15" />
-            <p className="text-sm font-medium text-foreground/90 leading-snug">
+            <p className="text-[15px] italic text-foreground/90 leading-snug" style={{ fontFamily: "var(--font-lora)" }}>
               {quote.text}
-              <span className="block text-xs font-normal text-muted-foreground mt-1.5">— {quote.author}</span>
+              <span className="block text-xs not-italic font-sans font-normal text-muted-foreground mt-1.5">— {quote.author}</span>
             </p>
           </div>
         </div>
