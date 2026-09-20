@@ -53,6 +53,14 @@ interface ResultRow {
   isPassed: boolean;
 }
 
+interface ResultGroup {
+  groupId: string;
+  title: string;
+  date: string;
+  isTerm: boolean;
+  rows: ResultRow[];
+}
+
 function formatCountdown(dateIso: string) {
   const now = new Date();
   const target = new Date(dateIso);
@@ -72,9 +80,9 @@ export function ParentExams() {
   const [loadingChildren, setLoadingChildren] = useState(true);
 
   const [upcoming, setUpcoming] = useState<UpcomingItem[] | null>(null);
-  const [results, setResults] = useState<{ results: ResultRow[]; averagePercentage: number } | null>(null);
+  const [results, setResults] = useState<{ groups: ResultGroup[]; averagePercentage: number } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [exporting, setExporting] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -98,9 +106,9 @@ export function ParentExams() {
     apiGet<{ success: boolean; data: UpcomingItem[] }>(`/exams/upcoming?studentId=${selectedChildId}`, token)
       .then((res) => setUpcoming(res.data))
       .catch(() => setUpcoming([]));
-    apiGet<{ success: boolean; data: { results: ResultRow[]; averagePercentage: number } }>(`/results/student/${selectedChildId}`, token)
+    apiGet<{ success: boolean; data: { groups: ResultGroup[]; averagePercentage: number } }>(`/results/student/${selectedChildId}`, token)
       .then((res) => setResults(res.data))
-      .catch(() => setResults({ results: [], averagePercentage: 0 }));
+      .catch(() => setResults({ groups: [], averagePercentage: 0 }));
   }, [selectedChildId]);
 
   const toggleExpand = (id: string) => {
@@ -112,23 +120,23 @@ export function ParentExams() {
     });
   };
 
-  const exportResultCard = async () => {
-    if (!results || results.results.length === 0) return;
-    setExporting(true);
+  const exportResultCard = async (group: ResultGroup) => {
+    setExportingId(group.groupId);
     try {
       const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const child = children.find((c) => c._id === selectedChildId);
+      const groupAverage = Math.round(group.rows.reduce((s, r) => s + r.percentage, 0) / group.rows.length);
       const doc = new jsPDF();
       doc.setFontSize(16);
       doc.text("Result Card", 14, 18);
       doc.setFontSize(11);
       doc.text(child?.name || "Student", 14, 26);
-      doc.text(`Average: ${results.averagePercentage}%`, 14, 33);
+      doc.text(group.title, 14, 33);
+      doc.text(`Average: ${groupAverage}%`, 14, 40);
       autoTable(doc, {
-        startY: 40,
-        head: [["Exam", "Subject", "Date", "Marks", "Grade", "Result"]],
-        body: results.results.map((r) => [
-          r.exam?.title || "—",
+        startY: 47,
+        head: [["Subject", "Date", "Marks", "Grade", "Result"]],
+        body: group.rows.map((r) => [
           r.exam?.subject || "—",
           r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
           `${r.marksObtained}/${r.totalMarks}`,
@@ -137,9 +145,9 @@ export function ParentExams() {
         ]),
         headStyles: { fillColor: [79, 70, 229] },
       });
-      doc.save(`${(child?.name || "student").replace(/\s+/g, "_")}_result_card.pdf`);
+      doc.save(`${(child?.name || "student").replace(/\s+/g, "_")}_${group.title.replace(/\s+/g, "_")}_result_card.pdf`);
     } finally {
-      setExporting(false);
+      setExportingId(null);
     }
   };
 
@@ -241,7 +249,7 @@ export function ParentExams() {
           <TabsContent value="results">
             {!results ? (
               <PageLoader label="Loading results..." />
-            ) : results.results.length === 0 ? (
+            ) : results.groups.length === 0 ? (
               <Card>
                 <CardContent className="py-4">
                   <EmptyState icon={Award} message="No published results yet." />
@@ -249,42 +257,77 @@ export function ParentExams() {
               </Card>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Award className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-foreground leading-none">{results.averagePercentage}%</p>
-                      <p className="text-xs text-muted-foreground mt-1">Average score</p>
-                    </div>
+                <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Award className="h-4 w-4" />
                   </div>
-                  <Button variant="outline" onClick={exportResultCard} disabled={exporting} className="gap-1.5">
-                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    Download Result Card
-                  </Button>
+                  <div>
+                    <p className="text-lg font-bold text-foreground leading-none">{results.averagePercentage}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">Average score</p>
+                  </div>
                 </div>
 
                 <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-                  {results.results.map((r) => (
-                    <div key={r._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{r.exam?.title || "—"}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {r.exam?.subject} · {r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-medium text-foreground">{r.marksObtained}/{r.totalMarks}</span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
-                        {r.isPassed ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-600" />
+                  {results.groups.map((g) => {
+                    const open = expanded.has(g.groupId);
+                    const groupAverage = Math.round(g.rows.reduce((s, r) => s + r.percentage, 0) / g.rows.length);
+                    return (
+                      <div key={g.groupId} className="border-b border-border last:border-0">
+                        <div className="flex items-center justify-between gap-4 px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(g.groupId)}
+                            className="flex items-center gap-2 min-w-0 text-left flex-1"
+                          >
+                            {open ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground truncate">{g.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {g.rows.length} subject{g.rows.length === 1 ? "" : "s"} · {new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                              </p>
+                            </div>
+                          </button>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-sm font-medium text-foreground">{groupAverage}% avg</span>
+                            <Button
+                              variant="outline" size="sm"
+                              onClick={() => exportResultCard(g)}
+                              disabled={exportingId === g.groupId}
+                              className="gap-1.5"
+                            >
+                              {exportingId === g.groupId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                              Download Report Card
+                            </Button>
+                          </div>
+                        </div>
+                        {open && (
+                          <div className="px-5 pb-4">
+                            <div className="rounded-xl border border-border overflow-hidden">
+                              {g.rows.map((r) => (
+                                <div key={r._id} className="flex items-center justify-between px-4 py-2.5 border-b border-border last:border-0 gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-foreground">{r.exam?.subject}</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="text-sm font-medium text-foreground">{r.marksObtained}/{r.totalMarks}</span>
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
+                                    {r.isPassed ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4 text-red-600" />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

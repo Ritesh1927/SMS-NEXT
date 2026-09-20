@@ -376,6 +376,11 @@ export function DashboardTopBar({
                 <span className="inline-flex items-center mt-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                   {ROLE_LABEL[user.role] || user.role}
                 </span>
+                {user.role === "teacher" && user.classes && user.classes.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                    Teaches {user.classes.map((c) => `Class ${c}`).join(", ")}
+                  </p>
+                )}
               </div>
             </div>
             <div className="p-1.5">

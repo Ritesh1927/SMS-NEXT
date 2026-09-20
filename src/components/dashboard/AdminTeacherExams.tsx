@@ -28,6 +28,7 @@ interface ClassOption {
   _id: string;
   name: string;
   section: string;
+  classTeacher: { _id: string } | null;
 }
 
 interface SubjectOption {
@@ -945,6 +946,20 @@ export function AdminTeacherExams() {
       ? canEnterMarksFor(rTestMeta?.class, rTestMeta?.section, rTestMeta?.subject)
       : canEnterMarksFor(activeTermSubject?.class, activeTermSubject?.section, activeTermSubject?.subject);
 
+  // Publishing/unpublishing every subject of an exam at once is reserved for
+  // the class teacher or admin (matches PATCH /api/results/publish's own
+  // check) -- a subject teacher can still save/publish just their own
+  // subject via currentCanEnterMarks above.
+  const canPublishAllSubjects =
+    isAdmin ||
+    (!!activeTermSubject?.class &&
+      classes.some(
+        (c) =>
+          c.name === activeTermSubject.class &&
+          (c.section || "") === (activeTermSubject.section || "") &&
+          c.classTeacher?._id === user?.id,
+      ));
+
   return (
     <div>
       <PageHeader icon={FileText} title="Exams" subtitle="Create tests and exams, and enter and publish results." accent="violet" className="mb-6" />
@@ -1374,10 +1389,10 @@ export function AdminTeacherExams() {
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save {rTermSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
-                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing || !currentCanEnterMarks} className="gap-1.5 bg-primary hover:bg-primary/90">
+                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing || !canPublishAllSubjects} title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can publish every subject of this exam at once"} className="gap-1.5 bg-primary hover:bg-primary/90">
                     {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All Subjects
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing || !currentCanEnterMarks} className="text-red-600 hover:text-red-700">
+                  <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing || !canPublishAllSubjects} title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can unpublish every subject of this exam at once"} className="text-red-600 hover:text-red-700">
                     Unpublish All
                   </Button>
                 </div>
