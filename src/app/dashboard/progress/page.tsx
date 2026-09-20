@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageLoader } from "@/components/PageLoader";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface ProgressData {
   overallGPA: string;
@@ -98,24 +99,10 @@ export default function ProgressPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { title: "Overall GPA", value: loading ? "…" : data?.overallGPA || "—", icon: Award },
-              { title: "Class Rank", value: loading ? "…" : data?.rank || "—", icon: TrendingUp },
-              { title: "Subjects", value: loading ? "…" : String(data?.subjectCount ?? 0), icon: BookOpen },
-              { title: "Avg Score", value: loading ? "…" : data?.avgScore || "—", icon: BarChart3 },
-            ].map((s) => (
-              <Card key={s.title}>
-                <CardContent className="p-5 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <s.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{s.title}</p>
-                    <p className="text-xl font-bold text-foreground">{s.value}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <StatFilterCard icon={Award} color="#4F46E5" colorDark="#4338CA" value={loading ? "…" : data?.overallGPA || "—"} label="Overall GPA" />
+            <StatFilterCard icon={TrendingUp} color="#16A34A" colorDark="#15803D" value={loading ? "…" : data?.rank || "—"} label="Class Rank" />
+            <StatFilterCard icon={BookOpen} color="#0EA5E9" colorDark="#0284C7" value={loading ? "…" : String(data?.subjectCount ?? 0)} label="Subjects" />
+            <StatFilterCard icon={BarChart3} color="#8B5CF6" colorDark="#7C3AED" value={loading ? "…" : data?.avgScore || "—"} label="Avg Score" />
           </div>
 
           {loading ? (
