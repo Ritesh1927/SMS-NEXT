@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Users, GraduationCap, UserRound, CalendarCheck, Loader2, IndianRupee,
   CalendarDays, FileText, Bell, CreditCard,
-  UserPlus, Inbox, MoreVertical, ArrowRight, ArrowUpRight, ChevronDown,
+  UserPlus, Inbox, ArrowRight, ArrowUpRight,
   BarChart3,
 } from "lucide-react";
 import {
@@ -232,12 +232,10 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               variant="dark"
               badge="Live"
               decoration={<HeaderWaveGlyph />}
-              showMoreMenu
               rightAction={
                 <HeaderActionPill variant="dark">
                   <CalendarDays className="h-3.5 w-3.5 text-white/80" />
                   This Week
-                  <ChevronDown className="h-3 w-3 text-white/60" />
                 </HeaderActionPill>
               }
             />
@@ -273,12 +271,10 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               variant="dark"
               badge="Updated"
               decoration={<HeaderBarsGlyph />}
-              showMoreMenu
               rightAction={
                 <HeaderActionPill variant="dark">
                   <CalendarDays className="h-3.5 w-3.5 text-white/80" />
-                  This Year
-                  <ChevronDown className="h-3 w-3 text-white/60" />
+                  Last 6 Months
                 </HeaderActionPill>
               }
             />
@@ -558,15 +554,6 @@ function RecentActivities({ items }: { items: ActivityItem[] }) {
         accent="blue"
         variant="dark"
         decoration={<HeaderPulseGlyph />}
-        showMoreMenu
-        rightAction={
-          <HeaderActionPill variant="dark">
-            <span className="inline-flex items-center gap-1">
-              View All
-              <ArrowRight className="h-3.5 w-3.5" />
-            </span>
-          </HeaderActionPill>
-        }
       />
       <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
         {items.length === 0 ? (
@@ -590,9 +577,6 @@ function RecentActivities({ items }: { items: ActivityItem[] }) {
                     <p className="text-[13px] text-muted-foreground mt-0.5">{label}</p>
                   </div>
                   <span className="shrink-0 whitespace-nowrap rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">{timeAgo(item.time)}</span>
-                  <button type="button" tabIndex={-1} aria-hidden="true" className="hidden sm:flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 opacity-0 transition-opacity duration-200 group-hover/item:opacity-100">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
                 </div>
               );
             })}
@@ -617,15 +601,6 @@ function UpcomingEvents() {
         accent="purple"
         variant="dark"
         decoration={<HeaderDotGridGlyph />}
-        showMoreMenu
-        rightAction={
-          <HeaderActionPill variant="dark">
-            <span className="inline-flex items-center gap-1">
-              View All
-              <ArrowRight className="h-3.5 w-3.5" />
-            </span>
-          </HeaderActionPill>
-        }
       />
       <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">

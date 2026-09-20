@@ -1,4 +1,3 @@
-import { MoreVertical } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -22,7 +21,6 @@ interface DashboardSectionHeaderProps {
   badge?: string;
   decoration?: ReactNode;
   rightAction?: ReactNode;
-  showMoreMenu?: boolean;
   className?: string;
 }
 
@@ -41,7 +39,6 @@ export function DashboardSectionHeader({
   badge,
   decoration,
   rightAction,
-  showMoreMenu = false,
   className,
 }: DashboardSectionHeaderProps) {
   const { from, to, iconColor, tint, dark } = ICON_PRESETS[accent];
@@ -96,25 +93,7 @@ export function DashboardSectionHeader({
           {subtitle && <p className={cn("relative z-10 text-[12px] truncate mt-0.5 leading-tight", isDark ? "text-white/70" : "text-muted-foreground")}>{subtitle}</p>}
         </div>
 
-        {(rightAction || showMoreMenu) && (
-          <div className="relative flex shrink-0 items-center gap-1.5">
-            {rightAction}
-            {showMoreMenu && (
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300",
-                  isDark ? "text-white/80" : "border border-border bg-card text-muted-foreground",
-                )}
-                style={isDark ? { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" } : undefined}
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        )}
+        {rightAction && <div className="relative flex shrink-0 items-center gap-1.5">{rightAction}</div>}
       </div>
       {isDark && <div className="h-px" style={{ background: "rgba(255,255,255,0.08)" }} />}
     </div>
