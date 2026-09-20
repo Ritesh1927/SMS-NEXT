@@ -18,18 +18,18 @@ interface PageLoaderProps {
 export function PageLoader({ label, fullScreen = false, dark = false, compact = false }: PageLoaderProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center ${compact ? "gap-4" : "gap-6"} ${fullScreen ? "min-h-screen" : compact ? "min-h-[220px] py-10" : "min-h-[65vh]"} ${dark ? "bg-foreground" : ""}`}
+      className={`flex flex-col items-center justify-center ${compact ? "gap-2.5 py-6 min-h-[120px]" : "gap-6 min-h-[65vh]"} ${fullScreen ? "!min-h-screen" : ""} ${dark ? "bg-foreground" : ""}`}
     >
-      <div className={`relative flex items-center justify-center ${compact ? "h-16 w-16" : "h-24 w-24"}`}>
-        <div className={`absolute rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe ${compact ? "h-16 w-16" : "h-24 w-24"}`} />
-        <div className={`absolute rounded-2xl border-transparent border-t-primary border-r-accent animate-spin ${compact ? "h-16 w-16 border-2" : "h-24 w-24 border-[3px]"}`} />
-        <div className={`relative flex items-center justify-center rounded-2xl bg-brand-gradient shadow-lg shadow-primary/30 ${compact ? "h-11 w-11" : "h-16 w-16"}`}>
-          <GraduationCap className={compact ? "h-5 w-5 text-white" : "h-8 w-8 text-white"} />
+      <div className={`relative flex items-center justify-center ${compact ? "h-10 w-10" : "h-24 w-24"}`}>
+        <div className={`absolute rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe ${compact ? "h-10 w-10" : "h-24 w-24"}`} />
+        <div className={`absolute rounded-2xl border-transparent border-t-primary border-r-accent animate-spin ${compact ? "h-10 w-10 border-2" : "h-24 w-24 border-[3px]"}`} />
+        <div className={`relative flex items-center justify-center rounded-2xl bg-brand-gradient shadow-lg shadow-primary/30 ${compact ? "h-7 w-7" : "h-16 w-16"}`}>
+          <GraduationCap className={compact ? "h-3.5 w-3.5 text-white" : "h-8 w-8 text-white"} />
         </div>
       </div>
-      <div className="flex flex-col items-center gap-1.5">
-        <span className={`font-extrabold tracking-tight text-brand-gradient ${compact ? "text-lg" : "text-3xl"}`}>EduNivo</span>
-        {label && <span className={`${compact ? "text-xs" : "text-sm"} ${dark ? "text-white/60" : "text-muted-foreground"}`}>{label}</span>}
+      <div className="flex flex-col items-center gap-1">
+        <span className={`font-extrabold tracking-tight text-brand-gradient ${compact ? "text-sm" : "text-3xl"}`}>EduNivo</span>
+        {label && <span className={`${compact ? "text-[11px]" : "text-sm"} ${dark ? "text-white/60" : "text-muted-foreground"}`}>{label}</span>}
       </div>
     </div>
   );

@@ -65,6 +65,7 @@ export default function LoginActivityPage() {
   const [pages, setPages] = useState(1);
   const [roleCounts, setRoleCounts] = useState({ schooladmin: 0, teacher: 0, parent: 0 });
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -91,7 +92,7 @@ export default function LoginActivityPage() {
         setRoleCounts(res.roleCounts);
       })
       .catch(() => toast.error("Failed to load login logs."))
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setInitialLoading(false); });
   };
 
   useEffect(() => {
@@ -135,6 +136,10 @@ export default function LoginActivityPage() {
     <div className="space-y-6">
       <PageHeader icon={Activity} title="Login Activity" subtitle="Track all user logins across your school" accent="slate" />
 
+      {initialLoading ? (
+        <PageLoader label="Loading login history..." />
+      ) : (
+      <>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {(() => {
           const grandTotal = roleCounts.schooladmin + roleCounts.teacher + roleCounts.parent;
@@ -322,6 +327,8 @@ export default function LoginActivityPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
       <ConfirmDialog
         open={purgeDialogOpen}
