@@ -4,6 +4,7 @@ import { Admin } from "@/models/Admin";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
+import { Class } from "@/models/Class";
 import { generateToken } from "@/lib/helpers";
 import { logLogin } from "@/lib/loginLog";
 import { checkAuthRateLimit } from "@/lib/rateLimit";
@@ -25,6 +26,7 @@ interface ResolvedAccount {
   permissions?: unknown;
   subjects?: string[];
   classes?: string[];
+  classTeacherOf?: string[];
   children?: unknown;
 }
 
@@ -143,6 +145,7 @@ export async function POST(req: Request) {
           skipReasons.push("teacher_inactive");
           continue;
         }
+        const classTeacherOfDocs = await Class.find({ classTeacher: t._id, school: String(t.school._id) }).select("name section");
         results.push({
           schoolId: String(t.school._id),
           schoolName: t.school.schoolName || "Unknown School",
@@ -154,6 +157,7 @@ export async function POST(req: Request) {
           permissions: t.permissions,
           subjects: t.subjects,
           classes: t.classes,
+          classTeacherOf: classTeacherOfDocs.map((c) => `${c.name}-${c.section}`),
         });
       }
     }
@@ -195,7 +199,7 @@ export async function POST(req: Request) {
           school: r.schoolId,
           schoolName: r.schoolName,
           ...(r.role === "teacher"
-            ? { teacherId: r.teacherId, permissions: r.permissions, subjects: r.subjects, classes: r.classes }
+            ? { teacherId: r.teacherId, permissions: r.permissions, subjects: r.subjects, classes: r.classes, classTeacherOf: r.classTeacherOf }
             : {}),
           ...(r.role === "parent" ? { children: r.children } : {}),
         },

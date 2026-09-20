@@ -17,6 +17,7 @@ export interface AuthUser {
   permissions?: unknown;
   subjects?: string[];
   classes?: string[];
+  classTeacherOf?: string[];
   children?: Array<{ _id: string; name: string; studentId: string; class: string; section: string }>;
 }
 
