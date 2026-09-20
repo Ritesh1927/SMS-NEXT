@@ -10,10 +10,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { PageLoader } from "@/components/PageLoader";
+import { downloadReportCard, type ReportCardData } from "@/lib/reportCard";
 
 interface Child {
   _id: string;
   name: string;
+  studentId?: string;
+  class?: string;
+  section?: string;
+  rollNumber?: string;
+}
+
+interface SchoolBranding {
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  logo?: string;
+  themeColor?: string;
+  secondaryColor?: string;
 }
 
 interface UpcomingSubject {
@@ -52,6 +67,7 @@ interface ResultRow {
   grade: string;
   isPassed: boolean;
   isAbsent: boolean;
+  remarks?: string;
 }
 
 interface ResultGroup {
@@ -84,6 +100,7 @@ export function ParentExams() {
   const [results, setResults] = useState<{ groups: ResultGroup[]; averagePercentage: number } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [branding, setBranding] = useState<SchoolBranding>({});
 
   useEffect(() => {
     const token = getToken();
@@ -95,6 +112,9 @@ export function ParentExams() {
       })
       .catch(() => {})
       .finally(() => setLoadingChildren(false));
+    apiGet<{ success: boolean; data: SchoolBranding }>("/school/branding", token)
+      .then((res) => setBranding(res.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -124,34 +144,41 @@ export function ParentExams() {
   const exportResultCard = async (group: ResultGroup) => {
     setExportingId(group.groupId);
     try {
-      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const child = children.find((c) => c._id === selectedChildId);
       const attempted = group.rows.filter((r) => !r.isAbsent);
       const groupAverage = attempted.length > 0 ? Math.round(attempted.reduce((s, r) => s + r.percentage, 0) / attempted.length) : 0;
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.text("Result Card", 14, 18);
-      doc.setFontSize(11);
-      doc.text(child?.name || "Student", 14, 26);
-      doc.text(group.title, 14, 33);
-      doc.text(`Average: ${groupAverage}%`, 14, 40);
-      autoTable(doc, {
-        startY: 47,
-        head: [["Subject", "Date", "Marks", "Grade", "Result"]],
-        body: group.rows.map((r) =>
-          r.isAbsent
-            ? [r.exam?.subject || "—", r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", "—", "—", "Absent"]
-            : [
-                r.exam?.subject || "—",
-                r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
-                `${r.marksObtained}/${r.totalMarks}`,
-                r.grade,
-                r.isPassed ? "Pass" : "Fail",
-              ],
-        ),
-        headStyles: { fillColor: [79, 70, 229] },
-      });
-      doc.save(`${(child?.name || "student").replace(/\s+/g, "_")}_${group.title.replace(/\s+/g, "_")}_result_card.pdf`);
+      const dates = group.rows.map((r) => r.exam?.date).filter(Boolean) as string[];
+      const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const examDateRange = dates.length
+        ? dates.every((d) => d === dates[0])
+          ? fmt(dates[0])
+          : `${fmt(dates.reduce((a, b) => (a < b ? a : b)))} – ${fmt(dates.reduce((a, b) => (a > b ? a : b)))}`
+        : undefined;
+
+      const data: ReportCardData = {
+        school: branding,
+        studentName: child?.name || "Student",
+        studentClass: child?.class || "",
+        studentSection: child?.section,
+        studentId: child?.studentId,
+        rollNumber: child?.rollNumber,
+        examTitle: group.title,
+        examDateRange,
+        generatedDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        averagePercentage: groupAverage,
+        rows: group.rows.map((r) => ({
+          subject: r.exam?.subject || "—",
+          date: r.exam?.date ? fmt(r.exam.date) : "—",
+          totalMarks: r.totalMarks,
+          marksObtained: r.marksObtained,
+          percentage: r.percentage,
+          grade: r.grade,
+          remarks: r.remarks,
+          isAbsent: r.isAbsent,
+          isPassed: r.isPassed,
+        })),
+      };
+      downloadReportCard(data, `${(child?.name || "student").replace(/\s+/g, "_")}_${group.title.replace(/\s+/g, "_")}_report_card.pdf`);
     } finally {
       setExportingId(null);
     }
