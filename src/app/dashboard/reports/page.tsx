@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 type Tab = "overview" | "attendance" | "exams" | "finance";
 
@@ -171,13 +172,15 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <PageHeader icon={BarChart3} title="Reports" subtitle="Live data across attendance, exams and finances." accent="fuchsia" />
 
-      <div className="flex gap-0 border-b border-border overflow-x-auto">
+      <div className="inline-flex w-fit flex-wrap items-center justify-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-              tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            className={`relative inline-flex items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+              tab === t.id
+                ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_14px_-2px_rgba(79,70,229,0.45)]"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             }`}
           >
             <t.icon className="h-4 w-4" />
@@ -200,22 +203,10 @@ export default function ReportsPage() {
           ) : (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Students", value: stats?.totalStudents ?? "—", icon: Users, bg: "bg-primary" },
-                  { label: "Total Teachers", value: stats?.totalTeachers ?? "—", icon: BookOpen, bg: "bg-blue-500" },
-                  { label: "Total Collected", value: feeSummary ? `₹${(feeSummary.totalCollected / 1000).toFixed(1)}k` : "—", icon: DollarSign, bg: "bg-green-500" },
-                  { label: "Fee Pending", value: feeSummary ? `₹${(feeSummary.totalPending / 1000).toFixed(1)}k` : "—", icon: AlertCircle, bg: "bg-amber-500" },
-                ].map((s) => (
-                  <Card key={s.label}>
-                    <CardContent className="p-5">
-                      <div className={`h-10 w-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
-                        <s.icon className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-2xl font-bold text-foreground">{s.value}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                <StatFilterCard icon={Users} color="#4F46E5" colorDark="#4338CA" value={stats?.totalStudents ?? "—"} label="Total Students" />
+                <StatFilterCard icon={BookOpen} color="#0EA5E9" colorDark="#0284C7" value={stats?.totalTeachers ?? "—"} label="Total Teachers" />
+                <StatFilterCard icon={DollarSign} color="#16A34A" colorDark="#15803D" value={feeSummary ? `₹${(feeSummary.totalCollected / 1000).toFixed(1)}k` : "—"} label="Total Collected" />
+                <StatFilterCard icon={AlertCircle} color="#F59E0B" colorDark="#D97706" value={feeSummary ? `₹${(feeSummary.totalPending / 1000).toFixed(1)}k` : "—"} label="Fee Pending" />
               </div>
 
               {feeMonthly.filter((d) => d.collected > 0 || d.pending > 0).length > 0 && (
@@ -462,19 +453,10 @@ export default function ReportsPage() {
           {examResults && !loadingResults && (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Students", value: examResults.summary.total, color: "" },
-                  { label: "Passed", value: examResults.summary.passed, color: "text-green-600" },
-                  { label: "Failed", value: examResults.summary.failed, color: "text-red-600" },
-                  { label: "Average Score", value: `${examResults.summary.avgPercentage}%`, color: "text-primary" },
-                ].map((s) => (
-                  <Card key={s.label}>
-                    <CardContent className="p-4 text-center">
-                      <p className={`text-2xl font-bold ${s.color || "text-foreground"}`}>{s.value}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                <StatFilterCard icon={GraduationCap} color="#4F46E5" colorDark="#4338CA" value={examResults.summary.total} label="Total Students" />
+                <StatFilterCard icon={TrendingUp} color="#16A34A" colorDark="#15803D" value={examResults.summary.passed} label="Passed" />
+                <StatFilterCard icon={AlertCircle} color="#DC2626" colorDark="#B91C1C" value={examResults.summary.failed} label="Failed" />
+                <StatFilterCard icon={BarChart3} color="#8B5CF6" colorDark="#7C3AED" value={`${examResults.summary.avgPercentage}%`} label="Average Score" />
               </div>
 
               {(() => {
@@ -553,35 +535,31 @@ export default function ReportsPage() {
       {tab === "finance" && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-5">
-                <div className="h-10 w-10 rounded-lg bg-green-500 flex items-center justify-center mb-3">
-                  <DollarSign className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{feeSummary ? `₹${feeSummary.totalCollected.toLocaleString()}` : "—"}</p>
-                <p className="text-xs text-muted-foreground mt-1">Total Collected (This Year)</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="h-10 w-10 rounded-lg bg-amber-500 flex items-center justify-center mb-3">
-                  <AlertCircle className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">{feeSummary ? `₹${feeSummary.totalPending.toLocaleString()}` : "—"}</p>
-                <p className="text-xs text-muted-foreground mt-1">Total Pending</p>
-              </CardContent>
-            </Card>
-            <Card className="col-span-2 lg:col-span-1">
-              <CardContent className="p-5">
-                <div className="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center mb-3">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {feeSummary && feeSummary.totalCollected + feeSummary.totalPending > 0 ? `${Math.round((feeSummary.totalCollected / (feeSummary.totalCollected + feeSummary.totalPending)) * 100)}%` : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Collection Rate</p>
-              </CardContent>
-            </Card>
+            <StatFilterCard
+              icon={DollarSign}
+              color="#16A34A"
+              colorDark="#15803D"
+              value={feeSummary ? `₹${feeSummary.totalCollected.toLocaleString()}` : "—"}
+              label="Total Collected (This Year)"
+            />
+            <StatFilterCard
+              icon={AlertCircle}
+              color="#F59E0B"
+              colorDark="#D97706"
+              value={feeSummary ? `₹${feeSummary.totalPending.toLocaleString()}` : "—"}
+              label="Total Pending"
+            />
+            <StatFilterCard
+              icon={TrendingUp}
+              color="#0EA5E9"
+              colorDark="#0284C7"
+              value={
+                feeSummary && feeSummary.totalCollected + feeSummary.totalPending > 0
+                  ? `${Math.round((feeSummary.totalCollected / (feeSummary.totalCollected + feeSummary.totalPending)) * 100)}%`
+                  : "—"
+              }
+              label="Collection Rate"
+            />
           </div>
 
           {feeMonthly.filter((d) => d.collected > 0 || d.pending > 0).length > 0 && (
