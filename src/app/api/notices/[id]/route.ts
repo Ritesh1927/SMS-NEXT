@@ -12,7 +12,7 @@ function requireAdminOrTeacher(req: Request) {
 }
 
 const ALLOWED_FIELDS = [
-  "title", "content", "category", "targetRoles", "targetClass", "isUrgent", "isPinned", "expiryDate",
+  "title", "content", "category", "targetRoles", "classScope", "targetClasses", "isUrgent", "isPinned", "expiryDate",
 ] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +25,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updates: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) updates[key] = body[key];
+    }
+    if (Array.isArray(updates.targetRoles) && !updates.targetRoles.includes("student")) {
+      updates.classScope = "";
+      updates.targetClasses = [];
     }
 
     await connectDB();

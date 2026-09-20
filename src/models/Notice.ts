@@ -2,6 +2,10 @@ import mongoose, { Schema, type Document, type Model } from "mongoose";
 
 export type NoticeCategory = "general" | "exam" | "fee" | "holiday" | "event" | "urgent" | "other";
 export type NoticeTargetRole = "all" | "teacher" | "student" | "parent";
+// "" = no class restriction (student/parent/teacher visibility isn't narrowed
+// by class). Set only when targetRoles includes "student" -- see
+// Design note in /api/notices/route.ts for how targetClasses is resolved.
+export type NoticeClassScope = "" | "primary" | "middle" | "high" | "custom";
 
 export interface INotice extends Document {
   school: mongoose.Types.ObjectId;
@@ -9,7 +13,8 @@ export interface INotice extends Document {
   content: string;
   category: NoticeCategory;
   targetRoles: NoticeTargetRole[];
-  targetClass: string;
+  classScope: NoticeClassScope;
+  targetClasses: string[];
   postedBy: mongoose.Types.ObjectId;
   postedByModel: "Admin" | "Teacher";
   isUrgent: boolean;
@@ -25,7 +30,13 @@ const noticeSchema = new Schema<INotice>(
     content: { type: String, required: true },
     category: { type: String, enum: ["general", "exam", "fee", "holiday", "event", "urgent", "other"], default: "general" },
     targetRoles: { type: [String], enum: ["all", "teacher", "student", "parent"], default: ["all"] },
-    targetClass: { type: String, default: "" },
+    // Resolved list of Class.name values (standards) this notice is scoped
+    // to when targetRoles includes "student" -- empty means every student
+    // (and so every parent/teacher of the "student" concern). classScope
+    // records which picker produced the list, purely so the edit form can
+    // reopen on the same choice instead of guessing from targetClasses.
+    classScope: { type: String, enum: ["", "primary", "middle", "high", "custom"], default: "" },
+    targetClasses: { type: [String], default: [] },
     postedBy: { type: Schema.Types.ObjectId, required: true, refPath: "postedByModel" },
     postedByModel: { type: String, enum: ["Admin", "Teacher"], required: true },
     isUrgent: { type: Boolean, default: false },

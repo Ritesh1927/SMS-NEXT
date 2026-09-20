@@ -19,6 +19,7 @@ import { StatFilterCard } from "@/components/StatFilterCard";
 
 type Category = "general" | "exam" | "fee" | "holiday" | "event" | "urgent" | "other";
 type TargetRole = "all" | "teacher" | "student" | "parent";
+type ClassScope = "" | "primary" | "middle" | "high" | "custom";
 
 interface NoticeRow {
   _id: string;
@@ -26,6 +27,8 @@ interface NoticeRow {
   content: string;
   category: Category;
   targetRoles: TargetRole[];
+  classScope: ClassScope;
+  targetClasses: string[];
   isUrgent: boolean;
   isPinned: boolean;
   createdAt: string;
@@ -36,6 +39,47 @@ interface NoticesResponse {
   success: boolean;
   data: NoticeRow[];
 }
+
+interface ClassOption {
+  name: string;
+  section: string;
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
+}
+
+// Pre-primary grades sort and group below Class 1 (Primary School's "lowest"
+// end) even though they aren't numeric -- everything else falls back to its
+// own numeric grade, or 999 (last, and excluded from the band pickers) when
+// a school has named a class something a grade band can't classify.
+const PRE_PRIMARY_KEYS: Record<string, number> = {
+  "pre-nursery": -4, playgroup: -4, nursery: -3, lkg: -2, kg: -1, ukg: -1,
+};
+
+function gradeKey(name: string): number {
+  const key = name.trim().toLowerCase();
+  if (key in PRE_PRIMARY_KEYS) return PRE_PRIMARY_KEYS[key];
+  const n = Number(key);
+  return key !== "" && Number.isFinite(n) ? n : 999;
+}
+
+function classesInBand(standards: string[], band: "primary" | "middle" | "high"): string[] {
+  return standards.filter((s) => {
+    const g = gradeKey(s);
+    if (band === "primary") return g <= 5;
+    if (band === "middle") return g >= 6 && g <= 8;
+    return g >= 9 && g <= 12;
+  });
+}
+
+const CLASS_BAND_OPTIONS: { value: Exclude<ClassScope, "">; label: string }[] = [
+  { value: "primary", label: "Primary School" },
+  { value: "middle", label: "Middle School" },
+  { value: "high", label: "High School" },
+  { value: "custom", label: "Select Standard Manually" },
+];
 
 interface ApiMessageResponse {
   success: boolean;
@@ -74,6 +118,8 @@ const EMPTY_FORM = {
   content: "",
   category: "general" as Category,
   targetRoles: ["all"] as TargetRole[],
+  classScope: "" as ClassScope,
+  targetClasses: [] as string[],
   isUrgent: false,
   isPinned: false,
 };
@@ -89,9 +135,12 @@ export default function NoticesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<NoticeRow | null>(null);
   const [filter, setFilter] = useState<"" | "pinned" | "urgent">("");
+  const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
 
   const permissions = user?.permissions as { canPostNotice?: boolean } | undefined;
   const canPost = user?.role === "schooladmin" || permissions?.canPostNotice === true;
+
+  const standards = [...new Set(classOptions.map((c) => c.name))].sort((a, b) => gradeKey(a) - gradeKey(b) || a.localeCompare(b));
 
   const load = () => {
     const token = getToken();
@@ -103,6 +152,12 @@ export default function NoticesPage() {
 
   useEffect(() => {
     load();
+    const token = getToken();
+    if (!token || !canPost) return;
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClassOptions(res.data))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openAdd = () => {
@@ -116,6 +171,7 @@ export default function NoticesPage() {
     setForm({
       title: n.title, content: n.content, category: n.category,
       targetRoles: n.targetRoles.length ? n.targetRoles : ["all"],
+      classScope: n.classScope || "", targetClasses: n.targetClasses || [],
       isUrgent: n.isUrgent, isPinned: n.isPinned,
     });
     setOpen(true);
@@ -123,15 +179,35 @@ export default function NoticesPage() {
 
   const toggleRole = (role: TargetRole) => {
     setForm((f) => {
-      if (role === "all") return { ...f, targetRoles: ["all"] };
+      if (role === "all") return { ...f, targetRoles: ["all"], classScope: "", targetClasses: [] };
       const withoutAll = f.targetRoles.filter((r) => r !== "all");
       const next = withoutAll.includes(role) ? withoutAll.filter((r) => r !== role) : [...withoutAll, role];
-      return { ...f, targetRoles: next.length ? next : ["all"] };
+      const targetRoles: TargetRole[] = next.length ? next : ["all"];
+      const stillStudent = targetRoles.includes("student");
+      return { ...f, targetRoles, classScope: stillStudent ? f.classScope : "", targetClasses: stillStudent ? f.targetClasses : [] };
     });
+  };
+
+  const setClassScope = (classScope: ClassScope) => {
+    setForm((f) => ({
+      ...f,
+      classScope,
+      targetClasses: classScope === "primary" || classScope === "middle" || classScope === "high" ? classesInBand(standards, classScope) : [],
+    }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (form.targetRoles.includes("student")) {
+      if (!form.classScope) {
+        toast.error("Pick which students this notice is for.");
+        return;
+      }
+      if (form.classScope === "custom" && form.targetClasses.length === 0) {
+        toast.error("Pick a standard.");
+        return;
+      }
+    }
     const token = getToken();
     if (!token) return;
     setSubmitting(true);
@@ -285,6 +361,13 @@ export default function NoticesPage() {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[n.category]}`}>
                           {n.category}
                         </span>
+                        {n.classScope && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                            {n.classScope === "custom"
+                              ? `Class ${n.targetClasses[0] ?? ""}`
+                              : CLASS_BAND_OPTIONS.find((b) => b.value === n.classScope)?.label}
+                          </span>
+                        )}
                       </div>
                       {canPost && (
                         <div className="flex items-center gap-1 shrink-0">
@@ -366,6 +449,31 @@ export default function NoticesPage() {
                 })}
               </div>
             </Field>
+            {form.targetRoles.includes("student") && (
+              <Field label="Which students">
+                <Select value={form.classScope} onValueChange={(v) => setClassScope((v || "") as ClassScope)}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Choose a scope..." /></SelectTrigger>
+                  <SelectContent>
+                    {CLASS_BAND_OPTIONS.map((b) => (
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.classScope === "custom" && (
+                  <Select value={form.targetClasses[0] || ""} onValueChange={(v) => setForm((f) => ({ ...f, targetClasses: v ? [v] : [] }))}>
+                    <SelectTrigger className="w-full mt-2"><SelectValue placeholder="Select a standard..." /></SelectTrigger>
+                    <SelectContent>
+                      {standards.map((s) => (
+                        <SelectItem key={s} value={s}>Class {s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Only parents and teachers tied to the chosen standard{form.classScope && form.classScope !== "custom" ? "s" : ""} will see this notice.
+                </p>
+              </Field>
+            )}
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <input

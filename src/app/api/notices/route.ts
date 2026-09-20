@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
-import { Notice } from "@/models/Notice";
+import { Notice, type NoticeTargetRole } from "@/models/Notice";
 import { Teacher } from "@/models/Teacher";
+import { Student } from "@/models/Student";
+import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 import "@/models/Admin";
 
 export async function GET(req: Request) {
@@ -24,8 +26,30 @@ export async function GET(req: Request) {
     const conditions: Record<string, unknown>[] = [
       { $or: [{ expiryDate: null }, { expiryDate: { $gte: new Date() } }] },
     ];
-    if (auth.role === "teacher") conditions.push({ $or: [{ targetRoles: "all" }, { targetRoles: "teacher" }] });
-    else if (auth.role === "parent") conditions.push({ $or: [{ targetRoles: "all" }, { targetRoles: "parent" }] });
+    // A "student"-targeted notice reaches a teacher/parent only when it
+    // isn't scoped to a class list, or their own classes intersect it --
+    // that's how a class/standard pick actually narrows delivery down to
+    // the people "concerned with" it, per Design.md's notices feature.
+    if (auth.role === "teacher") {
+      const myClasses = (await getTeacherAccessibleClasses(auth.id, auth.schoolId)).map((c) => c.name);
+      conditions.push({
+        $or: [
+          { targetRoles: "all" },
+          { targetRoles: "teacher" },
+          { targetRoles: "student", $or: [{ targetClasses: { $size: 0 } }, { targetClasses: { $in: myClasses } }] },
+        ],
+      });
+    } else if (auth.role === "parent") {
+      const children = await Student.find({ parent: auth.id, school: auth.schoolId }).select("class").lean();
+      const myClasses = children.map((c) => c.class);
+      conditions.push({
+        $or: [
+          { targetRoles: "all" },
+          { targetRoles: "parent" },
+          { targetRoles: "student", $or: [{ targetClasses: { $size: 0 } }, { targetClasses: { $in: myClasses } }] },
+        ],
+      });
+    }
 
     const query: Record<string, unknown> = { school: auth.schoolId, $and: conditions };
     if (category) query.category = category;
@@ -57,18 +81,20 @@ export async function POST(req: Request) {
       }
     }
 
-    const { title, content, category, targetRoles, targetClass, isUrgent, isPinned, expiryDate } = await req.json();
+    const { title, content, category, targetRoles, classScope, targetClasses, isUrgent, isPinned, expiryDate } = await req.json();
     if (!title || !content) {
       return NextResponse.json({ success: false, message: "Title and content are required." }, { status: 400 });
     }
 
+    const resolvedRoles: NoticeTargetRole[] = targetRoles?.length ? targetRoles : ["all"];
     const notice = await Notice.create({
       school: auth.schoolId,
       title,
       content,
       category: category || "general",
-      targetRoles: targetRoles?.length ? targetRoles : ["all"],
-      targetClass: targetClass || "",
+      targetRoles: resolvedRoles,
+      classScope: resolvedRoles.includes("student") ? classScope || "" : "",
+      targetClasses: resolvedRoles.includes("student") && targetClasses?.length ? targetClasses : [],
       postedBy: auth.id,
       postedByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
       isUrgent: isUrgent || false,
