@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarCheck, UserCheck, UserX, Clock, TrendingUp } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/PageLoader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 type Status = "present" | "absent" | "late";
 
@@ -77,23 +78,11 @@ export function StudentAttendanceCalendar({ studentId }: { studentId: string }) 
 
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <div className="rounded-[16px] bg-gradient-to-br from-green-500 to-green-600 p-4 text-white">
-          <p className="text-xs opacity-90">Present</p>
-          <p className="text-2xl font-bold mt-1">{data?.summary.present ?? 0}</p>
-        </div>
-        <div className="rounded-[16px] bg-gradient-to-br from-violet-500 to-violet-600 p-4 text-white">
-          <p className="text-xs opacity-90">Absent</p>
-          <p className="text-2xl font-bold mt-1">{data?.summary.absent ?? 0}</p>
-        </div>
-        <div className="rounded-[16px] bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white">
-          <p className="text-xs opacity-90">Late</p>
-          <p className="text-2xl font-bold mt-1">{data?.summary.late ?? 0}</p>
-        </div>
-        <div className="rounded-[16px] bg-gradient-to-br from-amber-500 to-amber-600 p-4 text-white">
-          <p className="text-xs opacity-90">Attendance</p>
-          <p className="text-2xl font-bold mt-1">{data?.summary.percentage ?? 0}%</p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+        <StatFilterCard icon={UserCheck} color="#16A34A" colorDark="#15803D" value={data?.summary.present ?? 0} label="Present" />
+        <StatFilterCard icon={UserX} color="#DC2626" colorDark="#B91C1C" value={data?.summary.absent ?? 0} label="Absent" />
+        <StatFilterCard icon={Clock} color="#F59E0B" colorDark="#D97706" value={data?.summary.late ?? 0} label="Late" />
+        <StatFilterCard icon={TrendingUp} color="#4F46E5" colorDark="#4338CA" value={`${data?.summary.percentage ?? 0}%`} label="Attendance" />
       </div>
 
       <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-5">
