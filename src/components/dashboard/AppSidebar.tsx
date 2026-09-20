@@ -172,7 +172,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
   const sections = groupBySection(navItems);
 
   return (
-    <Sidebar collapsible="icon" className="dark border-r border-sidebar-border/70 rounded-br-[20px]">
+    <Sidebar collapsible="icon" className="dark sidebar-gradient border-r border-sidebar-border/70 rounded-br-[20px]">
       <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-5 group-data-[collapsible=icon]:pr-2 border-b border-sidebar-border/70 overflow-hidden">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
           <Logo className="h-5 w-5 text-white" />
