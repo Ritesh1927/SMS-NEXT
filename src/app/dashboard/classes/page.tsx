@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { statusPillClass } from "@/lib/statusStyles";
+import { PageLoader } from "@/components/PageLoader";
 
 const CARD_PALETTE = [
   { color: "#4F46E5", colorDark: "#4338CA" },
@@ -247,9 +248,7 @@ export default function ClassesPage() {
       )}
 
       {error ? null : !classes ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-        </div>
+        <PageLoader label="Loading classes..." />
       ) : classes.length === 0 ? (
         <div className="rounded-2xl bg-card shadow-sm border border-border">
           <EmptyState icon={School} message="No classes yet. Add your first one to get started." />

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 import { statusPillClass } from "@/lib/statusStyles";
 
 interface ClassOption {
@@ -275,9 +276,7 @@ export default function HomeworkPage() {
       )}
 
       {error ? null : !homework ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-        </div>
+        <PageLoader label="Loading homework..." />
       ) : homework.length === 0 ? (
         <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <BookOpen className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />

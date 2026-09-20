@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 import { statusPillClass } from "@/lib/statusStyles";
 
 interface StudentRow {
@@ -267,30 +267,7 @@ export default function StudentsPage() {
       )}
 
       {error ? null : !students ? (
-        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
-            <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
-            <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
-          </div>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
-              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
-                <Skeleton className="h-11 w-11 rounded-full shrink-0" />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-              <div className="hidden sm:block w-28 shrink-0"><Skeleton className="h-4 w-16" /></div>
-              <div className="hidden sm:block w-16 shrink-0"><Skeleton className="h-4 w-8" /></div>
-              <div className="hidden sm:block w-32 shrink-0"><Skeleton className="h-4 w-20" /></div>
-              <div className="w-[104px] shrink-0" />
-            </div>
-          ))}
-        </div>
+        <PageLoader label="Loading students..." />
       ) : students.length === 0 ? (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState

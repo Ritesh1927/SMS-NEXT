@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/PageLoader";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -64,7 +64,7 @@ export default function LoginActivityPage() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [roleCounts, setRoleCounts] = useState({ schooladmin: 0, teacher: 0, parent: 0 });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -203,13 +203,11 @@ export default function LoginActivityPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={8}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableRow>
+                  <TableCell colSpan={8}>
+                    <PageLoader label="Loading login history..." />
+                  </TableCell>
+                </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8}>

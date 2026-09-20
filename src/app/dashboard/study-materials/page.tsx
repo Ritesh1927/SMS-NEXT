@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/PageLoader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 
 type MaterialType = "notes" | "paper" | "worksheet";
@@ -311,11 +311,7 @@ export default function StudyMaterialsPage() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-lg" />
-          ))}
-        </div>
+        <PageLoader label="Loading study materials..." />
       ) : isParent && !selectedChildId ? (
         <EmptyState icon={Users} message="No child linked to your account yet." />
       ) : filtered.length === 0 ? (

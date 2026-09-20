@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/PageLoader";
 
 const ROLE_PALETTE: Record<Contact["role"], { color: string; colorDark: string }> = {
   schooladmin: { color: "#4F46E5", colorDark: "#4338CA" },
@@ -341,9 +342,7 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
           {error ? null : !visibleContacts ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-3">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
-            </div>
+            <PageLoader compact label="Loading contacts..." />
           ) : isAdmin && filterType === "student" && !classFilter ? (
             <p className="text-xs text-muted-foreground px-4 py-3">Pick a class above to search students.</p>
           ) : visibleContacts.length === 0 ? (
@@ -406,9 +405,7 @@ export default function ChatPage() {
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {loadingThread ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-                </div>
+                <PageLoader label="Loading messages..." />
               ) : messages.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
               ) : (

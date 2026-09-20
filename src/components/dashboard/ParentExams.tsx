@@ -8,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { PageLoader } from "@/components/PageLoader";
 
 interface Child {
   _id: string;
@@ -177,11 +177,7 @@ export function ParentExams() {
 
           <TabsContent value="upcoming">
             {!upcoming ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
+              <PageLoader label="Loading exams..." />
             ) : upcoming.length === 0 ? (
               <Card>
                 <CardContent className="py-4">
@@ -244,11 +240,7 @@ export function ParentExams() {
 
           <TabsContent value="results">
             {!results ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
+              <PageLoader label="Loading results..." />
             ) : results.results.length === 0 ? (
               <Card>
                 <CardContent className="py-4">

@@ -12,7 +12,7 @@ import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/PageLoader";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
@@ -192,14 +192,7 @@ export default function ReportsPage() {
       {tab === "overview" && (
         <div className="space-y-6">
           {loadingInit ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
-                ))}
-              </div>
-              <Skeleton className="h-[280px] w-full rounded-lg" />
-            </div>
+            <PageLoader label="Loading overview..." />
           ) : (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -339,14 +332,7 @@ export default function ReportsPage() {
           </div>
 
           {loadingAtt ? (
-            <div className="space-y-5">
-              <Skeleton className="h-[300px] w-full rounded-lg" />
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
-                ))}
-              </div>
-            </div>
+            <PageLoader label="Loading attendance..." />
           ) : attData.length === 0 ? (
             <EmptyState icon={CalendarCheck} message={`No attendance data for ${MONTHS[attMonth - 1]} ${attYear}.`} />
           ) : (
@@ -438,17 +424,7 @@ export default function ReportsPage() {
             <EmptyState icon={GraduationCap} message="Select an exam above to view results and grade distribution." />
           )}
 
-          {loadingResults && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                ))}
-              </div>
-              <Skeleton className="h-[240px] w-full rounded-lg" />
-              <Skeleton className="h-64 w-full rounded-lg" />
-            </div>
-          )}
+          {loadingResults && <PageLoader label="Loading results..." />}
 
           {examResults && !loadingResults && (
             <>
@@ -619,11 +595,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {loadingPending ? (
-                <div className="p-4 space-y-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full rounded-md" />
-                  ))}
-                </div>
+                <PageLoader label="Loading pending fees..." />
               ) : pendingFees.length === 0 ? (
                 <EmptyStateCompact message="No pending fees." />
               ) : (

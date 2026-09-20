@@ -9,11 +9,11 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/PageLoader";
 
 interface ChildRef {
   _id: string;
@@ -158,21 +158,7 @@ export default function ParentsPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : !parents ? (
-        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
-              <div className="min-w-0 space-y-1.5">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-56" />
-              </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <Skeleton className="hidden sm:block h-3 w-32" />
-                <Skeleton className="hidden md:block h-3 w-24" />
-                <Skeleton className="h-7 w-20" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <PageLoader label="Loading parents..." />
       ) : parents.length === 0 ? (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Users} message="No parents yet. They're created automatically when you admit a student." />

@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLoader } from "@/components/PageLoader";
 import { Combobox, ComboboxInputGroup, ComboboxInput, ComboboxContent, ComboboxEmpty, ComboboxItem } from "@/components/ui/combobox";
 
 type PaymentMode = "cash" | "online" | "cheque" | "dd";
@@ -420,11 +421,7 @@ export default function CollectFeeTab() {
           </TabsList>
 
           <TabsContent value="collect" className="space-y-6">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            )}
+            {loading && <PageLoader label="Loading fee structure..." />}
 
             {!loading && feeHeads.length === 0 && (
               <Card><CardContent className="py-12 text-center text-muted-foreground">No fee structures defined for this student&apos;s class.</CardContent></Card>
@@ -589,9 +586,7 @@ export default function CollectFeeTab() {
 
           <TabsContent value="history" className="space-y-4">
             {loadingHistory ? (
-              <div className="flex items-center justify-center h-40 gap-3 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" /> Loading payment history...
-              </div>
+              <PageLoader compact label="Loading payment history..." />
             ) : paymentHistory.length === 0 ? (
               <Card>
                 <CardContent className="py-16 text-center">

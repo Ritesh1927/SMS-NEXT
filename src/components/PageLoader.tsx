@@ -7,16 +7,18 @@ interface PageLoaderProps {
   fullScreen?: boolean;
   /** Dark-chrome variant for surfaces like the super-admin shell. */
   dark?: boolean;
+  /** Smaller min-height for narrow/short panels (sidebar lists, split-view columns) instead of the ~viewport-height default. */
+  compact?: boolean;
 }
 
 // The one branded loading state for the whole platform (Design.md: "one
 // brand gradient, applied sparingly") -- every full-page or section loading
 // gate should render this instead of a bare spinner, so a transition always
 // reads as "EduNivo is loading" rather than a generic stall.
-export function PageLoader({ label, fullScreen = false, dark = false }: PageLoaderProps) {
+export function PageLoader({ label, fullScreen = false, dark = false, compact = false }: PageLoaderProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? "min-h-screen" : "py-20"} ${dark ? "bg-foreground" : ""}`}
+      className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? "min-h-screen" : compact ? "min-h-[220px] py-10" : "min-h-[65vh]"} ${dark ? "bg-foreground" : ""}`}
     >
       <div className="relative flex h-16 w-16 items-center justify-center">
         <div className="absolute h-16 w-16 rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe" />

@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { StudentAttendanceCalendar } from "@/components/dashboard/StudentAttendanceCalendar";
+import { PageLoader } from "@/components/PageLoader";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 type Status = "present" | "absent" | "late";
@@ -233,11 +234,7 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {loadingRoster && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading roster...
-            </div>
-          )}
+          {loadingRoster && <PageLoader label="Loading roster..." />}
 
           {!loadingRoster && roster && roster.length === 0 && (
             <div className="rounded-2xl bg-card border border-border shadow-sm">
@@ -427,9 +424,7 @@ function ClassStats({ classOptions }: { classOptions: ClassOption[] }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-        </div>
+        <PageLoader label="Loading attendance stats..." />
       ) : period === "monthly" ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -606,9 +601,7 @@ function StudentLookup() {
       </div>
 
       {students === null ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading students...
-        </div>
+        <PageLoader label="Loading students..." />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border shadow-sm">
           <EmptyState icon={UserSearch} message="No students match your search." />
@@ -691,9 +684,7 @@ function ParentAttendance() {
       </div>
 
       {children === null ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-        </div>
+        <PageLoader label="Loading..." />
       ) : children.length === 0 ? (
         <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <p className="text-sm text-muted-foreground">No children linked to your account yet.</p>

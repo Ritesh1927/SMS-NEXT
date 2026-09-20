@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 
 type ExamType = "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -884,7 +885,7 @@ export function AdminTeacherExams() {
           )}
 
           {error ? null : !exams ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <PageLoader label="Loading tests..." />
           ) : exams.filter((e) => !e.scheduledExamId).length === 0 ? (
             <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <ClipboardList className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
@@ -962,7 +963,7 @@ export function AdminTeacherExams() {
           )}
 
           {!terms ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <PageLoader label="Loading exams..." />
           ) : filteredTerms.length === 0 ? (
             <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <GraduationCap className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
@@ -1086,7 +1087,7 @@ export function AdminTeacherExams() {
               <p className="text-sm text-muted-foreground">Pick a test or exam above to enter marks and publish results.</p>
             </div>
           ) : rLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <PageLoader label="Loading results..." />
           ) : rSourceType === "test" ? (
             !rTestRows ? null : rTestRows.length === 0 ? (
               <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">

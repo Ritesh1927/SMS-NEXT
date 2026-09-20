@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageLoader } from "@/components/PageLoader";
 
 interface RawMonth {
   month: string; paid: boolean; amount: number; paidAmount: number; lateFee: number; concession: number;
@@ -325,11 +326,7 @@ export default function ParentFeesTab() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 gap-3 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin" /> Loading fee details...
-      </div>
-    );
+    return <PageLoader label="Loading fee details..." />;
   }
   if (error) {
     return <div className="flex items-center justify-center h-64 text-red-600">{error}</div>;
@@ -531,9 +528,7 @@ export default function ParentFeesTab() {
 
           <TabsContent value="history" className="space-y-4">
             {loadingHistory ? (
-              <div className="flex items-center justify-center h-40 gap-3 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" /> Loading payment history...
-              </div>
+              <PageLoader compact label="Loading payment history..." />
             ) : paymentHistory.length === 0 ? (
               <div className="rounded-[18px] bg-card py-16 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
                 <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />

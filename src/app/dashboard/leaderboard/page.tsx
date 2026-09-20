@@ -5,7 +5,7 @@ import { Trophy, Flame, Medal, Users, Star, Zap } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/PageLoader";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
@@ -65,14 +65,7 @@ export default function LeaderboardPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {loading ? (
-        <div className="space-y-6">
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
+        <PageLoader label="Loading leaderboard..." />
       ) : (
         <>
       {rows.length > 0 && (

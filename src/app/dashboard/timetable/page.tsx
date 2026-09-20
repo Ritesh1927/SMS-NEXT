@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -494,8 +495,8 @@ export default function TimetablePage() {
             <tbody>
               {periodsLoading || loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
-                    Loading timetable…
+                  <td colSpan={7} className="p-0">
+                    <PageLoader compact label="Loading timetable..." />
                   </td>
                 </tr>
               ) : periods.length === 0 ? (

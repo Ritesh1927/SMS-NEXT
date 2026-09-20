@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageLoader } from "@/components/PageLoader";
 
 interface ClassOption {
   _id: string;
@@ -170,11 +171,7 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader label="Loading..." />;
   }
 
   return (

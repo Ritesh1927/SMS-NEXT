@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarCheck, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { PageLoader } from "@/components/PageLoader";
 
 type Status = "present" | "absent" | "late";
 
@@ -106,9 +107,7 @@ export function StudentAttendanceCalendar({ studentId }: { studentId: string }) 
           </Button>
         </div>
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-          </div>
+          <PageLoader compact label="Loading calendar..." />
         ) : (
           <>
             <div className="grid grid-cols-7 gap-2 mb-2">

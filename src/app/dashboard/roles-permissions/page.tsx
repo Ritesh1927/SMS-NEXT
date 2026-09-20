@@ -8,7 +8,7 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/PageLoader";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { PERMISSION_GROUPS, PAGE_GROUPS } from "@/lib/permissions";
 import { PageHeader } from "@/components/PageHeader";
@@ -117,17 +117,7 @@ export default function RolesPermissionsPage() {
             <h2 className="text-sm font-semibold text-foreground">Teachers</h2>
           </div>
           {loading ? (
-            <div className="divide-y divide-border">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3">
-                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PageLoader compact label="Loading teachers..." />
           ) : teachers.length === 0 ? (
             <EmptyStateCompact message="No teachers found." />
           ) : (
@@ -181,18 +171,7 @@ export default function RolesPermissionsPage() {
               </div>
               <div className="p-4">
                 {loadingPerms ? (
-                  <div className="space-y-6">
-                    {Array.from({ length: 2 }).map((_, g) => (
-                      <div key={g}>
-                        <Skeleton className="h-4 w-32 mb-3" />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {Array.from({ length: 6 }).map((_, i) => (
-                            <Skeleton key={i} className="h-10 w-full rounded-xl" />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <PageLoader compact label="Loading permissions..." />
                 ) : (
                   <div className="space-y-6">
                     <div>

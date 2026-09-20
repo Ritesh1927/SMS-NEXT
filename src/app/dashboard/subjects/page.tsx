@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 
 interface SubjectRow {
   _id: string;
@@ -251,37 +252,39 @@ export default function SubjectsPage() {
     <div className="space-y-6">
       <PageHeader icon={BookOpen} title="Subject & Class Assignment" subtitle="Manage subjects and assign them to existing classes." accent="violet" />
 
-      {!isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatFilterCard
-            icon={BookOpen}
-            color="#4F46E5"
-            colorDark="#4338CA"
-            value={subjects.length}
-            label="Total Subjects"
-            active={activeTab === "subjects"}
-            onClick={() => setActiveTab("subjects")}
-          />
-          <StatFilterCard
-            icon={School}
-            color="#0EA5E9"
-            colorDark="#0284C7"
-            value={classes.length}
-            label="Total Classes"
-            onClick={() => setActiveTab("assign")}
-          />
-          <StatFilterCard
-            icon={Link2}
-            color="#DC2626"
-            colorDark="#B91C1C"
-            value={classesWithNoSubjects}
-            label="Classes With No Subjects"
-            sublabel={classesWithNoSubjects === 0 ? "Every class has subjects assigned" : "Not set up yet"}
-            active={activeTab === "assign"}
-            onClick={() => setActiveTab("assign")}
-          />
-        </div>
-      )}
+      {isLoading || assignmentsLoading ? (
+        <PageLoader label="Loading subjects..." />
+      ) : (
+      <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatFilterCard
+          icon={BookOpen}
+          color="#4F46E5"
+          colorDark="#4338CA"
+          value={subjects.length}
+          label="Total Subjects"
+          active={activeTab === "subjects"}
+          onClick={() => setActiveTab("subjects")}
+        />
+        <StatFilterCard
+          icon={School}
+          color="#0EA5E9"
+          colorDark="#0284C7"
+          value={classes.length}
+          label="Total Classes"
+          onClick={() => setActiveTab("assign")}
+        />
+        <StatFilterCard
+          icon={Link2}
+          color="#DC2626"
+          colorDark="#B91C1C"
+          value={classesWithNoSubjects}
+          label="Classes With No Subjects"
+          sublabel={classesWithNoSubjects === 0 ? "Every class has subjects assigned" : "Not set up yet"}
+          active={activeTab === "assign"}
+          onClick={() => setActiveTab("assign")}
+        />
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
@@ -681,6 +684,8 @@ export default function SubjectsPage() {
           )}
         </TabsContent>
       </Tabs>
+      </>
+      )}
 
       <Dialog open={subjectDialog} onOpenChange={setSubjectDialog}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">

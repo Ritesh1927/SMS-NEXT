@@ -12,7 +12,7 @@ import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/PageLoader";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -119,13 +119,7 @@ export default function ProgressPage() {
           </div>
 
           {loading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-64 rounded-md" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Skeleton className="h-[280px] w-full rounded-lg" />
-                <Skeleton className="h-[280px] w-full rounded-lg" />
-              </div>
-            </div>
+            <PageLoader label="Loading progress..." />
           ) : !data?.hasResults ? (
             <Card>
               <CardContent>

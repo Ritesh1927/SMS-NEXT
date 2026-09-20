@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
+import { PageLoader } from "@/components/PageLoader";
 
 interface SchoolProfile {
   schoolName: string;
@@ -193,11 +194,7 @@ export default function SettingsPage() {
   if (error) return <p className="text-sm text-red-600">{error}</p>;
 
   if (!profile) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading settings...
-      </div>
-    );
+    return <PageLoader label="Loading settings..." />;
   }
 
   const sessionRange = getSessionRange(profile.settings.sessionStartMonth);
