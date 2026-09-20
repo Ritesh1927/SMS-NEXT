@@ -30,6 +30,7 @@ export interface IAdmin extends Document {
     gradingScale: "percentage" | "gpa" | "letter";
     termStructure: "semester" | "trimester" | "quarterly";
     passPercentage: number;
+    allowAttendanceEdit: boolean;
     notifications: {
       emailAlerts: boolean;
       smsAlerts: boolean;
@@ -85,6 +86,7 @@ const adminSchema = new Schema<IAdmin>(
       gradingScale: { type: String, enum: ["percentage", "gpa", "letter"], default: "percentage" },
       termStructure: { type: String, enum: ["semester", "trimester", "quarterly"], default: "semester" },
       passPercentage: { type: Number, default: 35 },
+      allowAttendanceEdit: { type: Boolean, default: false },
       notifications: {
         emailAlerts: { type: Boolean, default: true },
         smsAlerts: { type: Boolean, default: false },

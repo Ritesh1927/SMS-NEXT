@@ -32,13 +32,15 @@ export async function GET(req: Request) {
     const schoolsWithCounts = await Promise.all(
       schools.map(async (s) => {
         const adminCount = s.adminUserId ? await Admin.countDocuments({ _id: s.adminUserId, isActive: true }) : 0;
-        const [teachers, students, parents] = await Promise.all([
+        const [teachers, students, parents, adminSettings] = await Promise.all([
           Teacher.countDocuments({ school: s.adminUserId }),
           Student.countDocuments({ school: s.adminUserId }),
           Parent.countDocuments({ school: s.adminUserId }),
+          s.adminUserId ? Admin.findById(s.adminUserId).select("settings.allowAttendanceEdit").lean() : null,
         ]);
         return {
           ...s.toObject(),
+          allowAttendanceEdit: (adminSettings as { settings?: { allowAttendanceEdit?: boolean } } | null)?.settings?.allowAttendanceEdit || false,
           userCounts: {
             admin: adminCount,
             teachers,

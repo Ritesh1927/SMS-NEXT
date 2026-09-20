@@ -5,6 +5,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { AttendanceRecord, type IAttendanceRecord } from "@/models/AttendanceRecord";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
+import { Admin } from "@/models/Admin";
 import "@/models/Parent";
 import { sendAbsentAlertMail } from "@/lib/mail";
 
@@ -40,6 +41,23 @@ export async function POST(req: Request) {
 
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
+
+    // Editing an already-saved date is blocked for teachers outright, and
+    // for admins unless the superadmin has flipped their allowAttendanceEdit
+    // setting on — matches SMS-BACKEND's per-class edit gate.
+    const existingForDate = await AttendanceRecord.exists({ school: auth.schoolId, classId, date: normalizedDate });
+    if (existingForDate) {
+      if (auth.role === "teacher") {
+        return NextResponse.json({ success: false, message: "Cannot edit saved attendance." }, { status: 403 });
+      }
+      const adminDoc = await Admin.findById(auth.schoolId).select("settings.allowAttendanceEdit").lean();
+      if (!adminDoc?.settings?.allowAttendanceEdit) {
+        return NextResponse.json(
+          { success: false, message: "Cannot edit saved attendance. Contact support to enable editing." },
+          { status: 403 },
+        );
+      }
+    }
 
     const markedBy = { id: auth.id, role: auth.role === "schooladmin" ? "admin" : "teacher", name: "" };
 

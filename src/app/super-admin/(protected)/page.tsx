@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield, School, Users, GraduationCap, Heart, Plus, Search,
-  Pencil, Trash2, Power, Key, RefreshCw, Loader2, Crown, Calendar,
+  Pencil, Trash2, Power, Key, RefreshCw, Loader2, Crown, Calendar, CalendarCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ interface PlanRecord {
 interface SchoolRecord {
   _id: string; name: string; code: string; address: string; phone: string;
   email: string; adminName: string; adminEmail: string; adminPhone: string;
-  isActive: boolean; isVerified: boolean;
+  isActive: boolean; isVerified: boolean; allowAttendanceEdit?: boolean;
   license: {
     planName: string; includedUsers: number; extraUsers: number; totalUsers: number;
     pricePerUser: number; months: number; totalAmount: number;
@@ -210,6 +210,21 @@ export default function SuperAdminDashboardPage() {
       setSchools((prev) => prev.map((s) => (s._id === school._id ? { ...s, isActive: json.isActive } : s)));
       toast.success("Success", { description: json.message });
       fetchStats();
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
+    }
+  };
+
+  const handleToggleAttendanceEdit = async (school: SchoolRecord) => {
+    const token = getSuperAdminToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/superadmin/schools/${school._id}/allow-attendance-edit`, {
+        method: "PATCH", headers: authHeaders(token),
+      });
+      const json = await parseJson(res);
+      setSchools((prev) => prev.map((s) => (s._id === school._id ? { ...s, allowAttendanceEdit: json.allowAttendanceEdit } : s)));
+      toast.success("Success", { description: json.message });
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
     }
@@ -459,6 +474,10 @@ export default function SuperAdminDashboardPage() {
                             </p>
                             <p className="text-[10px] text-gray-400">
                               {s.license.startDate && `From ${new Date(s.license.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                              {s.license.startDate && (() => {
+                                const days = Math.ceil((new Date(s.license.endDate!).getTime() - new Date(s.license.startDate!).getTime()) / 86400000);
+                                return days > 0 ? ` · ${days < 30 ? `${days} days` : `${Math.round(days / 30)} mo`}` : "";
+                              })()}
                             </p>
                             {s.license.totalAmount > 0 && (
                               <p className="text-[10px] text-gray-400">₹{s.license.totalAmount} total</p>
@@ -486,6 +505,10 @@ export default function SuperAdminDashboardPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50"
                             title="Reset Admin Password" onClick={() => setResetPasswordTarget({ id: s._id, name: s.name })}>
                             <Key className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className={`h-8 w-8 ${s.allowAttendanceEdit ? "text-purple-500 hover:bg-purple-50" : "text-gray-400 hover:bg-gray-100"}`}
+                            title={s.allowAttendanceEdit ? "Disable Attendance Edit" : "Enable Attendance Edit"} onClick={() => handleToggleAttendanceEdit(s)}>
+                            <CalendarCheck className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className={`h-8 w-8 ${s.isActive ? "text-amber-500 hover:bg-amber-50" : "text-green-500 hover:bg-green-50"}`}
                             title={s.isActive ? "Deactivate" : "Activate"} onClick={() => handleToggle(s)}>
@@ -712,6 +735,21 @@ export default function SuperAdminDashboardPage() {
                   <span>Total Users</span>
                   <span className="font-bold">{(renewSchool.license?.includedUsers || 0) + renewForm.extraUsers}</span>
                 </div>
+                {renewSchool.license?.endDate && renewForm.endDate && (
+                  <div className="flex justify-between text-blue-700 text-xs">
+                    <span>Extends by</span>
+                    <span>
+                      {Math.max(
+                        0,
+                        Math.ceil(
+                          (new Date(renewForm.endDate).getTime() - new Date(renewSchool.license.endDate).getTime()) /
+                            (1000 * 60 * 60 * 24 * 30),
+                        ),
+                      )}{" "}
+                      month(s)
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
