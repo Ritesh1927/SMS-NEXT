@@ -203,6 +203,7 @@ export default function StudentsPage() {
               colorDark="#4338CA"
               value={counts.total}
               label="Total Students"
+              sublabel={classes.length > 0 ? `Across ${classes.length} class${classes.length === 1 ? "" : "es"}` : undefined}
               active={statusFilter === "all"}
               onClick={() => setStatusFilter("all")}
             />
@@ -212,6 +213,7 @@ export default function StudentsPage() {
               colorDark="#15803D"
               value={counts.active}
               label="Active"
+              sublabel={counts.total > 0 ? `${Math.round((counts.active / counts.total) * 100)}% of total` : undefined}
               active={statusFilter === "active"}
               onClick={() => setStatusFilter(statusFilter === "active" ? "all" : "active")}
             />
@@ -221,17 +223,18 @@ export default function StudentsPage() {
               colorDark="#B91C1C"
               value={counts.inactive}
               label="Inactive"
+              sublabel={counts.inactive === 0 ? "All accounts active" : "Needs review"}
               active={statusFilter === "inactive"}
               onClick={() => setStatusFilter(statusFilter === "inactive" ? "all" : "inactive")}
             />
-            <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm shadow-black/10" style={{ background: "linear-gradient(135deg, #0EA5E9, #0284C7)" }}>
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              <p className="mt-4 text-sm font-medium text-muted-foreground">Avg. Attendance</p>
-              <p className="mt-1 text-[28px] font-bold leading-none text-foreground">{avgAttendance != null ? `${avgAttendance}%` : "—"}</p>
-              <p className="mt-2.5 text-xs text-muted-foreground">Across {withAttendance.length} marked student{withAttendance.length === 1 ? "" : "s"}</p>
-            </div>
+            <StatFilterCard
+              icon={TrendingUp}
+              color="#0EA5E9"
+              colorDark="#0284C7"
+              value={avgAttendance != null ? `${avgAttendance}%` : "—"}
+              label="Avg. Attendance"
+              sublabel={`Across ${withAttendance.length} marked student${withAttendance.length === 1 ? "" : "s"}`}
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -265,15 +268,15 @@ export default function StudentsPage() {
       {error ? null : !students ? (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
-            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
+            <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
             <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
             <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
                 <Skeleton className="h-11 w-11 rounded-full shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <Skeleton className="h-4 w-32" />
@@ -301,15 +304,15 @@ export default function StudentsPage() {
       ) : (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
-            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
+            <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
             <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
             <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredStudents.map((s) => (
             <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
                 <Avatar className={`h-11 w-11 shrink-0 border-2 ${s.isActive ? "border-success/30" : "border-destructive/30"}`}>
                   <AvatarImage src={s.photo} alt={s.name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -354,7 +357,7 @@ export default function StudentsPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-1 w-[104px] shrink-0">
+              <div className="flex items-center justify-end gap-1 w-[104px] shrink-0 ml-auto">
                 {!isTeacher && (
                   <>
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit">
@@ -406,32 +409,57 @@ function StatFilterCard({
   colorDark,
   value,
   label,
-  active,
+  sublabel,
+  active = false,
   onClick,
 }: {
   icon: LucideIcon;
   color: string;
   colorDark: string;
-  value: number;
+  value: number | string;
   label: string;
-  active: boolean;
-  onClick: () => void;
+  sublabel?: string;
+  active?: boolean;
+  onClick?: () => void;
 }) {
+  const Wrapper = onClick ? "button" : "div";
   return (
-    <button
-      type="button"
+    <Wrapper
+      type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`text-left rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${active ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
-      style={active ? ({ "--tw-ring-color": color } as React.CSSProperties) : undefined}
+      className={`group relative text-left overflow-hidden rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 ${onClick ? "hover:-translate-y-1 cursor-pointer" : ""}`}
+      style={{
+        background: active
+          ? `linear-gradient(160deg, ${color}14, ${color}05 55%, transparent)`
+          : undefined,
+        boxShadow: active ? `0 0 0 1.5px ${color}, 0 12px 24px -14px ${color}66` : undefined,
+      }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm shadow-black/10" style={{ background: `linear-gradient(135deg, ${color}, ${colorDark})` }}>
+      <Icon
+        className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 rotate-[-12deg] transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110"
+        style={{ color, opacity: 0.07 }}
+      />
+      <div className="relative flex items-center justify-between">
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
+          style={{ background: `linear-gradient(135deg, ${color}, ${colorDark})`, boxShadow: `0 8px 18px -6px ${color}80, inset 0 1px 0 rgba(255,255,255,0.25)` }}
+        >
           <Icon className="h-5 w-5 text-white" />
         </div>
-        <ArrowUpRight className="h-4 w-4 text-muted-foreground/50" />
+        {onClick && (
+          <ArrowUpRight
+            className={active ? "h-4 w-4 transition-colors" : "h-4 w-4 text-muted-foreground/50 transition-colors group-hover:text-foreground"}
+            style={active ? { color } : undefined}
+          />
+        )}
       </div>
-      <p className="mt-4 text-[28px] font-bold leading-none text-foreground">{value}</p>
-      <p className="mt-1.5 text-sm font-medium text-muted-foreground">{label}</p>
-    </button>
+      <p className="relative mt-4 text-[28px] font-bold leading-none text-foreground">{value}</p>
+      <p className="relative mt-1.5 text-sm font-medium text-muted-foreground">{label}</p>
+      {sublabel && <p className="relative mt-2 text-xs text-muted-foreground">{sublabel}</p>}
+      <div
+        className="absolute inset-x-0 bottom-0 h-[3px] scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
+        style={{ background: `linear-gradient(90deg, ${color}, ${colorDark})`, transformOrigin: "left" }}
+      />
+    </Wrapper>
   );
 }
