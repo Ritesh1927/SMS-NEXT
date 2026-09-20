@@ -19,6 +19,8 @@ interface PageLoaderProps {
 // just at different footprints -- `compact` for places this renders many
 // times on one page (sidebar lists, split-view columns).
 export function PageLoader({ label, fullScreen = false, dark = false, compact = false }: PageLoaderProps) {
+  const ringMaskThickness = compact ? "2.5px" : "3px";
+
   return (
     <div
       className={`flex flex-col items-center justify-center ${compact ? "gap-2.5 py-6 min-h-[120px]" : "gap-5 min-h-[65vh]"} ${fullScreen ? "!min-h-screen" : ""} ${dark ? "bg-foreground" : ""}`}
@@ -26,6 +28,16 @@ export function PageLoader({ label, fullScreen = false, dark = false, compact = 
       <div className={`relative flex items-center justify-center ${compact ? "h-10 w-10" : "h-20 w-20"}`}>
         {/* Breathing glow behind the icon */}
         <div className={`absolute rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe ${compact ? "h-10 w-10" : "h-20 w-20"}`} />
+
+        {/* Smooth conic-gradient ring spinning around the icon */}
+        <div
+          className={`absolute rounded-full animate-spin ${compact ? "h-10 w-10 [animation-duration:0.9s]" : "h-20 w-20 [animation-duration:1.1s]"}`}
+          style={{
+            background: "conic-gradient(from 0deg, transparent 0%, var(--color-primary) 55%, var(--color-accent) 80%, transparent 100%)",
+            WebkitMask: `radial-gradient(farthest-side, transparent calc(100% - ${ringMaskThickness}), #000 calc(100% - ${ringMaskThickness}))`,
+            mask: `radial-gradient(farthest-side, transparent calc(100% - ${ringMaskThickness}), #000 calc(100% - ${ringMaskThickness}))`,
+          }}
+        />
 
         <div className={`relative flex items-center justify-center rounded-2xl bg-brand-gradient shadow-lg shadow-primary/30 ${compact ? "h-7 w-7" : "h-14 w-14"}`}>
           <GraduationCap className={compact ? "h-3.5 w-3.5 text-white" : "h-7 w-7 text-white"} />
