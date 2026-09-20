@@ -537,6 +537,7 @@ function StudentLookup() {
   const isTeacher = user?.role === "teacher";
   const [students, setStudents] = useState<LookupStudentRow[] | null>(null);
   const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const [selected, setSelected] = useState<LookupStudentRow | null>(null);
 
   useEffect(() => {
@@ -547,7 +548,12 @@ function StudentLookup() {
       .catch(() => setStudents([]));
   }, [isTeacher]);
 
+  const classOptions = Array.from(
+    new Map((students || []).map((s) => [`${s.class}::${s.section || ""}`, { class: s.class, section: s.section || "" }])).values(),
+  ).sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }) || a.section.localeCompare(b.section));
+
   const filtered = (students || []).filter((s) => {
+    if (classFilter && `${s.class}::${s.section || ""}` !== classFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return s.name.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.rollNumber || "").toLowerCase().includes(q);
@@ -581,9 +587,22 @@ function StudentLookup() {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search by name, ID, or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by name, ID, or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Classes</SelectItem>
+            {classOptions.map((c) => (
+              <SelectItem key={`${c.class}::${c.section}`} value={`${c.class}::${c.section}`}>
+                Class {c.class}{c.section ? `-${c.section}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {students === null ? (
