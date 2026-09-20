@@ -742,8 +742,8 @@ export default function AdminFeesPage() {
 
 function DashStatCard({ title, value, sub, icon: Icon, bg }: { title: string; value: string; sub?: string; icon: React.ElementType; bg: string }) {
   return (
-    <div className="rounded-[18px] overflow-hidden shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-      <div className={`${bg} p-5 text-white relative`}>
+    <div className="h-full rounded-[18px] overflow-hidden shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+      <div className={`${bg} h-full p-5 text-white relative`}>
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
         <div className="relative flex items-start justify-between">
           <div>
