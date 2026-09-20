@@ -501,99 +501,137 @@ export default function NoticesPage() {
       )}
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingId(null); }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-foreground">{editingId ? "Edit Notice" : "New Notice"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5 text-lg text-foreground">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Megaphone className="h-4.5 w-4.5" />
+              </span>
+              {editingId ? "Edit Notice" : "New Notice"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <Field label="Title" required>
-              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
-            </Field>
-            <Field label="Content" required>
-              <Textarea
-                value={form.content}
-                onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                required
-                rows={4}
-              />
-            </Field>
-            <Field label="Category">
-              <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: (v || f.category) as Category }))}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(["general", "exam", "fee", "holiday", "event", "urgent", "other"] as Category[]).map((c) => (
-                    <SelectItem key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Visible to">
-              <div className="flex flex-wrap gap-2">
-                {ROLE_OPTIONS.map((r) => {
-                  const active = form.targetRoles.includes(r.value);
-                  return (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => toggleRole(r.value)}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
-                        active
-                          ? "bg-primary text-white border-primary"
-                          : "bg-transparent text-muted-foreground border-border hover:border-primary"
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            {form.targetRoles.includes("student") && (
-              <Field label="Which students">
-                <Select value={form.classScope} onValueChange={(v) => setClassScope((v || "") as ClassScope)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Choose a scope..." /></SelectTrigger>
-                  <SelectContent>
-                    {CLASS_BAND_OPTIONS.map((b) => (
-                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.classScope === "custom" && (
-                  <Select value={form.targetClasses[0] || ""} onValueChange={(v) => setForm((f) => ({ ...f, targetClasses: v ? [v] : [] }))}>
-                    <SelectTrigger className="w-full mt-2"><SelectValue placeholder="Select a standard..." /></SelectTrigger>
+          <form onSubmit={handleSubmit} className="space-y-5 mt-2">
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Notice Details</p>
+              <div className="space-y-3">
+                <Field label="Title" required>
+                  <Input placeholder="e.g. Annual Sports Day" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required className="rounded-xl" />
+                </Field>
+                <Field label="Content" required>
+                  <Textarea
+                    placeholder="What do you want to tell them?"
+                    value={form.content}
+                    onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                    required
+                    rows={4}
+                    className="rounded-xl"
+                  />
+                </Field>
+                <Field label="Category">
+                  <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: (v || f.category) as Category }))}>
+                    <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {standards.map((s) => (
-                        <SelectItem key={s} value={s}>Class {s}</SelectItem>
+                      {(["general", "exam", "fee", "holiday", "event", "urgent", "other"] as Category[]).map((c) => (
+                        <SelectItem key={c} value={c}>{c[0].toUpperCase() + c.slice(1)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                )}
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Only parents and teachers tied to the chosen standard{form.classScope && form.classScope !== "custom" ? "s" : ""} will see this notice.
-                </p>
-              </Field>
-            )}
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  checked={form.isUrgent}
-                  onChange={(e) => setForm((f) => ({ ...f, isUrgent: e.target.checked }))}
-                />
-                Urgent
-              </label>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  checked={form.isPinned}
-                  onChange={(e) => setForm((f) => ({ ...f, isPinned: e.target.checked }))}
-                />
-                Pin to top
-              </label>
+                </Field>
+              </div>
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Post Notice"}
-            </Button>
+
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Audience</p>
+              <div className="space-y-3">
+                <Field label="Visible to">
+                  <div className="flex flex-wrap gap-2">
+                    {ROLE_OPTIONS.map((r) => {
+                      const active = form.targetRoles.includes(r.value);
+                      return (
+                        <button
+                          key={r.value}
+                          type="button"
+                          onClick={() => toggleRole(r.value)}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                            active
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-transparent text-muted-foreground border-border hover:border-primary hover:text-primary"
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+                {form.targetRoles.includes("student") && (
+                  <Field label="Which students">
+                    <Select value={form.classScope} onValueChange={(v) => setClassScope((v || "") as ClassScope)}>
+                      <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Choose a scope..." /></SelectTrigger>
+                      <SelectContent>
+                        {CLASS_BAND_OPTIONS.map((b) => (
+                          <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.classScope === "custom" && (
+                      <Select value={form.targetClasses[0] || ""} onValueChange={(v) => setForm((f) => ({ ...f, targetClasses: v ? [v] : [] }))}>
+                        <SelectTrigger className="w-full mt-2 rounded-xl"><SelectValue placeholder="Select a standard..." /></SelectTrigger>
+                        <SelectContent>
+                          {standards.map((s) => (
+                            <SelectItem key={s} value={s}>Class {s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </Field>
+                )}
+                <div className="rounded-xl bg-primary/5 border border-primary/10 px-3 py-2 text-xs text-primary/90">
+                  {form.targetRoles.includes("all")
+                    ? "Reaches everyone in the school — students, parents and teachers."
+                    : form.targetRoles.includes("student")
+                      ? form.classScope
+                        ? `Reaches students ${form.classScope === "custom" && form.targetClasses[0] ? `of Class ${form.targetClasses[0]}` : `in ${CLASS_BAND_OPTIONS.find((b) => b.value === form.classScope)?.label.toLowerCase()}`}, plus their parents and the teachers tied to ${form.classScope === "custom" ? "that standard" : "those standards"}${form.targetRoles.includes("teacher") ? " (and every other teacher)" : ""}${form.targetRoles.includes("parent") ? " (and every other parent)" : ""}.`
+                        : "Choose which students below to see who this reaches."
+                      : `Reaches every ${form.targetRoles.map((r) => ROLE_OPTIONS.find((o) => o.value === r)?.label.toLowerCase()).join(" and ")} account in the school.`}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Priority</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, isUrgent: !f.isUrgent }))}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                    form.isUrgent
+                      ? "bg-red-500 text-white border-red-500 shadow-sm"
+                      : "bg-transparent text-muted-foreground border-border hover:border-red-400 hover:text-red-500"
+                  }`}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" /> Urgent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, isPinned: !f.isPinned }))}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                    form.isPinned
+                      ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                      : "bg-transparent text-muted-foreground border-border hover:border-amber-400 hover:text-amber-500"
+                  }`}
+                >
+                  <Pin className="h-3.5 w-3.5" /> Pin to top
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
+              <Button type="submit" className="flex-1 rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white" disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Post Notice"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

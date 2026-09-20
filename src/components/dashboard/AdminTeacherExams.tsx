@@ -1419,53 +1419,86 @@ export function AdminTeacherExams() {
 
       {/* Create/Edit Test */}
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingExamId(null); }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-foreground">{editingExamId ? "Edit Test" : "New Test"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5 text-lg text-foreground">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ClipboardList className="h-4.5 w-4.5" />
+              </span>
+              {editingExamId ? "Edit Test" : "New Test"}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3 mt-2">
-            <Field label="Title" required>
-              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
-            </Field>
-            <Field label="Class" required>
-              {classes.length > 0 ? (
-                <Select
-                  value={form.class && form.section ? `${form.class}::${form.section}` : ""}
-                  onValueChange={(v) => {
-                    const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                    if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [], subjectSlots: {} }));
-                  }}
-                >
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c._id} value={`${c.name}::${c.section}`}>Class {c.name}-{c.section}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value }))} required />
-              )}
-            </Field>
-            {editingExamId ? (
-              <Field label="Subject" required>
-                {subjectOptions.length > 0 ? (
-                  <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
-                    <SelectContent>
-                      {subjectOptions.map((s) => (
-                        <SelectItem key={s._id} value={s.name}>{s.name} ({s.code})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <form onSubmit={handleSubmit} className="space-y-5 mt-2">
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Basic Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Field label="Title" required>
+                    <Input placeholder="e.g. Unit Test 1" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required className="rounded-xl" />
+                  </Field>
+                </div>
+                <Field label="Class" required>
+                  {classes.length > 0 ? (
+                    <Select
+                      value={form.class && form.section ? `${form.class}::${form.section}` : ""}
+                      onValueChange={(v) => {
+                        const cls = classes.find((c) => `${c.name}::${c.section}` === v);
+                        if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [], subjectSlots: {} }));
+                      }}
+                    >
+                      <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                      <SelectContent>
+                        {classes.map((c) => (
+                          <SelectItem key={c._id} value={`${c.name}::${c.section}`}>Class {c.name}-{c.section}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value }))} required className="rounded-xl" />
+                  )}
+                </Field>
+                {editingExamId ? (
+                  <Field label="Subject" required>
+                    {subjectOptions.length > 0 ? (
+                      <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
+                        <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                        <SelectContent>
+                          {subjectOptions.map((s) => (
+                            <SelectItem key={s._id} value={s.name}>{s.name} ({s.code})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder={form.class ? "No subjects assigned" : "Select class first"} disabled={!form.class} required className="rounded-xl" />
+                    )}
+                  </Field>
                 ) : (
-                  <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder={form.class ? "No subjects assigned" : "Select class first"} disabled={!form.class} required />
+                  <Field label="Type">
+                    <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
+                      <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                 )}
-              </Field>
-            ) : (
-              <Field label="Subjects, Dates & Times" required>
+              </div>
+            </div>
+
+            {!editingExamId && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Subjects, Dates &amp; Times</p>
+                  {form.subjects.length > 0 && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {form.subjects.length} selected
+                    </span>
+                  )}
+                </div>
                 {subjectOptions.length > 0 ? (
-                  <div className="border border-border rounded-lg divide-y divide-border max-h-72 overflow-y-auto">
+                  <div className="border border-border rounded-xl divide-y divide-border max-h-72 overflow-y-auto">
                     {subjectOptions.map((s) => {
                       const checked = form.subjects.includes(s.name);
                       const slot = form.subjectSlots[s.name];
@@ -1482,21 +1515,24 @@ export function AdminTeacherExams() {
                         setForm((f) => ({ ...f, subjectSlots: { ...f.subjectSlots, [s.name]: { ...f.subjectSlots[s.name], ...patch } } }));
                       const validDuration = slot && slot.startTime && slot.endTime && calcDurationMinutes(slot.startTime, slot.endTime) > 0;
                       return (
-                        <div key={s._id} className={`px-3 py-2 ${checked ? "bg-primary/5" : ""}`}>
-                          <div className="flex items-center gap-2.5">
-                            <input type="checkbox" className="h-4 w-4 shrink-0 cursor-pointer" checked={checked} onChange={(e) => toggle(e.target.checked)} />
-                            <span className="flex-1 min-w-0 text-sm text-foreground cursor-pointer" onClick={() => toggle(!checked)}>
-                              {s.name} <span className="text-xs text-muted-foreground font-mono">({s.code})</span>
+                        <div key={s._id} className={`px-3 py-2.5 transition-colors ${checked ? "bg-primary/5" : "hover:bg-muted/50"}`}>
+                          <label className="flex items-center gap-2.5 cursor-pointer">
+                            <input type="checkbox" className="h-4 w-4 shrink-0 cursor-pointer accent-primary" checked={checked} onChange={(e) => toggle(e.target.checked)} />
+                            <span className="flex-1 min-w-0 text-sm font-medium text-foreground">
+                              {s.name} <span className="text-xs text-muted-foreground font-mono font-normal">({s.code})</span>
                             </span>
-                          </div>
+                            {checked && validDuration && (
+                              <span className="text-[10px] font-semibold text-primary/80">{calcDurationMinutes(slot.startTime, slot.endTime)} min</span>
+                            )}
+                          </label>
                           {checked && slot && (
-                            <div className="mt-2 grid grid-cols-3 gap-2 pl-6">
-                              <Input type="date" className="h-8 text-xs" min={todayISO()} value={slot.date} onChange={(e) => updateSlot({ date: e.target.value })} required />
-                              <Input type="time" className="h-8 text-xs" value={slot.startTime} onChange={(e) => updateSlot({ startTime: e.target.value })} required />
-                              <Input type="time" className="h-8 text-xs" value={slot.endTime} onChange={(e) => updateSlot({ endTime: e.target.value })} required />
-                              <p className="col-span-3 text-[11px] text-muted-foreground -mt-1">
-                                {validDuration ? `${calcDurationMinutes(slot.startTime, slot.endTime)} minutes` : "End time must be after start time."}
-                              </p>
+                            <div className="mt-2.5 grid grid-cols-3 gap-2 pl-6.5">
+                              <Input type="date" className="h-8 text-xs rounded-lg" min={todayISO()} value={slot.date} onChange={(e) => updateSlot({ date: e.target.value })} required />
+                              <Input type="time" className="h-8 text-xs rounded-lg" value={slot.startTime} onChange={(e) => updateSlot({ startTime: e.target.value })} required />
+                              <Input type="time" className="h-8 text-xs rounded-lg" value={slot.endTime} onChange={(e) => updateSlot({ endTime: e.target.value })} required />
+                              {!validDuration && (
+                                <p className="col-span-3 text-[11px] text-red-500 -mt-1">End time must be after start time.</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1506,25 +1542,132 @@ export function AdminTeacherExams() {
                 ) : (
                   <p className="text-xs text-muted-foreground py-2">{form.class ? "No subjects assigned to this class." : "Select a class first."}</p>
                 )}
-                {form.subjects.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {form.subjects.length} subject{form.subjects.length > 1 ? "s" : ""} selected
-                    {form.subjects.length > 1 ? " — a separate test will be created for each, on its own date and time." : "."}
-                  </p>
+                {form.subjects.length > 1 && (
+                  <div className="mt-2.5 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2 text-xs text-primary/90">
+                    A separate test will be created for each of the {form.subjects.length} subjects, on its own date and time.
+                  </div>
                 )}
-              </Field>
+              </div>
             )}
-            {editingExamId ? (
-              <>
+
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                {editingExamId ? "Schedule & Marking" : "Marking"}
+              </p>
+              <div className="space-y-3">
+                {editingExamId && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Date" required>
+                        <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required className="rounded-xl" />
+                      </Field>
+                      <Field label="Type">
+                        <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
+                          <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    </div>
+                    <div className="rounded-xl border border-border p-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="From" required>
+                          <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} required className="rounded-lg" />
+                        </Field>
+                        <Field label="To" required>
+                          <Input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} required className="rounded-lg" />
+                        </Field>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {form.startTime && form.endTime && calcDurationMinutes(form.startTime, form.endTime) > 0
+                          ? `Duration: ${calcDurationMinutes(form.startTime, form.endTime)} minutes`
+                          : "End time must be after start time."}
+                      </p>
+                    </div>
+                  </>
+                )}
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Date" required>
-                    <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
+                  <Field label="Total Marks" required>
+                    <Input type="number" min={1} value={form.totalMarks} onChange={(e) => {
+                      const tm = e.target.value;
+                      setForm((f) => ({ ...f, totalMarks: tm, passingMarks: tm ? String(Math.round(Number(tm) * passPercentage / 100)) : "" }));
+                    }} required className="rounded-xl" />
                   </Field>
-                  <Field label="Type">
-                    <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
-                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <Field label="Passing Marks" required>
+                    <Input type="number" min={0} value={form.passingMarks} onChange={(e) => setForm((f) => ({ ...f, passingMarks: e.target.value }))} required className="rounded-xl" />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
+              <Button type="submit" className="flex-1 rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white" disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingExamId ? "Save Changes" : form.subjects.length > 1 ? `Create ${form.subjects.length} Tests` : "Create Test"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit Exam */}
+      <Dialog open={termOpen} onOpenChange={(o) => { setTermOpen(o); if (!o) setEditingTermId(null); }}>
+        <DialogContent className="sm:max-w-3xl rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5 text-lg text-foreground">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CalendarClock className="h-4.5 w-4.5" />
+              </span>
+              {editingTermId ? "Edit Exam" : "New Exam"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleTermSubmit} className="space-y-5 mt-2">
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Exam Details</p>
+              <div className="space-y-3">
+                <Field label="Title" required>
+                  <Input placeholder="e.g. Mid-Term Exams" value={termForm.title} onChange={(e) => setTermForm((f) => ({ ...f, title: e.target.value }))} required className="rounded-xl" />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Class" required>
+                    {classes.length > 0 ? (
+                      <Select
+                        value={termForm.class && termForm.section ? `${termForm.class}::${termForm.section}` : ""}
+                        onValueChange={(v) => {
+                          const cls = classes.find((c) => `${c.name}::${c.section}` === v);
+                          if (cls) {
+                            setTermForm((f) => ({ ...f, class: cls.name, section: cls.section }));
+                            const token = getToken();
+                            if (token) {
+                              apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
+                                .then((res) => {
+                                  setTermSubjectOptions(res.data);
+                                  setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
+                                })
+                                .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                        <SelectContent>
+                          {classes.map((c) => (
+                            <SelectItem key={c._id} value={`${c.name}::${c.section}`}>Class {c.name}-{c.section}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={termForm.class} onChange={(e) => setTermForm((f) => ({ ...f, class: e.target.value }))} required className="rounded-xl" />
+                    )}
+                  </Field>
+                  <Field label="Type" required>
+                    <Select value={termForm.examType} onValueChange={(v) => setTermForm((f) => ({ ...f, examType: (v || f.examType) as TermType }))}>
+                      <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
+                        {(["midterm", "final", "unit", "annual"] as TermType[]).map((t) => (
                           <SelectItem key={t} value={t}>{t}</SelectItem>
                         ))}
                       </SelectContent>
@@ -1532,133 +1675,40 @@ export function AdminTeacherExams() {
                   </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="From" required>
-                    <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} required />
+                  <Field label="Start Date" required>
+                    <Input
+                      type="date"
+                      value={termForm.startDate}
+                      onChange={(e) => setTermForm((f) => ({ ...f, startDate: e.target.value, endDate: f.endDate && f.endDate < e.target.value ? "" : f.endDate }))}
+                      min={editingTermId ? undefined : todayISO()}
+                      required
+                      className="rounded-xl"
+                    />
                   </Field>
-                  <Field label="To" required>
-                    <Input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} required />
+                  <Field label="End Date" required>
+                    <Input
+                      type="date"
+                      value={termForm.endDate}
+                      onChange={(e) => setTermForm((f) => ({ ...f, endDate: e.target.value }))}
+                      min={termForm.startDate || (editingTermId ? undefined : todayISO())}
+                      required
+                      className="rounded-xl"
+                    />
                   </Field>
                 </div>
-                <p className="text-xs text-muted-foreground -mt-2">
-                  {form.startTime && form.endTime && calcDurationMinutes(form.startTime, form.endTime) > 0
-                    ? `Duration: ${calcDurationMinutes(form.startTime, form.endTime)} minutes`
-                    : "End time must be after start time."}
-                </p>
-              </>
-            ) : (
-              <Field label="Type">
-                <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Total Marks" required>
-                <Input type="number" min={1} value={form.totalMarks} onChange={(e) => {
-                  const tm = e.target.value;
-                  setForm((f) => ({ ...f, totalMarks: tm, passingMarks: tm ? String(Math.round(Number(tm) * passPercentage / 100)) : "" }));
-                }} required />
-              </Field>
-              <Field label="Passing Marks" required>
-                <Input type="number" min={0} value={form.passingMarks} onChange={(e) => setForm((f) => ({ ...f, passingMarks: e.target.value }))} required />
-              </Field>
+                <Field label="Description">
+                  <Textarea rows={2} value={termForm.description} onChange={(e) => setTermForm((f) => ({ ...f, description: e.target.value }))} className="rounded-xl" />
+                </Field>
+              </div>
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingExamId ? "Save Changes" : form.subjects.length > 1 ? `Create ${form.subjects.length} Tests` : "Create Test"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create/Edit Exam */}
-      <Dialog open={termOpen} onOpenChange={(o) => { setTermOpen(o); if (!o) setEditingTermId(null); }}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-foreground">{editingTermId ? "Edit Exam" : "New Exam"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleTermSubmit} className="space-y-3 mt-2">
-            <Field label="Title" required>
-              <Input placeholder="e.g. Mid-Term Exams" value={termForm.title} onChange={(e) => setTermForm((f) => ({ ...f, title: e.target.value }))} required />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Class" required>
-                {classes.length > 0 ? (
-                  <Select
-                    value={termForm.class && termForm.section ? `${termForm.class}::${termForm.section}` : ""}
-                    onValueChange={(v) => {
-                      const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                      if (cls) {
-                        setTermForm((f) => ({ ...f, class: cls.name, section: cls.section }));
-                        const token = getToken();
-                        if (token) {
-                          apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
-                            .then((res) => {
-                              setTermSubjectOptions(res.data);
-                              setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
-                            })
-                            .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
-                    <SelectContent>
-                      {classes.map((c) => (
-                        <SelectItem key={c._id} value={`${c.name}::${c.section}`}>Class {c.name}-{c.section}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input value={termForm.class} onChange={(e) => setTermForm((f) => ({ ...f, class: e.target.value }))} required />
-                )}
-              </Field>
-              <Field label="Type" required>
-                <Select value={termForm.examType} onValueChange={(v) => setTermForm((f) => ({ ...f, examType: (v || f.examType) as TermType }))}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(["midterm", "final", "unit", "annual"] as TermType[]).map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Start Date" required>
-                <Input
-                  type="date"
-                  value={termForm.startDate}
-                  onChange={(e) => setTermForm((f) => ({ ...f, startDate: e.target.value, endDate: f.endDate && f.endDate < e.target.value ? "" : f.endDate }))}
-                  min={editingTermId ? undefined : todayISO()}
-                  required
-                />
-              </Field>
-              <Field label="End Date" required>
-                <Input
-                  type="date"
-                  value={termForm.endDate}
-                  onChange={(e) => setTermForm((f) => ({ ...f, endDate: e.target.value }))}
-                  min={termForm.startDate || (editingTermId ? undefined : todayISO())}
-                  required
-                />
-              </Field>
-            </div>
-            <Field label="Description">
-              <Textarea rows={2} value={termForm.description} onChange={(e) => setTermForm((f) => ({ ...f, description: e.target.value }))} />
-            </Field>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-foreground">Subjects</label>
-                <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Subjects &amp; Schedule</p>
+                <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1 rounded-lg"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
               {termForm.class && termSubjectOptions.length === 0 && (
-                <p className="text-xs text-amber-600 mb-2">
+                <p className="text-xs text-amber-600 mb-2 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
                   No subjects are assigned to Class {termForm.class}{termForm.section ? `-${termForm.section}` : ""} yet — assign some from Subject &amp; Class, or type names in below.
                 </p>
               )}
@@ -1667,14 +1717,20 @@ export function AdminTeacherExams() {
                   const selectedSubjects = new Set(termSubjects.filter((row, idx) => idx !== i && row.subject).map((row) => row.subject));
                   const validDuration = s.startTime && s.endTime && calcDurationMinutes(s.startTime, s.endTime) > 0;
                   return (
-                  <div key={i} className="rounded-lg border border-border p-2.5 space-y-2">
-                    <div className="grid grid-cols-[1.4fr_1fr_0.7fr_auto] gap-2 items-end">
+                  <div key={i} className="rounded-xl border border-border p-3 space-y-2.5 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">{i + 1}</span>
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeTermSubjectRow(i)} disabled={termSubjects.length === 1} className="text-muted-foreground hover:text-red-500">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-[1.4fr_1fr_0.7fr] gap-2 items-end">
                       <Field label="Subject">
                         {!termForm.class ? (
-                          <Input placeholder="Select a class first" value="" disabled />
+                          <Input placeholder="Select a class first" value="" disabled className="rounded-lg" />
                         ) : termSubjectOptions.length > 0 ? (
                           <Select value={s.subject} onValueChange={(v) => updateTermSubjectRow(i, { subject: v || "" })}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                            <SelectTrigger className="w-full rounded-lg"><SelectValue placeholder="Select subject" /></SelectTrigger>
                             <SelectContent>
                               {termSubjectOptions.filter((sub) => !selectedSubjects.has(sub.name) || sub.name === s.subject).map((sub) => (
                                 <SelectItem key={sub._id} value={sub.name}>{sub.name} ({sub.code})</SelectItem>
@@ -1682,7 +1738,7 @@ export function AdminTeacherExams() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Input placeholder="Type a subject name" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
+                          <Input placeholder="Type a subject name" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} className="rounded-lg" />
                         )}
                       </Field>
                       <Field label="Date">
@@ -1692,35 +1748,48 @@ export function AdminTeacherExams() {
                           onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })}
                           min={termForm.startDate || (editingTermId ? undefined : todayISO())}
                           max={termForm.endDate || undefined}
+                          className="rounded-lg"
                         />
                       </Field>
                       <Field label="Marks">
-                        <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} />
+                        <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} className="rounded-lg" />
                       </Field>
-                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeTermSubjectRow(i)} disabled={termSubjects.length === 1} className="mb-0.5">
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 items-end">
                       <Field label="From">
-                        <Input type="time" value={s.startTime} onChange={(e) => updateTermSubjectRow(i, { startTime: e.target.value })} />
+                        <Input type="time" value={s.startTime} onChange={(e) => updateTermSubjectRow(i, { startTime: e.target.value })} className="rounded-lg" />
                       </Field>
                       <Field label="To">
-                        <Input type="time" value={s.endTime} onChange={(e) => updateTermSubjectRow(i, { endTime: e.target.value })} />
+                        <Input type="time" value={s.endTime} onChange={(e) => updateTermSubjectRow(i, { endTime: e.target.value })} className="rounded-lg" />
                       </Field>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className={`text-xs ${validDuration ? "text-muted-foreground" : "text-red-500"}`}>
                       {validDuration ? `Duration: ${calcDurationMinutes(s.startTime, s.endTime)} minutes` : "End time must be after start time."}
                     </p>
                   </div>
                   );
                 })}
               </div>
+              {termSubjects.length > 0 && (
+                <div className="mt-3 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2 flex items-center justify-between text-xs text-primary/90">
+                  <span>{termSubjects.length} subject{termSubjects.length > 1 ? "s" : ""} in this exam</span>
+                  {termForm.startDate && termForm.endDate && (
+                    <span className="font-medium">
+                      {termForm.startDate === termForm.endDate
+                        ? new Date(termForm.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                        : `${new Date(termForm.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(termForm.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={termSubmitting}>
-              {termSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingTermId ? "Save Changes" : "Create Exam"}
-            </Button>
+            <div className="flex gap-3 pt-1">
+              <Button type="button" variant="outline" onClick={() => setTermOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
+              <Button type="submit" className="flex-1 rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white" disabled={termSubmitting}>
+                {termSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingTermId ? "Save Changes" : "Create Exam"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
