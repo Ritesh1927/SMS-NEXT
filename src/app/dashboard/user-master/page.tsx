@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { PageLoader } from "@/components/PageLoader";
 
 interface UserRecord {
   userId: string;
@@ -66,6 +67,7 @@ async function parseJson(res: Response) {
 export default function UserMasterPage() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [counts, setCounts] = useState({ teachers: 0, nonTeaching: 0, parents: 0, total: 0 });
@@ -88,7 +90,7 @@ export default function UserMasterPage() {
     apiGet<ListResponse>(`/usermaster?${qs.toString()}`, token)
       .then((res) => setUsers(res.data || []))
       .catch(() => toast.error("Failed to load users."))
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setInitialLoading(false); });
   }, [roleFilter, search]);
 
   const fetchCounts = useCallback(() => {
@@ -175,6 +177,10 @@ export default function UserMasterPage() {
     <div className="space-y-6">
       <PageHeader icon={UserCog} title="User Master" subtitle={`${counts.total} registered users.`} accent="slate" />
 
+      {initialLoading ? (
+        <PageLoader label="Loading users..." />
+      ) : (
+      <>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatFilterCard
           icon={Users}
@@ -331,6 +337,8 @@ export default function UserMasterPage() {
           </table>
         </div>
       </div>
+      </>
+      )}
 
       <Dialog open={pwDialog.open} onOpenChange={(open) => { if (!open) { setPwDialog({ open: false, user: null }); setNewPassword(""); } }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">

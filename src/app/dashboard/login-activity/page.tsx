@@ -205,7 +205,7 @@ export default function LoginActivityPage() {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8}>
-                    <PageLoader label="Loading login history..." />
+                    <PageLoader compact label="Loading login history..." />
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (
