@@ -51,6 +51,7 @@ interface ResultRow {
   percentage: number;
   grade: string;
   isPassed: boolean;
+  isAbsent: boolean;
 }
 
 interface ResultGroup {
@@ -125,7 +126,8 @@ export function ParentExams() {
     try {
       const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
       const child = children.find((c) => c._id === selectedChildId);
-      const groupAverage = Math.round(group.rows.reduce((s, r) => s + r.percentage, 0) / group.rows.length);
+      const attempted = group.rows.filter((r) => !r.isAbsent);
+      const groupAverage = attempted.length > 0 ? Math.round(attempted.reduce((s, r) => s + r.percentage, 0) / attempted.length) : 0;
       const doc = new jsPDF();
       doc.setFontSize(16);
       doc.text("Result Card", 14, 18);
@@ -136,13 +138,17 @@ export function ParentExams() {
       autoTable(doc, {
         startY: 47,
         head: [["Subject", "Date", "Marks", "Grade", "Result"]],
-        body: group.rows.map((r) => [
-          r.exam?.subject || "—",
-          r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
-          `${r.marksObtained}/${r.totalMarks}`,
-          r.grade,
-          r.isPassed ? "Pass" : "Fail",
-        ]),
+        body: group.rows.map((r) =>
+          r.isAbsent
+            ? [r.exam?.subject || "—", r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", "—", "—", "Absent"]
+            : [
+                r.exam?.subject || "—",
+                r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
+                `${r.marksObtained}/${r.totalMarks}`,
+                r.grade,
+                r.isPassed ? "Pass" : "Fail",
+              ],
+        ),
         headStyles: { fillColor: [79, 70, 229] },
       });
       doc.save(`${(child?.name || "student").replace(/\s+/g, "_")}_${group.title.replace(/\s+/g, "_")}_result_card.pdf`);
@@ -270,7 +276,8 @@ export function ParentExams() {
                 <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
                   {results.groups.map((g) => {
                     const open = expanded.has(g.groupId);
-                    const groupAverage = Math.round(g.rows.reduce((s, r) => s + r.percentage, 0) / g.rows.length);
+                    const attempted = g.rows.filter((r) => !r.isAbsent);
+                    const groupAverage = attempted.length > 0 ? Math.round(attempted.reduce((s, r) => s + r.percentage, 0) / attempted.length) : 0;
                     return (
                       <div key={g.groupId} className="border-b border-border last:border-0">
                         <div className="flex items-center justify-between gap-4 px-5 py-4">
@@ -312,12 +319,18 @@ export function ParentExams() {
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-3 shrink-0">
-                                    <span className="text-sm font-medium text-foreground">{r.marksObtained}/{r.totalMarks}</span>
-                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
-                                    {r.isPassed ? (
-                                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    {r.isAbsent ? (
+                                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Absent</span>
                                     ) : (
-                                      <XCircle className="h-4 w-4 text-red-600" />
+                                      <>
+                                        <span className="text-sm font-medium text-foreground">{r.marksObtained}/{r.totalMarks}</span>
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
+                                        {r.isPassed ? (
+                                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        ) : (
+                                          <XCircle className="h-4 w-4 text-red-600" />
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 </div>

@@ -41,7 +41,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       })
       .sort({ createdAt: -1 });
 
-    const avg = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.percentage, 0) / results.length) : 0;
+    // Absent subjects don't count against the average -- they're excluded
+    // from academic performance, not a zero.
+    const attempted = results.filter((r) => !r.isAbsent);
+    const avg = attempted.length > 0 ? Math.round(attempted.reduce((s, r) => s + r.percentage, 0) / attempted.length) : 0;
 
     // Groups every subject's Result under the multi-subject exam it belongs
     // to (a "term" — see ScheduledExam) so a parent sees one row per exam

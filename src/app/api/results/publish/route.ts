@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Result } from "@/models/Result";
 import { Teacher } from "@/models/Teacher";
+import { Exam } from "@/models/Exam";
+import { Student } from "@/models/Student";
 import { isSubjectTeacherOf, isClassTeacherOf } from "@/lib/teacherClasses";
 
 export async function PATCH(req: Request) {
@@ -19,14 +21,18 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, message: "resultIds[] is required." }, { status: 400 });
     }
 
+    const publishedResults = await Result.find({ _id: { $in: resultIds }, school: auth.schoolId })
+      .select("exam")
+      .populate<{ exam: { _id: unknown; class: string; section: string; subject: string; scheduledExamId: unknown } }>(
+        "exam",
+        "class section subject scheduledExamId",
+      );
+    const uniqueExams = new Map<string, { class: string; section: string; subject: string; scheduledExamId: unknown }>();
+    for (const r of publishedResults) {
+      if (r.exam) uniqueExams.set(String(r.exam._id), r.exam);
+    }
+
     if (auth.role === "teacher") {
-      const results = await Result.find({ _id: { $in: resultIds }, school: auth.schoolId })
-        .select("exam")
-        .populate<{ exam: { _id: unknown; class: string; section: string; subject: string } }>("exam", "class section subject");
-      const uniqueExams = new Map<string, { class: string; section: string; subject: string }>();
-      for (const r of results) {
-        if (r.exam) uniqueExams.set(String(r.exam._id), r.exam);
-      }
       const distinctSubjects = new Set(
         [...uniqueExams.values()].map((e) => `${e.class}::${e.section}::${e.subject.toLowerCase()}`),
       );
@@ -60,6 +66,45 @@ export async function PATCH(req: Request) {
             }
           }
         }
+      }
+    }
+
+    // Bulk publish ("Publish All" / "Publish All Subjects") requires every
+    // active student to have a result -- marks or marked absent -- for every
+    // subject-exam involved, so nothing goes out half-finished. A single-row
+    // publish (one student) and any unpublish are exempt. Resolved against
+    // the true roster and full subject set (via scheduledExamId when this
+    // is a multi-subject exam), not just whatever resultIds happened to be
+    // passed in, so a subject nobody has started yet still blocks it.
+    if (publish && resultIds.length > 1 && uniqueExams.size > 0) {
+      const scheduledExamId = [...uniqueExams.values()].find((e) => e.scheduledExamId)?.scheduledExamId;
+      const examsToCheck = scheduledExamId
+        ? await Exam.find({ scheduledExamId }).select("_id class section")
+        : await Exam.find({ _id: { $in: [...uniqueExams.keys()] } }).select("_id class section");
+
+      const rosterCache = new Map<string, string[]>();
+      let missing = 0;
+      for (const exam of examsToCheck) {
+        const rosterKey = `${exam.class}::${exam.section}`;
+        let studentIds = rosterCache.get(rosterKey);
+        if (!studentIds) {
+          const students = await Student.find({ school: auth.schoolId, class: exam.class, section: exam.section, isActive: true }).select("_id");
+          studentIds = students.map((s) => String(s._id));
+          rosterCache.set(rosterKey, studentIds);
+        }
+        if (studentIds.length === 0) continue;
+        const existingCount = await Result.countDocuments({ exam: exam._id, student: { $in: studentIds } });
+        missing += Math.max(0, studentIds.length - existingCount);
+      }
+
+      if (missing > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Cannot publish yet — ${missing} student result${missing > 1 ? "s are" : " is"} still missing across ${examsToCheck.length > 1 ? "the exam's subjects" : "this test"}. Mark absent students as Absent rather than leaving them blank.`,
+          },
+          { status: 400 },
+        );
       }
     }
 

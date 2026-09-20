@@ -42,13 +42,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let saved = 0;
     let outOfRange = 0;
-    for (const r of results as { studentId: string; marksObtained: number | string | null; remarks?: string }[]) {
-      if (r.marksObtained === "" || r.marksObtained === null || r.marksObtained === undefined) continue;
-      const marksObtained = Number(r.marksObtained);
-      if (Number.isNaN(marksObtained)) continue;
-      if (marksObtained < 0 || marksObtained > exam.totalMarks) {
-        outOfRange++;
-        continue;
+    for (const r of results as { studentId: string; marksObtained: number | string | null; remarks?: string; isAbsent?: boolean }[]) {
+      const isAbsent = !!r.isAbsent;
+      let marksObtained = 0;
+      if (!isAbsent) {
+        if (r.marksObtained === "" || r.marksObtained === null || r.marksObtained === undefined) continue;
+        marksObtained = Number(r.marksObtained);
+        if (Number.isNaN(marksObtained)) continue;
+        if (marksObtained < 0 || marksObtained > exam.totalMarks) {
+          outOfRange++;
+          continue;
+        }
       }
 
       const existing = await Result.findOne({ exam: id, student: r.studentId });
@@ -57,6 +61,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         existing.marksObtained = marksObtained;
         existing.totalMarks = exam.totalMarks;
         existing.remarks = r.remarks || "";
+        existing.isAbsent = isAbsent;
         existing.enteredBy = new mongoose.Types.ObjectId(auth.id);
         await existing.save();
         result = existing;
@@ -68,11 +73,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           marksObtained,
           totalMarks: exam.totalMarks,
           remarks: r.remarks || "",
+          isAbsent,
           enteredBy: auth.id,
         });
-        if (result.percentage >= 90) {
+        if (!isAbsent && result.percentage >= 90) {
           await Student.findByIdAndUpdate(r.studentId, { $inc: { points: 20 }, $addToSet: { badges: "Top Scorer" } });
-        } else if (result.percentage >= 75) {
+        } else if (!isAbsent && result.percentage >= 75) {
           await Student.findByIdAndUpdate(r.studentId, { $inc: { points: 10 } });
         }
       }

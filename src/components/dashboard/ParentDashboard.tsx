@@ -158,6 +158,7 @@ interface ResultRow {
   marksObtained: number;
   totalMarks: number;
   grade: string;
+  isAbsent: boolean;
 }
 
 interface ResultsSummaryResponse {
@@ -190,7 +191,7 @@ function ChildResults({ studentId }: { studentId: string }) {
       <div className="mt-1.5 space-y-0.5">
         {data.results.slice(0, 3).map((r, i) => (
           <p key={i} className="text-[11px] text-muted-foreground">
-            {r.exam?.subject || r.exam?.title || "Exam"}: {r.marksObtained}/{r.totalMarks} ({r.grade})
+            {r.exam?.subject || r.exam?.title || "Exam"}: {r.isAbsent ? "Absent" : `${r.marksObtained}/${r.totalMarks} (${r.grade})`}
           </p>
         ))}
       </div>

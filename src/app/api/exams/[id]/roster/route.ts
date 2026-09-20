@@ -34,6 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         student: { _id: s._id, name: s.name, studentId: s.studentId, rollNumber: s.rollNumber },
         marksObtained: result?.marksObtained ?? null,
         remarks: result?.remarks ?? "",
+        isAbsent: result?.isAbsent ?? false,
       };
     });
 

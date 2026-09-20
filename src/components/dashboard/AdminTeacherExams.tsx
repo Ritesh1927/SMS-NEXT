@@ -91,6 +91,7 @@ interface RosterEntry {
   student: { _id: string; name: string; studentId: string; rollNumber?: string };
   marksObtained: number | null;
   remarks: string;
+  isAbsent: boolean;
 }
 
 interface ResultRow {
@@ -101,6 +102,7 @@ interface ResultRow {
   grade: string;
   percentage: number;
   isPassed: boolean;
+  isAbsent: boolean;
   isPublished: boolean;
 }
 
@@ -108,6 +110,7 @@ interface MergedResultRow {
   student: { _id: string; name: string; studentId: string; rollNumber?: string };
   marksObtained: number | null;
   remarks: string;
+  isAbsent: boolean;
   resultId: string | null;
   grade: string | null;
   isPassed: boolean | null;
@@ -225,6 +228,7 @@ function mergeRosterAndResults(roster: RosterEntry[], results: ResultRow[]): Mer
       student: entry.student,
       marksObtained: entry.marksObtained,
       remarks: entry.remarks,
+      isAbsent: res?.isAbsent ?? entry.isAbsent,
       resultId: res?._id ?? null,
       grade: res?.grade ?? null,
       isPassed: res?.isPassed ?? null,
@@ -787,7 +791,7 @@ export function AdminTeacherExams() {
     const res = await fetch(`/api/exams/${examId}/marks`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ results: rows.map((r) => ({ studentId: r.student._id, marksObtained: r.marksObtained, remarks: r.remarks })) }),
+      body: JSON.stringify({ results: rows.map((r) => ({ studentId: r.student._id, marksObtained: r.marksObtained, remarks: r.remarks, isAbsent: r.isAbsent })) }),
     });
     const json: ApiMessageResponse = await res.json();
     if (!res.ok || !json.success) throw new Error(json.message || "Failed to save marks.");
@@ -840,7 +844,7 @@ export function AdminTeacherExams() {
   };
 
   const handleRowSaveAndPublish = async (row: MergedResultRow) => {
-    if (!rSourceId || row.marksObtained === null) return;
+    if (!rSourceId || (row.marksObtained === null && !row.isAbsent)) return;
     setBusyId(row.student._id);
     try {
       const warning = await saveRows(rSourceId, [row]);
@@ -959,6 +963,19 @@ export function AdminTeacherExams() {
           (c.section || "") === (activeTermSubject.section || "") &&
           c.classTeacher?._id === user?.id,
       ));
+
+  // "Publish All" only goes out once every student has a mark or is marked
+  // absent -- mirrors the server's own completeness gate on bulk publish,
+  // computed here from data already loaded so the button can just be
+  // disabled instead of failing after the click.
+  const testRowsComplete = !!rTestRows && rTestRows.length > 0 && rTestRows.every((r) => r.marksObtained !== null || r.isAbsent);
+  const allTermRowsComplete =
+    !!rTermSubjects &&
+    rTermSubjects.length > 0 &&
+    rTermSubjects.every((s) => {
+      const rows = rSubjectRows[s._id];
+      return !!rows && rows.length > 0 && rows.every((r) => r.marksObtained !== null || r.isAbsent);
+    });
 
   return (
     <div>
@@ -1282,7 +1299,13 @@ export function AdminTeacherExams() {
                     <Button size="sm" variant="outline" onClick={handleSaveAllTest} disabled={rSaving || !currentCanEnterMarks} className="gap-1.5">
                       {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save All
                     </Button>
-                    <Button size="sm" onClick={() => handlePublishAllTest(true)} disabled={rPublishing || !currentCanEnterMarks} className="gap-1.5 bg-primary hover:bg-primary/90">
+                    <Button
+                      size="sm"
+                      onClick={() => handlePublishAllTest(true)}
+                      disabled={rPublishing || !currentCanEnterMarks || !testRowsComplete}
+                      title={currentCanEnterMarks && !testRowsComplete ? "Every student needs a mark or Absent checked before you can publish all" : undefined}
+                      className="gap-1.5 bg-primary hover:bg-primary/90"
+                    >
                       {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => handlePublishAllTest(false)} disabled={rPublishing || !currentCanEnterMarks} className="text-red-600 hover:text-red-700">
@@ -1316,26 +1339,43 @@ export function AdminTeacherExams() {
                         <TableCell className="text-sm text-muted-foreground">{row.student.rollNumber || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{rTestMeta?.totalMarks ?? "—"}</TableCell>
                         <TableCell>
-                          <Input
-                            type="number" min={0} max={rTestMeta?.totalMarks}
-                            value={row.marksObtained ?? ""}
-                            onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
-                            disabled={!currentCanEnterMarks}
-                            className="w-20 h-8"
-                          />
+                          <div className="space-y-1">
+                            <Input
+                              type="number" min={0} max={rTestMeta?.totalMarks}
+                              value={row.isAbsent ? "" : row.marksObtained ?? ""}
+                              onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
+                              disabled={!currentCanEnterMarks || row.isAbsent}
+                              placeholder={row.isAbsent ? "Absent" : undefined}
+                              className="w-20 h-8"
+                            />
+                            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={row.isAbsent}
+                                onChange={(e) => updateTestRow(row.student._id, { isAbsent: e.target.checked, marksObtained: e.target.checked ? null : row.marksObtained })}
+                                disabled={!currentCanEnterMarks}
+                                className="h-3 w-3 cursor-pointer accent-primary"
+                              />
+                              Absent
+                            </label>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input value={row.remarks} onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })} disabled={!currentCanEnterMarks} className="w-32 h-8" />
                         </TableCell>
                         <TableCell className="text-center">
-                          {row.grade ? (
+                          {row.isAbsent ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Absent</span>
+                          ) : row.grade ? (
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${gradeColor(row.grade)}`}>{row.grade}</span>
                           ) : (
                             <span className="text-muted-foreground/70 text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {row.isPassed === null ? (
+                          {row.isAbsent ? (
+                            <span className="text-muted-foreground/70 text-xs">—</span>
+                          ) : row.isPassed === null ? (
                             <span className="text-muted-foreground/70 text-xs">—</span>
                           ) : row.isPassed ? (
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Pass</span>
@@ -1356,7 +1396,7 @@ export function AdminTeacherExams() {
                         </TableCell>
                         <TableCell className="text-right">
                           {!row.resultId ? (
-                            row.marksObtained !== null ? (
+                            row.marksObtained !== null || row.isAbsent ? (
                               <Button size="xs" variant="outline" onClick={() => handleRowSaveAndPublish(row)} disabled={busyId === row.student._id || !currentCanEnterMarks} className="gap-1">
                                 {busyId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Save & Publish
                               </Button>
@@ -1389,7 +1429,19 @@ export function AdminTeacherExams() {
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save {rTermSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
-                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing || !canPublishAllSubjects} title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can publish every subject of this exam at once"} className="gap-1.5 bg-primary hover:bg-primary/90">
+                  <Button
+                    size="sm"
+                    onClick={() => handlePublishAllSubjects(true)}
+                    disabled={rPublishing || !canPublishAllSubjects || !allTermRowsComplete}
+                    title={
+                      !canPublishAllSubjects
+                        ? "Only the class teacher or an admin can publish every subject of this exam at once"
+                        : !allTermRowsComplete
+                          ? "Every student needs a mark or Absent checked in every subject before you can publish all"
+                          : undefined
+                    }
+                    className="gap-1.5 bg-primary hover:bg-primary/90"
+                  >
                     {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All Subjects
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing || !canPublishAllSubjects} title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can unpublish every subject of this exam at once"} className="text-red-600 hover:text-red-700">
@@ -1401,7 +1453,7 @@ export function AdminTeacherExams() {
               <div className="flex flex-wrap gap-2">
                 {rTermSubjects.map((s) => {
                   const rows = rSubjectRows[s._id] || [];
-                  const savedCount = rows.filter((r) => r.marksObtained !== null).length;
+                  const savedCount = rows.filter((r) => r.marksObtained !== null || r.isAbsent).length;
                   const allSaved = rows.length > 0 && savedCount === rows.length;
                   const activeTab = rActiveSubjectId === s._id;
                   return (
@@ -1453,14 +1505,27 @@ export function AdminTeacherExams() {
                           <TableCell className="text-sm text-muted-foreground">{row.student.rollNumber || "—"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{activeTermSubject?.totalMarks ?? "—"}</TableCell>
                           <TableCell>
-                            <Input
-                              type="number" min={0}
-                              max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
-                              value={row.marksObtained ?? ""}
-                              onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
-                              disabled={!currentCanEnterMarks}
-                              className="w-20 h-8"
-                            />
+                            <div className="space-y-1">
+                              <Input
+                                type="number" min={0}
+                                max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
+                                value={row.isAbsent ? "" : row.marksObtained ?? ""}
+                                onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
+                                disabled={!currentCanEnterMarks || row.isAbsent}
+                                placeholder={row.isAbsent ? "Absent" : undefined}
+                                className="w-20 h-8"
+                              />
+                              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={row.isAbsent}
+                                  onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { isAbsent: e.target.checked, marksObtained: e.target.checked ? null : row.marksObtained })}
+                                  disabled={!currentCanEnterMarks}
+                                  className="h-3 w-3 cursor-pointer accent-primary"
+                                />
+                                Absent
+                              </label>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Input
@@ -1471,14 +1536,18 @@ export function AdminTeacherExams() {
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            {row.grade ? (
+                            {row.isAbsent ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Absent</span>
+                            ) : row.grade ? (
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${gradeColor(row.grade)}`}>{row.grade}</span>
                             ) : (
                               <span className="text-muted-foreground/70 text-xs">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center">
-                            {row.isPassed === null ? (
+                            {row.isAbsent ? (
+                              <span className="text-muted-foreground/70 text-xs">—</span>
+                            ) : row.isPassed === null ? (
                               <span className="text-muted-foreground/70 text-xs">—</span>
                             ) : row.isPassed ? (
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Pass</span>

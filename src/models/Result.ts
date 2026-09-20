@@ -9,6 +9,7 @@ export interface IResult extends Document {
   grade: string;
   percentage: number;
   isPassed: boolean;
+  isAbsent: boolean;
   remarks: string;
   enteredBy: mongoose.Types.ObjectId | null;
   isPublished: boolean;
@@ -25,6 +26,7 @@ const resultSchema = new Schema<IResult>(
     grade: { type: String, default: "" },
     percentage: { type: Number, default: 0 },
     isPassed: { type: Boolean, default: false },
+    isAbsent: { type: Boolean, default: false },
     remarks: { type: String, default: "" },
     enteredBy: { type: Schema.Types.ObjectId, default: null },
     isPublished: { type: Boolean, default: false },
@@ -37,6 +39,13 @@ resultSchema.index({ exam: 1, student: 1 }, { unique: true });
 
 // Mongoose 9 dropped the next()-callback style for document middleware.
 resultSchema.pre<IResult>("save", function () {
+  if (this.isAbsent) {
+    this.marksObtained = 0;
+    this.percentage = 0;
+    this.isPassed = false;
+    this.grade = "AB";
+    return;
+  }
   this.percentage = Math.round((this.marksObtained / this.totalMarks) * 100);
   this.isPassed = this.marksObtained >= this.totalMarks * 0.33;
   const p = this.percentage;
