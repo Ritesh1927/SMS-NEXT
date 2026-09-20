@@ -122,6 +122,10 @@ const EMPTY_FORM = {
   section: "",
   subject: "",
   subjects: [] as string[],
+  // One date per selected subject when creating (they may not all fall on
+  // the same day) -- keyed by subject name. `date` alone still drives the
+  // single shared field when editing an existing (single-subject) test.
+  subjectDates: {} as Record<string, string>,
   date: "",
   totalMarks: "100",
   passingMarks: "33",
@@ -294,6 +298,7 @@ export function AdminTeacherExams() {
       section: exam.section || "",
       subject: exam.subject,
       subjects: [],
+      subjectDates: {},
       date: exam.date.slice(0, 10),
       totalMarks: String(exam.totalMarks),
       passingMarks: String(exam.passingMarks),
@@ -313,19 +318,40 @@ export function AdminTeacherExams() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!editingExamId && form.date && new Date(form.date) < new Date(new Date().toDateString())) {
+    const today = new Date(new Date().toDateString());
+    if (editingExamId && form.date && new Date(form.date) < today) {
       toast.error("Test date cannot be a past date.");
       return;
     }
-    if (!editingExamId && form.subjects.length === 0) {
-      toast.error("Pick at least one subject.");
-      return;
+    if (!editingExamId) {
+      if (form.subjects.length === 0) {
+        toast.error("Pick at least one subject.");
+        return;
+      }
+      for (const name of form.subjects) {
+        const d = form.subjectDates[name];
+        if (!d) {
+          toast.error(`Pick a date for ${name}.`);
+          return;
+        }
+        if (new Date(d) < today) {
+          toast.error(`${name}'s date cannot be in the past.`);
+          return;
+        }
+      }
     }
     const token = getToken();
     if (!token) return;
     setSubmitting(true);
     try {
-      const body = { ...form, totalMarks: Number(form.totalMarks), passingMarks: Number(form.passingMarks) };
+      const body = editingExamId
+        ? { ...form, totalMarks: Number(form.totalMarks), passingMarks: Number(form.passingMarks) }
+        : {
+            ...form,
+            subjects: form.subjects.map((name) => ({ name, date: form.subjectDates[name] })),
+            totalMarks: Number(form.totalMarks),
+            passingMarks: Number(form.passingMarks),
+          };
       const res = await fetch(editingExamId ? `/api/exams/${editingExamId}` : "/api/exams", {
         method: editingExamId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1345,7 +1371,7 @@ export function AdminTeacherExams() {
                   value={form.class && form.section ? `${form.class}::${form.section}` : ""}
                   onValueChange={(v) => {
                     const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                    if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [] }));
+                    if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [], subjectDates: {} }));
                   }}
                 >
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
@@ -1375,28 +1401,52 @@ export function AdminTeacherExams() {
                 )}
               </Field>
             ) : (
-              <Field label="Subjects" required>
+              <Field label="Subjects & Dates" required>
                 {subjectOptions.length > 0 ? (
-                  <div className="border border-border rounded-lg divide-y divide-border max-h-44 overflow-y-auto">
+                  <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
                     {subjectOptions.map((s) => {
                       const checked = form.subjects.includes(s.name);
                       return (
-                        <label key={s._id} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${checked ? "bg-primary/5" : "hover:bg-muted/50"}`}>
+                        <div key={s._id} className={`flex items-center gap-2.5 px-3 py-2 ${checked ? "bg-primary/5" : ""}`}>
                           <input
                             type="checkbox"
-                            className="h-4 w-4"
+                            className="h-4 w-4 shrink-0 cursor-pointer"
                             checked={checked}
                             onChange={(e) =>
-                              setForm((f) => ({
-                                ...f,
-                                subjects: e.target.checked ? [...f.subjects, s.name] : f.subjects.filter((x) => x !== s.name),
-                              }))
+                              setForm((f) => {
+                                if (e.target.checked) {
+                                  return { ...f, subjects: [...f.subjects, s.name], subjectDates: { ...f.subjectDates, [s.name]: f.subjectDates[s.name] || "" } };
+                                }
+                                const { [s.name]: _removed, ...rest } = f.subjectDates;
+                                void _removed;
+                                return { ...f, subjects: f.subjects.filter((x) => x !== s.name), subjectDates: rest };
+                              })
                             }
                           />
-                          <span className="text-sm text-foreground">
+                          <span
+                            className="flex-1 min-w-0 text-sm text-foreground cursor-pointer"
+                            onClick={() =>
+                              setForm((f) => {
+                                if (!checked) return { ...f, subjects: [...f.subjects, s.name], subjectDates: { ...f.subjectDates, [s.name]: f.subjectDates[s.name] || "" } };
+                                const { [s.name]: _removed, ...rest } = f.subjectDates;
+                                void _removed;
+                                return { ...f, subjects: f.subjects.filter((x) => x !== s.name), subjectDates: rest };
+                              })
+                            }
+                          >
                             {s.name} <span className="text-xs text-muted-foreground font-mono">({s.code})</span>
                           </span>
-                        </label>
+                          {checked && (
+                            <Input
+                              type="date"
+                              className="w-[9.5rem] h-8 text-xs shrink-0"
+                              min={todayISO()}
+                              value={form.subjectDates[s.name] || ""}
+                              onChange={(e) => setForm((f) => ({ ...f, subjectDates: { ...f.subjectDates, [s.name]: e.target.value } }))}
+                              required
+                            />
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -1406,15 +1456,28 @@ export function AdminTeacherExams() {
                 {form.subjects.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">
                     {form.subjects.length} subject{form.subjects.length > 1 ? "s" : ""} selected
-                    {form.subjects.length > 1 ? " — a separate test will be created for each." : "."}
+                    {form.subjects.length > 1 ? " — a separate test will be created for each, on its own date." : "."}
                   </p>
                 )}
               </Field>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Date" required>
-                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
-              </Field>
+            {editingExamId ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Date" required>
+                  <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
+                </Field>
+                <Field label="Type">
+                  <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            ) : (
               <Field label="Type">
                 <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -1425,7 +1488,7 @@ export function AdminTeacherExams() {
                   </SelectContent>
                 </Select>
               </Field>
-            </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Total Marks" required>
                 <Input type="number" min={1} value={form.totalMarks} onChange={(e) => {

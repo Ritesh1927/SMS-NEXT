@@ -51,28 +51,35 @@ export async function POST(req: Request) {
 
     const { title, class: cls, section, subject, subjects, date, startTime, endTime, totalMarks, passingMarks, examType, instructions } =
       await req.json();
-    // A "Test" can now be created for several subjects at once -- each
-    // subject still becomes its own Exam doc (own roster/marks/results),
-    // same as ScheduledExam's per-subject slots, just without the term
-    // wrapper. `subject` (singular) stays supported for editing a single
-    // existing exam, which never changes how many subjects it covers.
-    const subjectList: string[] = Array.isArray(subjects) && subjects.length ? subjects : subject ? [subject] : [];
-    if (!title || !cls || subjectList.length === 0 || !date || totalMarks === undefined || passingMarks === undefined) {
+    // A "Test" can now be created for several subjects at once, each on its
+    // own date -- every subject still becomes its own Exam doc (own
+    // roster/marks/results), same as ScheduledExam's per-subject slots,
+    // just without the term wrapper. `subjects` here is {name, date}[];
+    // a plain string[] (each using the shared top-level `date`) and the
+    // single `subject` string are both kept working for older callers and
+    // for PATCH-style single-subject edits.
+    type SubjectSlot = { name: string; date: string };
+    const subjectList: SubjectSlot[] = Array.isArray(subjects) && subjects.length
+      ? subjects.map((s: string | SubjectSlot) => (typeof s === "string" ? { name: s, date } : s))
+      : subject
+        ? [{ name: subject, date }]
+        : [];
+    if (!title || !cls || subjectList.length === 0 || subjectList.some((s) => !s.name || !s.date) || totalMarks === undefined || passingMarks === undefined) {
       return NextResponse.json(
-        { success: false, message: "Title, class, at least one subject, date, totalMarks and passingMarks are required." },
+        { success: false, message: "Title, class, at least one subject with a date, totalMarks and passingMarks are required." },
         { status: 400 },
       );
     }
 
     const created = await Promise.all(
-      subjectList.map((subj) =>
+      subjectList.map((slot) =>
         Exam.create({
           school: auth.schoolId,
           title,
           class: cls,
           section: section || "",
-          subject: subj,
-          date,
+          subject: slot.name,
+          date: slot.date,
           startTime: startTime || "",
           endTime: endTime || "",
           totalMarks,
