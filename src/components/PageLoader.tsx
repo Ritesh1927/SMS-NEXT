@@ -18,18 +18,18 @@ interface PageLoaderProps {
 export function PageLoader({ label, fullScreen = false, dark = false, compact = false }: PageLoaderProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? "min-h-screen" : compact ? "min-h-[220px] py-10" : "min-h-[65vh]"} ${dark ? "bg-foreground" : ""}`}
+      className={`flex flex-col items-center justify-center ${compact ? "gap-4" : "gap-6"} ${fullScreen ? "min-h-screen" : compact ? "min-h-[220px] py-10" : "min-h-[65vh]"} ${dark ? "bg-foreground" : ""}`}
     >
-      <div className="relative flex h-16 w-16 items-center justify-center">
-        <div className="absolute h-16 w-16 rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe" />
-        <div className="absolute h-16 w-16 rounded-2xl border-2 border-transparent border-t-primary border-r-accent animate-spin" />
-        <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-gradient shadow-lg shadow-primary/30">
-          <GraduationCap className="h-5 w-5 text-white" />
+      <div className={`relative flex items-center justify-center ${compact ? "h-16 w-16" : "h-24 w-24"}`}>
+        <div className={`absolute rounded-full bg-brand-gradient opacity-30 blur-xl animate-orb-breathe ${compact ? "h-16 w-16" : "h-24 w-24"}`} />
+        <div className={`absolute rounded-2xl border-transparent border-t-primary border-r-accent animate-spin ${compact ? "h-16 w-16 border-2" : "h-24 w-24 border-[3px]"}`} />
+        <div className={`relative flex items-center justify-center rounded-2xl bg-brand-gradient shadow-lg shadow-primary/30 ${compact ? "h-11 w-11" : "h-16 w-16"}`}>
+          <GraduationCap className={compact ? "h-5 w-5 text-white" : "h-8 w-8 text-white"} />
         </div>
       </div>
-      <div className="flex flex-col items-center gap-1">
-        <span className="text-lg font-extrabold tracking-tight text-brand-gradient">EduNivo</span>
-        {label && <span className={`text-xs ${dark ? "text-white/60" : "text-muted-foreground"}`}>{label}</span>}
+      <div className="flex flex-col items-center gap-1.5">
+        <span className={`font-extrabold tracking-tight text-brand-gradient ${compact ? "text-lg" : "text-3xl"}`}>EduNivo</span>
+        {label && <span className={`${compact ? "text-xs" : "text-sm"} ${dark ? "text-white/60" : "text-muted-foreground"}`}>{label}</span>}
       </div>
     </div>
   );
