@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip, CalendarClock, CalendarX2, TrendingUp, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface ClassOption {
   _id: string;
@@ -149,6 +150,14 @@ export default function HomeworkPage() {
     return <ParentHomework />;
   }
 
+  const allHomework = homework || [];
+  const activeCount = allHomework.filter((hw) => new Date(hw.dueDate).getTime() >= now).length;
+  const expiredCount = allHomework.filter((hw) => new Date(hw.dueDate).getTime() < now).length;
+  const withStudents = allHomework.filter((hw) => hw.totalStudents > 0);
+  const avgSubmissionRate = withStudents.length
+    ? Math.round((withStudents.reduce((sum, hw) => sum + hw.submissions.length / hw.totalStudents, 0) / withStudents.length) * 100)
+    : null;
+
   const filteredHomework = (homework || []).filter((hw) => {
     if (search) {
       const q = search.toLowerCase();
@@ -181,26 +190,71 @@ export default function HomeworkPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {homework && homework.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <Input placeholder="Search by title or subject..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
-          <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
-            <SelectTrigger className="w-40"><SelectValue placeholder="All Classes" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Classes</SelectItem>
-              {classes.map((c) => (
-                <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter((v || "") as typeof statusFilter)}>
-            <SelectTrigger className="w-36"><SelectValue placeholder="All Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <StatFilterCard
+              icon={BookOpen}
+              color="#4F46E5"
+              colorDark="#4338CA"
+              value={allHomework.length}
+              label="Total Assignments"
+              active={statusFilter === ""}
+              onClick={() => setStatusFilter("")}
+            />
+            <StatFilterCard
+              icon={CalendarClock}
+              color="#16A34A"
+              colorDark="#15803D"
+              value={activeCount}
+              label="Active"
+              active={statusFilter === "active"}
+              onClick={() => setStatusFilter(statusFilter === "active" ? "" : "active")}
+            />
+            <StatFilterCard
+              icon={CalendarX2}
+              color="#DC2626"
+              colorDark="#B91C1C"
+              value={expiredCount}
+              label="Expired"
+              active={statusFilter === "expired"}
+              onClick={() => setStatusFilter(statusFilter === "expired" ? "" : "expired")}
+            />
+            <StatFilterCard
+              icon={TrendingUp}
+              color="#0EA5E9"
+              colorDark="#0284C7"
+              value={avgSubmissionRate != null ? `${avgSubmissionRate}%` : "—"}
+              label="Avg. Submission Rate"
+              sublabel="Across all assignments"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative sm:max-w-xs w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search by title or subject..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            </div>
+            <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All Classes" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Classes</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c._id} value={c.name}>Class {c.name}-{c.section}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {statusFilter !== "" && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter("")}
+                className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary/15 transition-colors"
+              >
+                {statusFilter === "active" ? "Active only" : "Expired only"}
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       {error ? null : !homework ? (
@@ -219,7 +273,7 @@ export default function HomeworkPage() {
       ) : (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           {filteredHomework.map((hw) => (
-            <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
+            <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4 transition-colors hover:bg-muted/40">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground">{hw.title}</p>
