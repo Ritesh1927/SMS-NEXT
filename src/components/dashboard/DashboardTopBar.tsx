@@ -2,17 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Bell, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2 } from "lucide-react";
+import {
+  AlertTriangle, Bell, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2, Settings as SettingsIcon,
+} from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuGroup, DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { formatClassName } from "@/lib/helpers";
+
+const ROLE_LABEL: Record<string, string> = {
+  schooladmin: "School Admin",
+  teacher: "Teacher",
+  parent: "Parent",
+  student: "Student",
+};
 
 interface NoticeItem {
   _id: string;
@@ -171,6 +178,7 @@ export function DashboardTopBar({
   };
 
   const hasResults = students.length + teachers.length + classes.length > 0;
+  const initials = user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   return (
     <header className="sticky top-0 z-30 relative flex h-16 items-center gap-4 bg-card border-b border-border px-4 sm:px-6">
@@ -336,27 +344,40 @@ export function DashboardTopBar({
             render={
               <div className="flex items-center gap-2 cursor-pointer rounded-full hover:bg-muted p-1 pr-2 transition-colors">
                 <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                    {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U"}
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
               </div>
             }
           />
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground truncate">{user.name}</span>
-                  <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-                </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
-            </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-4 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent">
+              <Avatar className="h-12 w-12 shrink-0 ring-2 ring-white shadow-[0_4px_12px_-2px_rgba(79,70,229,0.35)]">
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-base font-bold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <span className="inline-flex items-center mt-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  {ROLE_LABEL[user.role] || user.role}
+                </span>
+              </div>
+            </div>
+            <div className="p-1.5">
+              {user.role === "schooladmin" && (
+                <DropdownMenuItem onClick={() => router.push("/dashboard/settings")} className="gap-2 rounded-lg">
+                  <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+                  Settings
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={onLogout} className="gap-2 rounded-lg text-red-600 focus:text-red-600">
+                <LogOut className="h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
