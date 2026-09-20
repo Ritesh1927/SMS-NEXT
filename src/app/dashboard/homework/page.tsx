@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip, CalendarClock, CalendarX2, TrendingUp, Search, X } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip, CalendarClock, CalendarX2, TrendingUp, Search, X, Users, School, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { statusPillClass } from "@/lib/statusStyles";
 
 interface ClassOption {
   _id: string;
@@ -37,12 +38,28 @@ interface HomeworkRow {
   class: string;
   section?: string;
   dueDate: string;
+  createdAt: string;
   maxMarks: number | null;
   submissions: Submission[];
   totalStudents: number;
   attachmentUrl?: string;
   attachmentName?: string;
   assignedBy?: { _id: string; name: string } | null;
+}
+
+const SUBJECT_PALETTE = [
+  { color: "#4F46E5", colorDark: "#4338CA" },
+  { color: "#0EA5E9", colorDark: "#0284C7" },
+  { color: "#8B5CF6", colorDark: "#7C3AED" },
+  { color: "#16A34A", colorDark: "#15803D" },
+  { color: "#F59E0B", colorDark: "#D97706" },
+  { color: "#EC4899", colorDark: "#DB2777" },
+];
+
+function subjectPalette(subject: string) {
+  let hash = 0;
+  for (let i = 0; i < subject.length; i++) hash = (hash * 31 + subject.charCodeAt(i)) >>> 0;
+  return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
 }
 
 interface HomeworkResponse {
@@ -272,43 +289,58 @@ export default function HomeworkPage() {
         </div>
       ) : (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          {filteredHomework.map((hw) => (
-            <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4 transition-colors hover:bg-muted/40">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{hw.title}</p>
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      new Date(hw.dueDate).getTime() < now ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {new Date(hw.dueDate).getTime() < now ? "Expired" : "Active"}
-                  </span>
+          {filteredHomework.map((hw) => {
+            const isExpired = new Date(hw.dueDate).getTime() < now;
+            const palette = subjectPalette(hw.subject);
+            const submissionPct = hw.totalStudents > 0 ? Math.min(100, Math.round((hw.submissions.length / hw.totalStudents) * 100)) : 0;
+            return (
+            <div key={hw._id} className="group relative flex items-start justify-between px-5 py-4 border-b border-border last:border-0 gap-4 transition-colors hover:bg-muted/40">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white transition-transform duration-300 group-hover:scale-105"
+                  style={{ background: `linear-gradient(135deg, ${palette.color}, ${palette.colorDark})`, boxShadow: `0 6px 14px -4px ${palette.color}80` }}
+                >
+                  <BookOpen className="h-5 w-5" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Class {hw.class}
-                  {hw.section ? `-${hw.section}` : ""} · {hw.subject} · Due{" "}
-                  {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} ·{" "}
-                  {hw.submissions.length}/{hw.totalStudents} submitted
-                </p>
-                {hw.totalStudents > 0 && (
-                  <div className="w-full max-w-xs h-1.5 rounded-full bg-muted overflow-hidden mt-2">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
-                      style={{ width: `${Math.min(100, (hw.submissions.length / hw.totalStudents) * 100)}%` }}
-                    />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-foreground">{hw.title}</p>
+                    <span className={statusPillClass(isExpired ? "neutral" : "success")}>{isExpired ? "Expired" : "Active"}</span>
                   </div>
-                )}
-                {hw.attachmentUrl && (
-                  <a
-                    href={hw.attachmentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
-                  >
-                    <Paperclip className="h-3 w-3" /> {hw.attachmentName || "Attachment"}
-                  </a>
-                )}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><School className="h-3 w-3" /> Class {hw.class}{hw.section ? `-${hw.section}` : ""}</span>
+                    <span className="font-medium" style={{ color: palette.color }}>{hw.subject}</span>
+                    <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" /> Due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {hw.submissions.length}/{hw.totalStudents} submitted</span>
+                    {hw.createdAt && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Assigned {new Date(hw.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} at{" "}
+                        {new Date(hw.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                  {hw.totalStudents > 0 && (
+                    <div className="flex items-center gap-2 mt-2 max-w-xs">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                          style={{ width: `${submissionPct}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-semibold text-muted-foreground w-8 shrink-0">{submissionPct}%</span>
+                    </div>
+                  )}
+                  {hw.attachmentUrl && (
+                    <a
+                      href={hw.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
+                    >
+                      <Paperclip className="h-3 w-3" /> {hw.attachmentName || "Attachment"}
+                    </a>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button variant="ghost" size="icon-sm" onClick={() => openGrading(hw)} aria-label="Submissions">
@@ -331,7 +363,8 @@ export default function HomeworkPage() {
                 </Button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
