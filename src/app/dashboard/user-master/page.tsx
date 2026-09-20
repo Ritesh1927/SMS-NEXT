@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Users, Search, Key, ShieldCheck, ShieldOff, GraduationCap,
-  Heart, Loader2, Eye, EyeOff, RefreshCw, Trash2, UserCog,
+  Heart, Briefcase, Loader2, Eye, EyeOff, RefreshCw, Trash2, UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface UserRecord {
   userId: string;
@@ -38,17 +39,16 @@ interface CountsResponse {
   data: { teachers: number; nonTeaching: number; parents: number; total: number };
 }
 
-const ROLE_TABS = [
-  { key: "", label: "All", icon: Users },
-  { key: "teacher", label: "Teachers", icon: GraduationCap },
-  { key: "non-teaching", label: "Non-Teaching", icon: Heart },
-  { key: "parent", label: "Parents", icon: Heart },
-] as const;
-
 const ROLE_COLORS: Record<string, string> = {
   teacher: "bg-blue-500/10 text-blue-600 border-blue-200",
   "non-teaching": "bg-orange-500/10 text-orange-600 border-orange-200",
   parent: "bg-rose-500/10 text-rose-600 border-rose-200",
+};
+
+const ROLE_AVATAR: Record<string, string> = {
+  teacher: "bg-blue-500/10 text-blue-600",
+  "non-teaching": "bg-orange-500/10 text-orange-600",
+  parent: "bg-rose-500/10 text-rose-600",
 };
 
 async function parseJson(res: Response) {
@@ -169,45 +169,63 @@ export default function UserMasterPage() {
     <div className="space-y-6">
       <PageHeader icon={UserCog} title="User Master" subtitle={`${counts.total} registered users.`} accent="slate" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Total Users", value: counts.total, icon: Users },
-          { label: "Teachers", value: counts.teachers, icon: GraduationCap },
-          { label: "Non-Teaching", value: counts.nonTeaching, icon: Heart },
-          { label: "Parents", value: counts.parents, icon: Heart },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <s.icon className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-foreground">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatFilterCard
+          icon={Users}
+          color="#4F46E5"
+          colorDark="#4338CA"
+          value={counts.total}
+          label="Total Users"
+          active={roleFilter === ""}
+          onClick={() => setRoleFilter("")}
+        />
+        <StatFilterCard
+          icon={GraduationCap}
+          color="#3B82F6"
+          colorDark="#2563EB"
+          value={counts.teachers}
+          label="Teachers"
+          sublabel={counts.total > 0 ? `${Math.round((counts.teachers / counts.total) * 100)}% of users` : undefined}
+          active={roleFilter === "teacher"}
+          onClick={() => setRoleFilter(roleFilter === "teacher" ? "" : "teacher")}
+        />
+        <StatFilterCard
+          icon={Briefcase}
+          color="#F97316"
+          colorDark="#EA580C"
+          value={counts.nonTeaching}
+          label="Non-Teaching"
+          sublabel={counts.total > 0 ? `${Math.round((counts.nonTeaching / counts.total) * 100)}% of users` : undefined}
+          active={roleFilter === "non-teaching"}
+          onClick={() => setRoleFilter(roleFilter === "non-teaching" ? "" : "non-teaching")}
+        />
+        <StatFilterCard
+          icon={Heart}
+          color="#F43F5E"
+          colorDark="#E11D48"
+          value={counts.parents}
+          label="Parents"
+          sublabel={counts.total > 0 ? `${Math.round((counts.parents / counts.total) * 100)}% of users` : undefined}
+          active={roleFilter === "parent"}
+          onClick={() => setRoleFilter(roleFilter === "parent" ? "" : "parent")}
+        />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-2 flex-wrap">
-          {ROLE_TABS.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={roleFilter === tab.key ? "default" : "outline"}
-              size="sm"
-              className={`gap-1.5 ${roleFilter === tab.key ? "bg-gradient-to-r from-primary to-accent border-0 text-white" : ""}`}
-              onClick={() => setRoleFilter(tab.key)}
-            >
-              <tab.icon className="h-3.5 w-3.5" />
-              {tab.label}
-            </Button>
-          ))}
-        </div>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
           <Input placeholder="Search by name, email, phone, ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchCounts(); }} className="gap-1.5">
+        {roleFilter !== "" && (
+          <button
+            type="button"
+            onClick={() => setRoleFilter("")}
+            className="inline-flex items-center gap-1.5 self-start rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Clear filter ×
+          </button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchCounts(); }} className="gap-1.5 sm:ml-auto">
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
@@ -248,11 +266,11 @@ export default function UserMasterPage() {
                 <tr><td colSpan={7} className="p-0"><EmptyState icon={UserCog} message="No users found." /></td></tr>
               ) : (
                 users.map((u) => (
-                  <tr key={`${u.role}-${u.userId}`} className="hover:bg-muted/50/60 transition-colors">
+                  <tr key={`${u.role}-${u.userId}`} className="hover:bg-muted/40 transition-colors">
                     <td className="p-3 border-b border-border">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-primary">{u.name.split(" ").map((w) => w[0]).join("")}</span>
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${ROLE_AVATAR[u.role] || "bg-primary/10 text-primary"}`}>
+                          <span className="text-xs font-bold">{u.name.split(" ").map((w) => w[0]).join("")}</span>
                         </div>
                         <span className="text-sm font-medium text-foreground">{u.name}</span>
                       </div>
