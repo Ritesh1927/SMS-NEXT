@@ -333,6 +333,7 @@ export function AdminTeacherExams() {
   const [rTestRows, setRTestRows] = useState<MergedResultRow[] | null>(null);
   const [rTermSubjects, setRTermSubjects] = useState<ExamRow[] | null>(null);
   const [rActiveSubjectId, setRActiveSubjectId] = useState("");
+  const [rActiveSection, setRActiveSection] = useState("");
   const [rSubjectRows, setRSubjectRows] = useState<Record<string, MergedResultRow[]>>({});
 
   const load = () => {
@@ -515,11 +516,8 @@ export function AdminTeacherExams() {
       description: term.description || "",
     });
     try {
-      const cls = classes.find((c) => c.name === term.class && c.section === (term.section || ""));
-      if (cls) {
-        const subRes = await apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token);
-        setTermSubjectOptions(subRes.data);
-      }
+      const subRes = await apiGet<SubjectsResponse>(`/subjects/standard/${encodeURIComponent(term.class)}`, token);
+      setTermSubjectOptions(subRes.data);
       const res = await apiGet<{ success: boolean; data: TermRow }>(`/scheduled-exams/${term._id}`, token);
       const subs = res.data.subjects || [];
       setTermSubjects(
@@ -761,7 +759,13 @@ export function AdminTeacherExams() {
         }),
       );
       setRSubjectRows(Object.fromEntries(pairs));
-      setRActiveSubjectId(subs[0]._id);
+      // Keep whichever section/subject was already selected if it still
+      // exists after the reload (e.g. right after publishing it), instead of
+      // always bouncing back to the first one.
+      const keepSubject = subs.find((s) => s._id === rActiveSubjectId);
+      const sameSection = subs.find((s) => (s.section || "") === rActiveSection);
+      setRActiveSubjectId(keepSubject?._id || sameSection?._id || subs[0]._id);
+      setRActiveSection(keepSubject ? rActiveSection : sameSection ? rActiveSection : subs[0].section || "");
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Failed to load results." });
     } finally {
@@ -904,12 +908,18 @@ export function AdminTeacherExams() {
 
   const handlePublishAllSubjects = async (publish: boolean) => {
     if (!rSourceId) return;
-    const allIds = Object.values(rSubjectRows).flat().filter((r) => r.resultId).map((r) => r.resultId as string);
+    // Scoped to the currently selected section only -- a term spanning
+    // several sections publishes each one independently (see
+    // allTermRowsComplete above for why).
+    const sectionExamIds = (rTermSubjects || []).filter((s) => (s.section || "") === rActiveSection).map((s) => s._id);
+    const allIds = sectionExamIds.flatMap((id) => (rSubjectRows[id] || []).filter((r) => r.resultId).map((r) => r.resultId as string));
     if (allIds.length === 0) return toast.error("No saved results to publish yet.");
+    const isMultiSection = new Set((rTermSubjects || []).map((s) => s.section || "")).size > 1;
+    const sectionLabel = isMultiSection ? ` for Section ${rActiveSection}` : "";
     setRPublishing(true);
     try {
       await publishResultIds(allIds, publish);
-      toast.success(publish ? "Results published across all subjects" : "Results unpublished across all subjects");
+      toast.success(publish ? `Results published across all subjects${sectionLabel}` : `Results unpublished across all subjects${sectionLabel}`);
       await loadTermSource(rSourceId);
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -941,6 +951,16 @@ export function AdminTeacherExams() {
   );
   const termsForResultPicker = (terms ?? []).filter((t) => rClass === "all" || `${t.class}::${t.section || ""}` === rClass);
 
+  // An exam ("New Exam") is created for a whole standard, fanning out to
+  // every section under it, rather than one specific section like a Test --
+  // dedupe the per-section `classes` list down to one entry per standard for
+  // that picker.
+  const standardOptionsMap = new Map<string, string[]>();
+  for (const c of classes) standardOptionsMap.set(c.name, [...(standardOptionsMap.get(c.name) || []), c.section]);
+  const standardOptions = [...standardOptionsMap.entries()]
+    .map(([name, sections]) => ({ name, sections }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
   // Scoped to whichever test/subject is currently selected in the Results
   // tab, so switching subject tabs on a multi-subject exam re-evaluates
   // permission per subject rather than once for the whole exam.
@@ -969,10 +989,14 @@ export function AdminTeacherExams() {
   // computed here from data already loaded so the button can just be
   // disabled instead of failing after the click.
   const testRowsComplete = !!rTestRows && rTestRows.length > 0 && rTestRows.every((r) => r.marksObtained !== null || r.isAbsent);
+  // "Publish All Subjects" only publishes the currently selected section (a
+  // term spanning several sections has one class teacher per section, each
+  // publishing independently), so completeness is checked against that same
+  // section's subjects only.
+  const activeSectionSubjects = (rTermSubjects || []).filter((s) => (s.section || "") === rActiveSection);
   const allTermRowsComplete =
-    !!rTermSubjects &&
-    rTermSubjects.length > 0 &&
-    rTermSubjects.every((s) => {
+    activeSectionSubjects.length > 0 &&
+    activeSectionSubjects.every((s) => {
       const rows = rSubjectRows[s._id];
       return !!rows && rows.length > 0 && rows.every((r) => r.marksObtained !== null || r.isAbsent);
     });
@@ -1168,7 +1192,15 @@ export function AdminTeacherExams() {
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{term.title}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Class {term.class}{term.section ? `-${term.section}` : ""} · {term.examType} ·{" "}
+                            {term.section ? (
+                              `Class ${term.class}-${term.section}`
+                            ) : (
+                              (() => {
+                                const sections = standardOptions.find((s) => s.name === term.class)?.sections;
+                                return `Class ${term.class}${sections && sections.length > 1 ? ` (Sections ${sections.join(", ")})` : ""}`;
+                              })()
+                            )}{" "}
+                            · {term.examType} ·{" "}
                             {new Date(term.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} –{" "}
                             {new Date(term.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           </p>
@@ -1206,20 +1238,40 @@ export function AdminTeacherExams() {
                         ) : term.subjects.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">No subjects scheduled.</p>
                         ) : (
-                          <div className="rounded-xl border border-border overflow-hidden">
-                            {term.subjects.map((sub) => (
-                              <div key={sub._id} className="flex items-center justify-between px-4 py-2.5 border-b border-border last:border-0 gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-foreground">{sub.subject}</p>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {new Date(sub.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                    {sub.startTime && sub.endTime ? ` · ${sub.startTime}–${sub.endTime}` : ""} · {sub.totalMarks} marks
-                                  </p>
-                                </div>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sub.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>{sub.status}</span>
+                          (() => {
+                            const bySection = new Map<string, ExamRow[]>();
+                            for (const sub of term.subjects) {
+                              const key = sub.section || "";
+                              bySection.set(key, [...(bySection.get(key) || []), sub]);
+                            }
+                            const sectionKeys = [...bySection.keys()].sort();
+                            const multiSection = sectionKeys.length > 1;
+                            return (
+                              <div className="space-y-3">
+                                {sectionKeys.map((sec) => (
+                                  <div key={sec}>
+                                    {multiSection && (
+                                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Section {sec}</p>
+                                    )}
+                                    <div className="rounded-xl border border-border overflow-hidden">
+                                      {bySection.get(sec)!.map((sub) => (
+                                        <div key={sub._id} className="flex items-center justify-between px-4 py-2.5 border-b border-border last:border-0 gap-3">
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-semibold text-foreground">{sub.subject}</p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                              {new Date(sub.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                              {sub.startTime && sub.endTime ? ` · ${sub.startTime}–${sub.endTime}` : ""} · {sub.totalMarks} marks
+                                            </p>
+                                          </div>
+                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sub.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>{sub.status}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}
@@ -1421,13 +1473,41 @@ export function AdminTeacherExams() {
               <p className="text-sm text-muted-foreground">This exam has no subjects scheduled.</p>
             </div>
           ) : (
+            (() => {
+              const termSections = [...new Set(rTermSubjects.map((s) => s.section || ""))].sort();
+              const multiSection = termSections.length > 1;
+              const sectionSubjects = multiSection ? rTermSubjects.filter((s) => (s.section || "") === rActiveSection) : rTermSubjects;
+              return (
             <div className="space-y-4">
+              {multiSection && (
+                <div className="flex flex-wrap gap-2">
+                  {termSections.map((sec) => {
+                    const active = rActiveSection === sec;
+                    return (
+                      <button
+                        key={sec}
+                        onClick={() => {
+                          setRActiveSection(sec);
+                          const firstInSection = rTermSubjects.find((s) => (s.section || "") === sec);
+                          if (firstInSection) setRActiveSubjectId(firstInSection._id);
+                        }}
+                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                          active ? "bg-foreground text-background" : "bg-card text-muted-foreground shadow-[0_0_0_1px_rgba(15,23,42,0.07)] hover:bg-muted/50"
+                        }`}
+                      >
+                        Section {sec}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center justify-between flex-wrap gap-3">
-                <p className="text-xs text-muted-foreground">{rTermSubjects.length} subjects · {Object.values(rSubjectRows).flat().length} total entries</p>
+                <p className="text-xs text-muted-foreground">{sectionSubjects.length} subjects · {sectionSubjects.reduce((n, s) => n + (rSubjectRows[s._id] || []).length, 0)} total entries</p>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="outline" onClick={handleSaveActiveSubject} disabled={rSaving || !currentCanEnterMarks} className="gap-1.5">
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Save {rTermSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
+                    Save {sectionSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
                   <Button
                     size="sm"
@@ -1451,7 +1531,7 @@ export function AdminTeacherExams() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {rTermSubjects.map((s) => {
+                {sectionSubjects.map((s) => {
                   const rows = rSubjectRows[s._id] || [];
                   const savedCount = rows.filter((r) => r.marksObtained !== null || r.isAbsent).length;
                   const allSaved = rows.length > 0 && savedCount === rows.length;
@@ -1573,6 +1653,8 @@ export function AdminTeacherExams() {
                 </div>
               )}
             </div>
+              );
+            })()
           )}
         </TabsContent>
       </Tabs>
@@ -1792,30 +1874,30 @@ export function AdminTeacherExams() {
                   <Input placeholder="e.g. Mid-Term Exams" value={termForm.title} onChange={(e) => setTermForm((f) => ({ ...f, title: e.target.value }))} required className="rounded-xl" />
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Class" required>
-                    {classes.length > 0 ? (
+                  <Field label="Standard" required>
+                    {standardOptions.length > 0 ? (
                       <Select
-                        value={termForm.class && termForm.section ? `${termForm.class}::${termForm.section}` : ""}
+                        value={termForm.class}
                         onValueChange={(v) => {
-                          const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                          if (cls) {
-                            setTermForm((f) => ({ ...f, class: cls.name, section: cls.section }));
-                            const token = getToken();
-                            if (token) {
-                              apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
-                                .then((res) => {
-                                  setTermSubjectOptions(res.data);
-                                  setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
-                                })
-                                .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
-                            }
+                          if (!v) return;
+                          setTermForm((f) => ({ ...f, class: v, section: "" }));
+                          const token = getToken();
+                          if (token) {
+                            apiGet<SubjectsResponse>(`/subjects/standard/${encodeURIComponent(v)}`, token)
+                              .then((res) => {
+                                setTermSubjectOptions(res.data);
+                                setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
+                              })
+                              .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
                           }
                         }}
                       >
-                        <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Select a class" /></SelectTrigger>
+                        <SelectTrigger className="w-full rounded-xl"><SelectValue placeholder="Select a standard" /></SelectTrigger>
                         <SelectContent>
-                          {classes.map((c) => (
-                            <SelectItem key={c._id} value={`${c.name}::${c.section}`}>Class {c.name}-{c.section}</SelectItem>
+                          {standardOptions.map((s) => (
+                            <SelectItem key={s.name} value={s.name}>
+                              Class {s.name} ({s.sections.length > 1 ? `Sections ${s.sections.join(", ")}` : `Section ${s.sections[0]}`})
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1869,7 +1951,7 @@ export function AdminTeacherExams() {
               </div>
               {termForm.class && termSubjectOptions.length === 0 && (
                 <p className="text-xs text-amber-600 mb-2 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
-                  No subjects are assigned to Class {termForm.class}{termForm.section ? `-${termForm.section}` : ""} yet — assign some from Subject &amp; Class, or type names in below.
+                  No subjects are assigned to Class {termForm.class} yet — assign some from Subject &amp; Class, or type names in below.
                 </p>
               )}
               <div className="space-y-3">

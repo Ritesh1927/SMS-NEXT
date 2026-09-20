@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookOpen, School, LayoutGrid, Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, Copy, Users, Link2, Loader2 } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
@@ -29,6 +29,15 @@ interface ClassOption {
   _id: string;
   name: string;
   section: string;
+}
+
+// Subjects are assigned per standard (e.g. "7"), not per section -- every
+// section of a standard carries an identical assignedSubjects list, kept in
+// sync by the assign/unassign API routes. This groups the raw per-section
+// Class rows into one entry per standard for the pickers below.
+interface StandardOption {
+  name: string;
+  sections: string[];
 }
 
 interface ClassWithSubjects {
@@ -61,11 +70,11 @@ export default function SubjectsPage() {
   const [deleteSubjectId, setDeleteSubjectId] = useState<string | null>(null);
   const [deletingSubject, setDeletingSubject] = useState(false);
 
-  const [singleClassId, setSingleClassId] = useState("");
+  const [singleStandard, setSingleStandard] = useState("");
   const [singleSubjectIds, setSingleSubjectIds] = useState<Set<string>>(new Set());
-  const [bulkClassIds, setBulkClassIds] = useState<Set<string>>(new Set());
+  const [bulkStandards, setBulkStandards] = useState<Set<string>>(new Set());
   const [bulkSubjectIds, setBulkSubjectIds] = useState<Set<string>>(new Set());
-  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [expandedStandards, setExpandedStandards] = useState<Set<string>>(new Set());
   const [assigning, setAssigning] = useState(false);
   const [activeTab, setActiveTab] = useState("subjects");
 
@@ -102,9 +111,20 @@ export default function SubjectsPage() {
     fetchAssignments();
   }, []);
 
-  const getAssignedIds = (classId: string): string[] => classAssignments.find((c) => c._id === classId)?.assignedSubjects.map((s) => s._id) || [];
-  const getAssignedSubjects = (classId: string): SubjectRow[] => classAssignments.find((c) => c._id === classId)?.assignedSubjects || [];
-  const getClassById = (id: string) => classes.find((c) => c._id === id);
+  const standards: StandardOption[] = useMemo(() => {
+    const map = new Map<string, StandardOption>();
+    for (const c of classes) {
+      const existing = map.get(c.name);
+      if (existing) existing.sections.push(c.section);
+      else map.set(c.name, { name: c.name, sections: [c.section] });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }, [classes]);
+
+  // Any one section's assignedSubjects is authoritative for the whole
+  // standard, since assign/unassign always fan out to every sibling section.
+  const getAssignedIds = (standard: string): string[] => classAssignments.find((c) => c.name === standard)?.assignedSubjects.map((s) => s._id) || [];
+  const getAssignedSubjects = (standard: string): SubjectRow[] => classAssignments.find((c) => c.name === standard)?.assignedSubjects || [];
 
   const openCreateSubject = () => {
     setEditSubject(null);
@@ -181,13 +201,13 @@ export default function SubjectsPage() {
   };
 
   const assignSingle = async () => {
-    if (!singleClassId) return toast.error("Please select a class.");
+    if (!singleStandard) return toast.error("Please select a standard.");
     if (singleSubjectIds.size === 0) return toast.error("Please select at least one subject.");
     const token = getToken();
     if (!token) return;
     setAssigning(true);
     try {
-      await apiPost("/subjects/assign", { classId: singleClassId, subjectIds: Array.from(singleSubjectIds) }, token);
+      await apiPost("/subjects/assign", { standard: singleStandard, subjectIds: Array.from(singleSubjectIds) }, token);
       toast.success("Subjects assigned.");
       setSingleSubjectIds(new Set());
       fetchAssignments();
@@ -199,15 +219,15 @@ export default function SubjectsPage() {
   };
 
   const assignBulk = async () => {
-    if (bulkClassIds.size === 0) return toast.error("Please select at least one class.");
+    if (bulkStandards.size === 0) return toast.error("Please select at least one standard.");
     if (bulkSubjectIds.size === 0) return toast.error("Please select at least one subject.");
     const token = getToken();
     if (!token) return;
     setAssigning(true);
     try {
-      await apiPost("/subjects/bulk-assign", { classIds: Array.from(bulkClassIds), subjectIds: Array.from(bulkSubjectIds) }, token);
-      toast.success(`${bulkSubjectIds.size} subject(s) assigned to ${bulkClassIds.size} class(es).`);
-      setBulkClassIds(new Set());
+      await apiPost("/subjects/bulk-assign", { standards: Array.from(bulkStandards), subjectIds: Array.from(bulkSubjectIds) }, token);
+      toast.success(`${bulkSubjectIds.size} subject(s) assigned to ${bulkStandards.size} standard(s).`);
+      setBulkStandards(new Set());
       setBulkSubjectIds(new Set());
       fetchAssignments();
     } catch (err) {
@@ -217,13 +237,13 @@ export default function SubjectsPage() {
     }
   };
 
-  const removeSubjectFromClass = async (classId: string, subjectId: string) => {
+  const removeSubjectFromStandard = async (standard: string, subjectId: string) => {
     const token = getToken();
     try {
       const res = await fetch("/api/subjects/unassign", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ classId, subjectId }),
+        body: JSON.stringify({ standard, subjectId }),
       });
       const json = await res.json();
       if (!res.ok || json.success === false) throw new Error(json.message || "Failed to remove subject.");
@@ -233,20 +253,20 @@ export default function SubjectsPage() {
     }
   };
 
-  const toggleExpanded = (classId: string) => {
-    setExpandedClasses((prev) => {
+  const toggleExpanded = (standard: string) => {
+    setExpandedStandards((prev) => {
       const next = new Set(prev);
-      if (next.has(classId)) next.delete(classId);
-      else next.add(classId);
+      if (next.has(standard)) next.delete(standard);
+      else next.add(standard);
       return next;
     });
   };
 
   const isLoading = classesLoading || subjectsLoading;
-  // Classes legitimately vary in how many subjects they carry (a lower grade
-  // may have fewer than a higher one), so "fewer than the school's total
-  // subject count" is not a real gap. Zero subjects assigned at all is.
-  const classesWithNoSubjects = classes.filter((c) => getAssignedIds(c._id).length === 0).length;
+  // Standards legitimately vary in how many subjects they carry (a lower
+  // grade may have fewer than a higher one), so "fewer than the school's
+  // total subject count" is not a real gap. Zero subjects assigned at all is.
+  const standardsWithNoSubjects = standards.filter((s) => getAssignedIds(s.name).length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -270,17 +290,17 @@ export default function SubjectsPage() {
           icon={School}
           color="#0EA5E9"
           colorDark="#0284C7"
-          value={classes.length}
-          label="Total Classes"
+          value={standards.length}
+          label="Total Standards"
           onClick={() => setActiveTab("assign")}
         />
         <StatFilterCard
           icon={Link2}
           color="#DC2626"
           colorDark="#B91C1C"
-          value={classesWithNoSubjects}
-          label="Classes With No Subjects"
-          sublabel={classesWithNoSubjects === 0 ? "Every class has subjects assigned" : "Not set up yet"}
+          value={standardsWithNoSubjects}
+          label="Standards With No Subjects"
+          sublabel={standardsWithNoSubjects === 0 ? "Every standard has subjects assigned" : "Not set up yet"}
           active={activeTab === "assign"}
           onClick={() => setActiveTab("assign")}
         />
@@ -367,34 +387,33 @@ export default function SubjectsPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <School className="h-5 w-5 text-primary" /> Single Assignment
               </CardTitle>
-              <CardDescription>Select one class and assign subjects to it.</CardDescription>
+              <CardDescription>Select a standard and assign subjects to it — every section of that standard shares the same subjects.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {isLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                 </div>
-              ) : classes.length === 0 || subjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{classes.length === 0 ? "No classes found. Create classes from the Classes page first." : "Please create at least one subject first."}</p>
+              ) : standards.length === 0 || subjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{standards.length === 0 ? "No classes found. Create classes from the Classes page first." : "Please create at least one subject first."}</p>
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label>Select Class</Label>
+                    <Label>Select Standard</Label>
                     <Select
-                      value={singleClassId}
+                      value={singleStandard}
                       onValueChange={(v) => {
-                        setSingleClassId(v || "");
+                        setSingleStandard(v || "");
                         setSingleSubjectIds(new Set());
                       }}
                     >
                       <SelectTrigger className="max-w-sm">
-                        <SelectValue placeholder="Choose a class…" />
+                        <SelectValue placeholder="Choose a standard…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {classes.map((c) => (
-                          <SelectItem key={c._id} value={c._id}>
-                            {c.name}
-                            {c.section ? ` — ${c.section}` : ""}
+                        {standards.map((s) => (
+                          <SelectItem key={s.name} value={s.name}>
+                            Class {s.name} ({s.sections.length > 1 ? `Sections ${s.sections.join(", ")}` : `Section ${s.sections[0]}`})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -405,7 +424,7 @@ export default function SubjectsPage() {
                     <Label>Select Subjects to Assign</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                       {subjects.map((s) => {
-                        const assigned = singleClassId ? getAssignedIds(singleClassId).includes(s._id) : false;
+                        const assigned = singleStandard ? getAssignedIds(singleStandard).includes(s._id) : false;
                         return (
                           <label
                             key={s._id}
@@ -425,22 +444,22 @@ export default function SubjectsPage() {
                     </div>
                   </div>
 
-                  <Button onClick={assignSingle} className="gap-2" disabled={assigning || !singleClassId || singleSubjectIds.size === 0}>
+                  <Button onClick={assignSingle} className="gap-2" disabled={assigning || !singleStandard || singleSubjectIds.size === 0}>
                     {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Assign{singleSubjectIds.size > 0 ? ` ${singleSubjectIds.size}` : ""} Subject{singleSubjectIds.size !== 1 ? "s" : ""}
                   </Button>
 
-                  {singleClassId && getAssignedSubjects(singleClassId).length > 0 && (
+                  {singleStandard && getAssignedSubjects(singleStandard).length > 0 && (
                     <div className="pt-4 border-t border-border space-y-2">
                       <p className="text-sm font-medium text-foreground">
-                        Currently assigned to <span className="text-primary">{getClassById(singleClassId)?.name}</span>:
+                        Currently assigned to <span className="text-primary">Class {singleStandard}</span>:
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {getAssignedSubjects(singleClassId).map((subj) => (
+                        {getAssignedSubjects(singleStandard).map((subj) => (
                           <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-muted text-foreground/90 text-xs font-medium">
                             <BookOpen className="h-3 w-3 shrink-0" />
                             {subj.name}
-                            <button onClick={() => removeSubjectFromClass(singleClassId, subj._id)} className="ml-1 rounded-full hover:bg-red-100 p-0.5" aria-label={`Remove ${subj.name}`}>
+                            <button onClick={() => removeSubjectFromStandard(singleStandard, subj._id)} className="ml-1 rounded-full hover:bg-red-100 p-0.5" aria-label={`Remove ${subj.name}`}>
                               <X className="h-3 w-3" />
                             </button>
                           </span>
@@ -458,42 +477,41 @@ export default function SubjectsPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Copy className="h-5 w-5 text-primary" /> Bulk Assignment
               </CardTitle>
-              <CardDescription>Select multiple classes and subjects, then assign them all at once.</CardDescription>
+              <CardDescription>Select multiple standards and subjects, then assign them all at once — e.g. assign &quot;English&quot; to standards 5 through 8.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {isLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                 </div>
-              ) : classes.length === 0 || subjects.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{classes.length === 0 ? "No classes found." : "Please create at least one subject first."}</p>
+              ) : standards.length === 0 || subjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{standards.length === 0 ? "No classes found." : "Please create at least one subject first."}</p>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label>Select Classes</Label>
-                        <span className="text-xs text-muted-foreground">{bulkClassIds.size} selected</span>
+                        <Label>Select Standards</Label>
+                        <span className="text-xs text-muted-foreground">{bulkStandards.size} selected</span>
                       </div>
                       <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
-                        {classes.map((c) => (
-                          <label key={c._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkClassIds.has(c._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}>
+                        {standards.map((s) => (
+                          <label key={s.name} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkStandards.has(s.name) ? "bg-primary/5" : "hover:bg-muted/50"}`}>
                             <input
                               type="checkbox"
                               className="h-4 w-4"
-                              checked={bulkClassIds.has(c._id)}
+                              checked={bulkStandards.has(s.name)}
                               onChange={(e) => {
-                                setBulkClassIds((prev) => {
+                                setBulkStandards((prev) => {
                                   const next = new Set(prev);
-                                  if (e.target.checked) next.add(c._id);
-                                  else next.delete(c._id);
+                                  if (e.target.checked) next.add(s.name);
+                                  else next.delete(s.name);
                                   return next;
                                 });
                               }}
                             />
                             <p className="text-sm font-medium text-foreground">
-                              {c.name}
-                              {c.section ? ` — ${c.section}` : ""}
+                              Class {s.name} <span className="text-xs text-muted-foreground font-normal">({s.sections.length > 1 ? `Sections ${s.sections.join(", ")}` : `Section ${s.sections[0]}`})</span>
                             </p>
                           </label>
                         ))}
@@ -531,22 +549,22 @@ export default function SubjectsPage() {
                     </div>
                   </div>
 
-                  <Button onClick={assignBulk} className="gap-2" disabled={assigning || bulkClassIds.size === 0 || bulkSubjectIds.size === 0}>
+                  <Button onClick={assignBulk} className="gap-2" disabled={assigning || bulkStandards.size === 0 || bulkSubjectIds.size === 0}>
                     {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    Assign {bulkSubjectIds.size > 0 ? `${bulkSubjectIds.size} subject(s)` : "subjects"} to {bulkClassIds.size > 0 ? `${bulkClassIds.size} class(es)` : "selected classes"}
+                    Assign {bulkSubjectIds.size > 0 ? `${bulkSubjectIds.size} subject(s)` : "subjects"} to {bulkStandards.size > 0 ? `${bulkStandards.size} standard(s)` : "selected standards"}
                   </Button>
                 </>
               )}
             </CardContent>
           </Card>
 
-          {!isLoading && classes.length > 0 && (
+          {!isLoading && standards.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-5 w-5 text-primary" /> Per-Class Assignment Overview
+                  <Users className="h-5 w-5 text-primary" /> Per-Standard Assignment Overview
                 </CardTitle>
-                <CardDescription>Expand a class to view or remove its assigned subjects.</CardDescription>
+                <CardDescription>Expand a standard to view or remove its assigned subjects — applies to every section.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {assignmentsLoading ? (
@@ -555,17 +573,16 @@ export default function SubjectsPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {classes.map((c) => {
-                      const assignedSubjects = getAssignedSubjects(c._id);
-                      const isExpanded = expandedClasses.has(c._id);
+                    {standards.map((s) => {
+                      const assignedSubjects = getAssignedSubjects(s.name);
+                      const isExpanded = expandedStandards.has(s.name);
                       return (
-                        <div key={c._id}>
-                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/50 text-left" onClick={() => toggleExpanded(c._id)}>
+                        <div key={s.name}>
+                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/50 text-left" onClick={() => toggleExpanded(s.name)}>
                             <div className="flex items-center gap-3 min-w-0">
                               <School className="h-4 w-4 text-muted-foreground shrink-0" />
                               <span className="font-medium text-sm text-foreground truncate">
-                                {c.name}
-                                {c.section ? ` — ${c.section}` : ""}
+                                Class {s.name} <span className="text-xs text-muted-foreground font-normal">({s.sections.length > 1 ? `Sections ${s.sections.join(", ")}` : `Section ${s.sections[0]}`})</span>
                               </span>
                               <span className="text-xs shrink-0 px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                                 {assignedSubjects.length} subject{assignedSubjects.length !== 1 ? "s" : ""}
@@ -587,7 +604,7 @@ export default function SubjectsPage() {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          removeSubjectFromClass(c._id, subj._id);
+                                          removeSubjectFromStandard(s.name, subj._id);
                                         }}
                                         className="ml-0.5 rounded-full hover:bg-red-100 p-0.5"
                                         aria-label={`Remove ${subj.name}`}
@@ -617,26 +634,26 @@ export default function SubjectsPage() {
                 <Loader2 className="h-5 w-5 animate-spin" /> Loading…
               </CardContent>
             </Card>
-          ) : classes.length === 0 || subjects.length === 0 ? (
+          ) : standards.length === 0 || subjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <LayoutGrid className="h-12 w-12 text-muted-foreground/40 mb-3" />
                 <p className="font-medium text-sm text-foreground">Nothing to show yet</p>
-                <p className="text-xs text-muted-foreground mt-1">{classes.length === 0 ? "No classes found." : "Create at least one subject to see the assignment matrix."}</p>
+                <p className="text-xs text-muted-foreground mt-1">{standards.length === 0 ? "No classes found." : "Create at least one subject to see the assignment matrix."}</p>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Assignment Matrix</CardTitle>
-                <CardDescription>Rows = classes · Columns = subjects · ✓ = assigned</CardDescription>
+                <CardDescription>Rows = standards · Columns = subjects · ✓ = assigned</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-10 min-w-[160px] border-r border-border">Class</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-10 min-w-[160px] border-r border-border">Standard</TableHead>
                         {subjects.map((s) => (
                           <TableHead key={s._id} className="text-center min-w-[110px]">
                             <div className="flex flex-col items-center gap-1">
@@ -649,13 +666,13 @@ export default function SubjectsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {classes.map((c) => {
-                        const assignedSet = new Set(getAssignedIds(c._id));
+                      {standards.map((c) => {
+                        const assignedSet = new Set(getAssignedIds(c.name));
                         return (
-                          <TableRow key={c._id}>
+                          <TableRow key={c.name}>
                             <TableCell className="sticky left-0 bg-card border-r border-border">
-                              <p className="text-sm font-medium text-foreground">{c.name}</p>
-                              <p className="text-xs text-muted-foreground">{c.section ? `Sec. ${c.section}` : ""}</p>
+                              <p className="text-sm font-medium text-foreground">Class {c.name}</p>
+                              <p className="text-xs text-muted-foreground">{c.sections.length > 1 ? `Sections ${c.sections.join(", ")}` : `Sec. ${c.sections[0]}`}</p>
                             </TableCell>
                             {subjects.map((s) => (
                               <TableCell key={s._id} className="text-center">

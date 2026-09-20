@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 
+// Mirrors assign/route.ts: removes a subject from every section of a
+// standard at once, since subjects are assigned per-standard.
 export async function DELETE(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "schooladmin") {
@@ -10,18 +12,18 @@ export async function DELETE(req: Request) {
   }
 
   try {
-    const { classId, subjectId } = await req.json();
-    if (!classId || !subjectId) {
-      return NextResponse.json({ success: false, message: "classId and subjectId are required." }, { status: 400 });
+    const { standard, subjectId } = await req.json();
+    if (!standard || !subjectId) {
+      return NextResponse.json({ success: false, message: "standard and subjectId are required." }, { status: 400 });
     }
 
     await connectDB();
-    const cls = await Class.findOne({ _id: classId, school: auth.schoolId });
-    if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
+    const sections = await Class.find({ school: auth.schoolId, name: standard }).select("_id");
+    if (sections.length === 0) return NextResponse.json({ success: false, message: "Standard not found." }, { status: 404 });
 
-    await Class.findByIdAndUpdate(classId, { $pull: { assignedSubjects: subjectId } });
+    await Class.updateMany({ school: auth.schoolId, name: standard }, { $pull: { assignedSubjects: subjectId } });
 
-    return NextResponse.json({ success: true, message: "Subject removed from class." });
+    return NextResponse.json({ success: true, message: `Subject removed from Class ${standard}.` });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to remove subject." },

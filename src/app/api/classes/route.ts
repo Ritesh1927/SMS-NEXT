@@ -84,10 +84,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // A new section of an existing standard shares that standard's subjects
+    // automatically — subjects are assigned per standard (Subject & Class),
+    // not per section, so every sibling section should start in sync rather
+    // than needing a manual re-assignment.
+    const sibling = await Class.findOne({ school: auth.schoolId, name }).select("assignedSubjects");
+
     const cls = await Class.create({
       name, section, classTeacher: classTeacher || null, room: room || "", school: auth.schoolId,
+      assignedSubjects: sibling?.assignedSubjects || [],
     });
     await cls.populate("classTeacher", "name teacherId");
+    await cls.populate("assignedSubjects", "name code");
 
     return NextResponse.json({ success: true, message: "Class created.", data: cls }, { status: 201 });
   } catch (err) {

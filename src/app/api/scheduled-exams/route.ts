@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
+import { Class } from "@/models/Class";
 import "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const { title, class: cls, section, examType, startDate, endDate, description, subjects } = await req.json();
+    const { title, class: cls, examType, startDate, endDate, description, subjects } = await req.json();
     if (!title || !cls || !examType || !startDate || !endDate) {
       return NextResponse.json(
         { success: false, message: "title, class, examType, startDate and endDate are required." },
@@ -97,11 +98,19 @@ export async function POST(req: Request) {
       }
     }
 
+    // An exam is created for the whole standard, not one section -- every
+    // section gets its own Exam doc per subject, all sharing this one term.
+    const sectionDocs = await Class.find({ school: auth.schoolId, name: cls }).select("section");
+    if (sectionDocs.length === 0) {
+      return NextResponse.json({ success: false, message: `No classes found for standard ${cls}.` }, { status: 404 });
+    }
+    const sections = sectionDocs.map((c) => c.section);
+
     const term = await ScheduledExam.create({
       school: auth.schoolId,
       title,
       class: cls,
-      section: section || "",
+      section: "",
       examType,
       startDate,
       endDate,
@@ -112,24 +121,26 @@ export async function POST(req: Request) {
 
     const examType_ = EXAM_TYPE_MAP[examType] || "unit-test";
     const subjectExams = await Exam.insertMany(
-      (subjects as SubjectInput[]).map((s) => ({
-        school: auth.schoolId,
-        title: `${title} — ${s.subject}`,
-        class: cls,
-        section: section || "",
-        subject: s.subject,
-        date: s.date,
-        startTime: s.startTime || "",
-        endTime: s.endTime || "",
-        totalMarks: s.totalMarks,
-        passingMarks: Math.round(s.totalMarks * 0.33),
-        duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
-        examType: examType_,
-        createdBy: auth.id,
-        createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
-        status: "upcoming",
-        scheduledExamId: term._id,
-      })),
+      sections.flatMap((section) =>
+        (subjects as SubjectInput[]).map((s) => ({
+          school: auth.schoolId,
+          title: `${title} — ${s.subject}`,
+          class: cls,
+          section,
+          subject: s.subject,
+          date: s.date,
+          startTime: s.startTime || "",
+          endTime: s.endTime || "",
+          totalMarks: s.totalMarks,
+          passingMarks: Math.round(s.totalMarks * 0.33),
+          duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
+          examType: examType_,
+          createdBy: auth.id,
+          createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+          status: "upcoming",
+          scheduledExamId: term._id,
+        })),
+      ),
     );
 
     if ((subjects as SubjectInput[]).every((s) => s.startTime && s.endTime)) {

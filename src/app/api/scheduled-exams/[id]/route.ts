@@ -8,6 +8,7 @@ import "@/models/Admin";
 import "@/models/Teacher";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
+import { Class } from "@/models/Class";
 
 // Teachers can freely edit/delete a term up to 2 hours before it starts;
 // past that they must go through the ExamChangeRequest workflow. Matches
@@ -61,7 +62,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const existing = await ScheduledExam.findOne({ _id: id, school: auth.schoolId });
     if (!existing) return NextResponse.json({ success: false, message: "Exam term not found." }, { status: 404 });
 
-    const { title, class: cls, section, examType, startDate, endDate, description, status, subjects } = await req.json();
+    const { title, class: cls, examType, startDate, endDate, description, status, subjects } = await req.json();
 
     if (auth.role === "teacher") {
       const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
@@ -80,7 +81,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const updates: Record<string, unknown> = {};
     if (title !== undefined) updates.title = title;
     if (cls !== undefined) updates.class = cls;
-    if (section !== undefined) updates.section = section;
     if (examType !== undefined) updates.examType = examType;
     if (startDate !== undefined) updates.startDate = startDate;
     if (endDate !== undefined) updates.endDate = endDate;
@@ -109,25 +109,34 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       const examTypeMap: Record<string, string> = { midterm: "mid-term", final: "final", unit: "unit-test", annual: "final" };
       const mappedType = examTypeMap[term.examType] || "unit-test";
+
+      // The term spans every section of its standard, not just term.section
+      // (which is always "" for a standard-wide term) -- resolve the real
+      // section list from the standard's classes, same as creation does.
+      const sectionDocs = await Class.find({ school: auth.schoolId, name: term.class }).select("section");
+      const sections = sectionDocs.length > 0 ? sectionDocs.map((c) => c.section) : [term.section];
+
       await Exam.insertMany(
-        (subjects as SubjectInput[]).map((s) => ({
-          school: auth.schoolId,
-          title: `${term.title} — ${s.subject}`,
-          class: term.class,
-          section: term.section,
-          subject: s.subject,
-          date: s.date,
-          startTime: s.startTime || "",
-          endTime: s.endTime || "",
-          totalMarks: s.totalMarks,
-          passingMarks: Math.round(s.totalMarks * 0.33),
-          duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
-          examType: mappedType,
-          createdBy: auth.id,
-          createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
-          status: "upcoming",
-          scheduledExamId: term._id,
-        })),
+        sections.flatMap((section) =>
+          (subjects as SubjectInput[]).map((s) => ({
+            school: auth.schoolId,
+            title: `${term.title} — ${s.subject}`,
+            class: term.class,
+            section,
+            subject: s.subject,
+            date: s.date,
+            startTime: s.startTime || "",
+            endTime: s.endTime || "",
+            totalMarks: s.totalMarks,
+            passingMarks: Math.round(s.totalMarks * 0.33),
+            duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
+            examType: mappedType,
+            createdBy: auth.id,
+            createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+            status: "upcoming",
+            scheduledExamId: term._id,
+          })),
+        ),
       );
       subjectExams = await Exam.find({ scheduledExamId: term._id }).sort({ date: 1 });
     }
