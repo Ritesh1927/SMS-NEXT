@@ -238,6 +238,11 @@ function gradeColor(grade: string) {
 export function AdminTeacherExams() {
   const { user } = useAuth();
   const isAdmin = user?.role === "schooladmin";
+  // Teachers need canEnterMarks explicitly granted (Roles & Permissions →
+  // Exams) before they can enter/publish results — matches the same flag
+  // the /api/exams/[id]/marks and /api/results/publish routes check
+  // server-side. Admins always have it.
+  const canEnterMarks = isAdmin || Boolean((user?.permissions as { canEnterMarks?: boolean } | undefined)?.canEnterMarks);
 
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [terms, setTerms] = useState<TermRow[] | null>(null);
@@ -1193,6 +1198,15 @@ export function AdminTeacherExams() {
             </div>
           </div>
 
+          {rSourceId && !canEnterMarks && (
+            <div className="rounded-[18px] bg-amber-50 border border-amber-200 p-4 mb-4 flex items-start gap-3">
+              <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                You don&apos;t have permission to enter or publish marks yet — ask your school admin to enable <span className="font-semibold">&quot;Enter marks&quot;</span> for you under Roles &amp; Permissions → Exams. You can still view results below.
+              </p>
+            </div>
+          )}
+
           {!rSourceId ? (
             <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <BarChart3 className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
@@ -1213,13 +1227,13 @@ export function AdminTeacherExams() {
                     <p className="text-xs text-muted-foreground">{rTestMeta?.subject} · Out of {rTestMeta?.totalMarks} · {rTestRows.length} students</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={handleSaveAllTest} disabled={rSaving} className="gap-1.5">
+                    <Button size="sm" variant="outline" onClick={handleSaveAllTest} disabled={rSaving || !canEnterMarks} className="gap-1.5">
                       {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save All
                     </Button>
-                    <Button size="sm" onClick={() => handlePublishAllTest(true)} disabled={rPublishing} className="gap-1.5 bg-primary hover:bg-primary/90">
+                    <Button size="sm" onClick={() => handlePublishAllTest(true)} disabled={rPublishing || !canEnterMarks} className="gap-1.5 bg-primary hover:bg-primary/90">
                       {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handlePublishAllTest(false)} disabled={rPublishing} className="text-red-600 hover:text-red-700">
+                    <Button size="sm" variant="outline" onClick={() => handlePublishAllTest(false)} disabled={rPublishing || !canEnterMarks} className="text-red-600 hover:text-red-700">
                       Unpublish All
                     </Button>
                   </div>
@@ -1252,11 +1266,12 @@ export function AdminTeacherExams() {
                             type="number" min={0} max={rTestMeta?.totalMarks}
                             value={row.marksObtained ?? ""}
                             onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
+                            disabled={!canEnterMarks}
                             className="w-20 h-8"
                           />
                         </TableCell>
                         <TableCell>
-                          <Input value={row.remarks} onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })} className="w-32 h-8" />
+                          <Input value={row.remarks} onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })} disabled={!canEnterMarks} className="w-32 h-8" />
                         </TableCell>
                         <TableCell className="text-center">
                           {row.grade ? (
@@ -1288,14 +1303,14 @@ export function AdminTeacherExams() {
                         <TableCell className="text-right">
                           {!row.resultId ? (
                             row.marksObtained !== null ? (
-                              <Button size="xs" variant="outline" onClick={() => handleRowSaveAndPublish(row)} disabled={busyId === row.student._id} className="gap-1">
+                              <Button size="xs" variant="outline" onClick={() => handleRowSaveAndPublish(row)} disabled={busyId === row.student._id || !canEnterMarks} className="gap-1">
                                 {busyId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Save & Publish
                               </Button>
                             ) : (
                               <span className="text-[11px] text-muted-foreground/70">Enter marks first</span>
                             )
                           ) : (
-                            <Button size="xs" variant="outline" onClick={() => handleRowTogglePublish(row)} disabled={busyId === row.student._id} className="gap-1">
+                            <Button size="xs" variant="outline" onClick={() => handleRowTogglePublish(row)} disabled={busyId === row.student._id || !canEnterMarks} className="gap-1">
                               {busyId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : row.isPublished ? <XCircle className="h-3 w-3" /> : <Send className="h-3 w-3" />}
                               {row.isPublished ? "Unpublish" : "Publish"}
                             </Button>
@@ -1316,14 +1331,14 @@ export function AdminTeacherExams() {
               <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center justify-between flex-wrap gap-3">
                 <p className="text-xs text-muted-foreground">{rTermSubjects.length} subjects · {Object.values(rSubjectRows).flat().length} total entries</p>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={handleSaveActiveSubject} disabled={rSaving} className="gap-1.5">
+                  <Button size="sm" variant="outline" onClick={handleSaveActiveSubject} disabled={rSaving || !canEnterMarks} className="gap-1.5">
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save {rTermSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
-                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing} className="gap-1.5 bg-primary hover:bg-primary/90">
+                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing || !canEnterMarks} className="gap-1.5 bg-primary hover:bg-primary/90">
                     {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All Subjects
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing} className="text-red-600 hover:text-red-700">
+                  <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing || !canEnterMarks} className="text-red-600 hover:text-red-700">
                     Unpublish All
                   </Button>
                 </div>
@@ -1387,6 +1402,7 @@ export function AdminTeacherExams() {
                               max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
                               value={row.marksObtained ?? ""}
                               onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
+                              disabled={!canEnterMarks}
                               className="w-20 h-8"
                             />
                           </TableCell>
@@ -1394,6 +1410,7 @@ export function AdminTeacherExams() {
                             <Input
                               value={row.remarks}
                               onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { remarks: e.target.value })}
+                              disabled={!canEnterMarks}
                               className="w-32 h-8"
                             />
                           </TableCell>
