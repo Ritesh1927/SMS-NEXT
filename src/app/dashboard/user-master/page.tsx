@@ -45,10 +45,16 @@ const ROLE_COLORS: Record<string, string> = {
   parent: "bg-rose-500/10 text-rose-600 border-rose-200",
 };
 
-const ROLE_AVATAR: Record<string, string> = {
-  teacher: "bg-blue-500/10 text-blue-600",
-  "non-teaching": "bg-orange-500/10 text-orange-600",
-  parent: "bg-rose-500/10 text-rose-600",
+const ROLE_ICON: Record<string, typeof GraduationCap> = {
+  teacher: GraduationCap,
+  "non-teaching": Briefcase,
+  parent: Heart,
+};
+
+const ROLE_GRADIENT: Record<string, { from: string; to: string }> = {
+  teacher: { from: "#3B82F6", to: "#2563EB" },
+  "non-teaching": { from: "#F97316", to: "#EA580C" },
+  parent: { from: "#F43F5E", to: "#E11D48" },
 };
 
 async function parseJson(res: Response) {
@@ -230,80 +236,96 @@ export default function UserMasterPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-2xl bg-card overflow-hidden shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-muted/50">
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Email</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Phone</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Role</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">ID</th>
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Status</th>
-                <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Actions</th>
+              <tr className="bg-muted/40 border-b border-border/70">
+                <th className="p-3.5 pl-5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                <th className="p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
+                <th className="p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Phone</th>
+                <th className="p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
+                <th className="p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
+                <th className="p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                <th className="p-3.5 pr-5 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/70">
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="p-3 border-b border-border">
+                    <td className="p-3.5 pl-5">
                       <div className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                        <Skeleton className="h-9 w-9 rounded-full shrink-0" />
                         <Skeleton className="h-4 w-28" />
                       </div>
                     </td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-36" /></td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-20" /></td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16" /></td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16" /></td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-14" /></td>
-                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-36" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-20" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3.5"><Skeleton className="h-4 w-14" /></td>
+                    <td className="p-3.5 pr-5"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   </tr>
                 ))
               ) : users.length === 0 ? (
                 <tr><td colSpan={7} className="p-0"><EmptyState icon={UserCog} message="No users found." /></td></tr>
               ) : (
-                users.map((u) => (
-                  <tr key={`${u.role}-${u.userId}`} className="hover:bg-muted/40 transition-colors">
-                    <td className="p-3 border-b border-border">
+                users.map((u) => {
+                  const gradient = ROLE_GRADIENT[u.role];
+                  const RoleIcon = ROLE_ICON[u.role];
+                  return (
+                  <tr key={`${u.role}-${u.userId}`} className="group transition-colors hover:bg-muted/40">
+                    <td className="p-3.5 pl-5">
                       <div className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${ROLE_AVATAR[u.role] || "bg-primary/10 text-primary"}`}>
-                          <span className="text-xs font-bold">{u.name.split(" ").map((w) => w[0]).join("")}</span>
+                        <div
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-bold shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105"
+                          style={gradient ? { background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` } : undefined}
+                        >
+                          {u.name.split(" ").map((w) => w[0]).join("")}
                         </div>
                         <span className="text-sm font-medium text-foreground">{u.name}</span>
                       </div>
                     </td>
-                    <td className="p-3 border-b border-border text-sm text-muted-foreground">{u.email}</td>
-                    <td className="p-3 border-b border-border text-sm text-muted-foreground">{u.phone || "-"}</td>
-                    <td className="p-3 border-b border-border">
-                      <span className={`text-[10px] px-2 py-1 rounded-full border font-medium capitalize ${ROLE_COLORS[u.role] || ""}`}>{u.role}</span>
+                    <td className="p-3.5 text-sm text-muted-foreground">{u.email}</td>
+                    <td className="p-3.5 text-sm text-muted-foreground">{u.phone || "-"}</td>
+                    <td className="p-3.5">
+                      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border font-medium capitalize ${ROLE_COLORS[u.role] || ""}`}>
+                        {RoleIcon && <RoleIcon className="h-3 w-3" />}
+                        {u.role}
+                      </span>
                     </td>
-                    <td className="p-3 border-b border-border text-xs font-mono text-muted-foreground">{u.teacherId || "-"}</td>
-                    <td className="p-3 border-b border-border">
+                    <td className="p-3.5">
+                      {u.teacherId ? (
+                        <span className="text-xs font-mono text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">{u.teacherId}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/60">-</span>
+                      )}
+                    </td>
+                    <td className="p-3.5">
                       <span className={statusPillClass(u.isActive ? "success" : "destructive")}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="p-3 border-b border-border">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" title="Change Password"
+                    <td className="p-3.5 pr-5">
+                      <div className="inline-flex items-center justify-end gap-0.5 rounded-full border border-border/60 bg-muted/30 p-0.5">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-primary hover:bg-primary/10" title="Change Password"
                           onClick={() => { setPwDialog({ open: true, user: u }); setNewPassword(""); setShowPw(false); }}>
                           <Key className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className={`h-8 w-8 ${u.isActive ? "text-red-500 hover:bg-red-50" : "text-green-500 hover:bg-green-50"}`}
+                        <Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full ${u.isActive ? "text-red-500 hover:bg-red-50" : "text-green-500 hover:bg-green-50"}`}
                           title={u.isActive ? "Deactivate" : "Activate"} onClick={() => handleToggle(u)}>
                           {u.isActive ? <ShieldOff className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" title="Delete"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50" title="Delete"
                           onClick={() => setDelDialog({ open: true, user: u })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
