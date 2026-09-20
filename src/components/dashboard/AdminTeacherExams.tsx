@@ -1657,6 +1657,11 @@ export function AdminTeacherExams() {
                 <label className="text-sm font-medium text-foreground">Subjects</label>
                 <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
+              {termForm.class && termSubjectOptions.length === 0 && (
+                <p className="text-xs text-amber-600 mb-2">
+                  No subjects are assigned to Class {termForm.class}{termForm.section ? `-${termForm.section}` : ""} yet — assign some from Subject &amp; Class, or type names in below.
+                </p>
+              )}
               <div className="space-y-3">
                 {termSubjects.map((s, i) => {
                   const selectedSubjects = new Set(termSubjects.filter((row, idx) => idx !== i && row.subject).map((row) => row.subject));
@@ -1665,7 +1670,9 @@ export function AdminTeacherExams() {
                   <div key={i} className="rounded-lg border border-border p-2.5 space-y-2">
                     <div className="grid grid-cols-[1.4fr_1fr_0.7fr_auto] gap-2 items-end">
                       <Field label="Subject">
-                        {termSubjectOptions.length > 0 ? (
+                        {!termForm.class ? (
+                          <Input placeholder="Select a class first" value="" disabled />
+                        ) : termSubjectOptions.length > 0 ? (
                           <Select value={s.subject} onValueChange={(v) => updateTermSubjectRow(i, { subject: v || "" })}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
                             <SelectContent>
@@ -1675,7 +1682,7 @@ export function AdminTeacherExams() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Input placeholder="Mathematics" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
+                          <Input placeholder="Type a subject name" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
                         )}
                       </Field>
                       <Field label="Date">
