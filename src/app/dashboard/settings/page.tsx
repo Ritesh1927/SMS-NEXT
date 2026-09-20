@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload } from "lucide-react";
+import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -153,8 +153,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChangePassword = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
       toast.error("Error", { description: "Enter your current and new password." });
       return;
@@ -258,18 +257,25 @@ export default function SettingsPage() {
               </div>
 
               <Field label="School Logo">
-                <div className="flex items-center gap-4">
-                  {profile.logo && (
+                <div className="flex items-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                  {profile.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element -- data-URI/arbitrary remote logo, not an optimizable static asset.
-                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-lg object-cover border border-border" />
+                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-xl object-cover border border-border shadow-sm shrink-0" />
+                  ) : (
+                    <div className="icon-chip h-16 w-16 shrink-0 bg-primary/10 text-primary">
+                      <School className="h-6 w-6" />
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => logoInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-border rounded-lg hover:bg-muted/50 transition-colors text-sm text-muted-foreground"
-                  >
-                    <Upload className="h-4 w-4" /> {profile.logo ? "Change Logo" : "Upload Logo"}
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 transition-opacity"
+                    >
+                      <Upload className="h-4 w-4" /> {profile.logo ? "Change Logo" : "Upload Logo"}
+                    </button>
+                    <p className="mt-1.5 text-xs text-muted-foreground">PNG or JPG, square image recommended.</p>
+                  </div>
                   <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                 </div>
               </Field>
@@ -395,23 +401,22 @@ export default function SettingsPage() {
             <Panel icon={Bell} title="Notification Preferences">
               {(
                 [
-                  ["emailAlerts", "Email Alerts", "Receive notifications via email"],
-                  ["smsAlerts", "SMS Alerts", "Receive notifications via SMS"],
-                  ["attendanceAlerts", "Attendance Alerts", "Get notified when attendance is below threshold"],
-                  ["feeReminders", "Fee Reminders", "Send automatic fee payment reminders"],
-                  ["examNotifications", "Exam Notifications", "Notify students and parents about upcoming exams"],
-                ] as [keyof SchoolProfile["settings"]["notifications"], string, string][]
-              ).map(([key, label, desc]) => (
-                <div key={key} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                  </div>
-                  <Switch
-                    checked={profile.settings.notifications[key]}
-                    onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, notifications: { ...p.settings.notifications, [key]: v } } })}
-                  />
-                </div>
+                  ["emailAlerts", Mail, "bg-blue-500/10 text-blue-600", "Email Alerts", "Receive notifications via email"],
+                  ["smsAlerts", MessageSquare, "bg-emerald-500/10 text-emerald-600", "SMS Alerts", "Receive notifications via SMS"],
+                  ["attendanceAlerts", CalendarCheck, "bg-amber-500/10 text-amber-600", "Attendance Alerts", "Get notified when attendance is below threshold"],
+                  ["feeReminders", DollarSign, "bg-rose-500/10 text-rose-600", "Fee Reminders", "Send automatic fee payment reminders"],
+                  ["examNotifications", BookOpen, "bg-violet-500/10 text-violet-600", "Exam Notifications", "Notify students and parents about upcoming exams"],
+                ] as [keyof SchoolProfile["settings"]["notifications"], LucideIcon, string, string, string][]
+              ).map(([key, icon, colorClass, label, desc]) => (
+                <ToggleRow
+                  key={key}
+                  icon={icon}
+                  colorClass={colorClass}
+                  label={label}
+                  description={desc}
+                  checked={profile.settings.notifications[key]}
+                  onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, notifications: { ...p.settings.notifications, [key]: v } } })}
+                />
               ))}
             </Panel>
           </TabsContent>
@@ -436,64 +441,63 @@ export default function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div className="flex items-center justify-between py-3 border-t border-border">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
-                  <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
-                </div>
-                <Switch
+              <div className="pt-1 border-t border-border">
+                <ToggleRow
+                  icon={Lock}
+                  colorClass="bg-indigo-500/10 text-indigo-600"
+                  label="Two-Factor Authentication"
+                  description="Add an extra layer of security"
                   checked={profile.settings.security.twoFactorAuth}
                   onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, security: { ...p.settings.security, twoFactorAuth: v } } })}
                 />
               </div>
             </Panel>
 
-            <form onSubmit={handleChangePassword}>
-              <Panel icon={Shield} title="Change Password">
-                <Field label="Current Password">
+            <Panel icon={Shield} title="Change Password">
+              <Field label="Current Password">
+                <Input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  autoComplete="current-password"
+                />
+              </Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="New Password">
                   <Input
                     type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    autoComplete="current-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    autoComplete="new-password"
                   />
                 </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="New Password">
-                    <Input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Min 6 characters"
-                      autoComplete="new-password"
-                    />
-                  </Field>
-                  <Field label="Confirm New Password">
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
-                      autoComplete="new-password"
-                    />
-                  </Field>
-                </div>
-                <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={changingPassword}>
-                  {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
-                </Button>
-              </Panel>
-            </form>
+                <Field label="Confirm New Password">
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    autoComplete="new-password"
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleChangePassword())}
+                  />
+                </Field>
+              </div>
+              <Button type="button" onClick={handleChangePassword} className="gap-1.5 bg-primary hover:bg-primary/90" disabled={changingPassword}>
+                {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
+              </Button>
+            </Panel>
           </TabsContent>
 
           <TabsContent value="fees" className="mt-4">
             <Panel icon={DollarSign} title="Late Fee Configuration">
-              <div className="flex items-center justify-between py-3 border-b border-border">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Enable Late Fees</p>
-                  <p className="text-xs text-muted-foreground">Automatically apply late fees on overdue payments</p>
-                </div>
-                <Switch
+              <div className="pb-1 border-b border-border">
+                <ToggleRow
+                  icon={AlarmClock}
+                  colorClass="bg-orange-500/10 text-orange-600"
+                  label="Enable Late Fees"
+                  description="Automatically apply late fees on overdue payments"
                   checked={profile.settings.lateFee.enabled}
                   onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: v } } })}
                 />
@@ -579,6 +583,25 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function ToggleRow({
+  icon: Icon, colorClass, label, description, checked, onCheckedChange,
+}: { icon: LucideIcon; colorClass: string; label: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-4 -mx-2 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`icon-chip h-9 w-9 shrink-0 ${colorClass}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 }
