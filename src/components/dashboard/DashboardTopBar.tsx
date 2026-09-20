@@ -19,7 +19,20 @@ interface NoticeItem {
   title: string;
   content: string;
   isUrgent: boolean;
+  isPinned: boolean;
   createdAt: string;
+}
+
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 interface NoticesResponse {
@@ -77,7 +90,11 @@ export function DashboardTopBar({
   const boxRef = useRef<HTMLDivElement>(null);
 
   const [notices, setNotices] = useState<NoticeItem[]>([]);
-  const [hasUnseen, setHasUnseen] = useState(false);
+  // The lastSeen cutoff used to bold/highlight "new" rows in the open panel
+  // -- captured once per load so it doesn't shift under the user's cursor
+  // the instant they open the panel (only the bell's own badge should react
+  // immediately; the highlighted rows should stay readable for this view).
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
   const lastSeenKey = `notif_lastSeen_${user.id}`;
 
   useEffect(() => {
@@ -87,18 +104,23 @@ export function DashboardTopBar({
       .then((res) => {
         const list = res.data.slice(0, 8);
         setNotices(list);
-        const lastSeen = localStorage.getItem(lastSeenKey);
-        const newest = list[0]?.createdAt;
-        setHasUnseen(!!newest && (!lastSeen || new Date(newest) > new Date(lastSeen)));
+        setLastSeen(localStorage.getItem(lastSeenKey));
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isNew = (n: NoticeItem) => !lastSeen || new Date(n.createdAt) > new Date(lastSeen);
+  const newCount = notices.filter(isNew).length;
+
   const handleBellOpen = (isOpen: boolean) => {
-    if (isOpen && notices[0]?.createdAt) {
-      localStorage.setItem(lastSeenKey, notices[0].createdAt);
-      setHasUnseen(false);
+    // notices is sorted pinned/urgent-first, not by recency, so the cutoff
+    // has to be the max createdAt across the whole list -- not notices[0],
+    // which could be an older pinned/urgent notice sitting ahead of a
+    // newer plain one.
+    if (isOpen && notices.length > 0) {
+      const newest = notices.reduce((max, n) => (n.createdAt > max ? n.createdAt : max), notices[0].createdAt);
+      localStorage.setItem(lastSeenKey, newest);
     }
   };
 
@@ -241,37 +263,70 @@ export function DashboardTopBar({
           <DropdownMenuTrigger
             render={
               <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted">
-                <Bell className="h-[18px] w-[18px]" />
-                {hasUnseen && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />}
+                <Bell className={`h-[18px] w-[18px] ${newCount > 0 ? "text-primary" : ""}`} />
+                {newCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card">
+                    <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
+                    <span className="relative">{newCount > 9 ? "9+" : newCount}</span>
+                  </span>
+                )}
               </Button>
             }
           />
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Notices</DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" className="w-96 p-0 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+              <span className="text-sm font-bold text-foreground">Notifications</span>
+              {newCount > 0 && (
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {newCount} new
+                </span>
+              )}
+            </div>
             {notices.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No notices yet.</p>
+              <div className="flex flex-col items-center gap-2 py-10">
+                <div className="icon-chip h-11 w-11 bg-muted text-muted-foreground/60">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-muted-foreground">No notices yet.</p>
+              </div>
             ) : (
-              <div className="max-h-80 overflow-y-auto space-y-1">
-                {notices.map((n) => (
-                  <div key={n._id} className="flex items-start gap-2.5 rounded-md px-2 py-2 hover:bg-muted">
-                    {n.isUrgent ? (
-                      <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <Megaphone className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{n.content}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-96 overflow-y-auto divide-y divide-border/70">
+                {notices.map((n) => {
+                  const unread = isNew(n);
+                  return (
+                    <button
+                      key={n._id}
+                      onClick={() => router.push("/dashboard/notices")}
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${unread ? "bg-primary/5" : ""}`}
+                    >
+                      <div
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ${
+                          n.isUrgent ? "bg-gradient-to-br from-red-500 to-red-600" : "bg-gradient-to-br from-primary to-accent"
+                        }`}
+                      >
+                        {n.isUrgent ? <AlertTriangle className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-sm truncate ${unread ? "font-bold text-foreground" : "font-medium text-foreground/90"}`}>{n.title}</p>
+                          {unread && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.content}</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-1">{timeAgo(n.createdAt)}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/dashboard/notices")}>View all notices</DropdownMenuItem>
+            <div className="border-t border-border p-2">
+              <button
+                onClick={() => router.push("/dashboard/notices")}
+                className="w-full rounded-lg py-2 text-center text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+              >
+                View all notices
+              </button>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
