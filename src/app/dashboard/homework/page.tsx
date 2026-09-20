@@ -545,9 +545,7 @@ function ParentHomework() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : children === null || (childId && !items) ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-        </div>
+        <PageLoader label="Loading homework..." />
       ) : children.length === 0 ? (
         <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <p className="text-sm text-muted-foreground">No children linked to your account yet.</p>

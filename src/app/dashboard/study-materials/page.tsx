@@ -76,6 +76,7 @@ export default function StudyMaterialsPage() {
 
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
+  const [childrenLoading, setChildrenLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -109,20 +110,35 @@ export default function StudyMaterialsPage() {
   };
 
   useEffect(() => {
+    // A parent's materials depend on which child is selected, which in turn
+    // depends on the separate children fetch below finishing first -- run
+    // this only once we know whether there's a child to scope to, so a
+    // parent never sees a false "no child linked" flash while that fetch is
+    // still in flight.
+    if (isParent && childrenLoading) return;
     fetchMaterials();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isParent, selectedChildId]);
+  }, [isParent, selectedChildId, childrenLoading]);
 
   useEffect(() => {
-    if (!isParent) return;
+    if (!isParent) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: non-parent roles never fetch children, so resolve this immediately instead of leaving childrenLoading stuck true forever.
+      setChildrenLoading(false);
+      return;
+    }
     const token = getToken();
-    if (!token) return;
+    if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: no token means an auth redirect is imminent; still resolve so this doesn't hang.
+      setChildrenLoading(false);
+      return;
+    }
     apiGet<{ success: boolean; data: { children: Child[] } }>("/dashboard/parent", token)
       .then((res) => {
         setChildren(res.data.children);
         if (res.data.children.length > 0) setSelectedChildId(res.data.children[0]._id);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setChildrenLoading(false));
   }, [isParent]);
 
   useEffect(() => {
@@ -310,9 +326,9 @@ export default function StudyMaterialsPage() {
         <Input placeholder="Search by title or subject…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      {loading ? (
+      {loading || (isParent && childrenLoading) ? (
         <PageLoader label="Loading study materials..." />
-      ) : isParent && !selectedChildId ? (
+      ) : isParent && children.length === 0 ? (
         <EmptyState icon={Users} message="No child linked to your account yet." />
       ) : filtered.length === 0 ? (
         <EmptyState icon={BookOpen} message="No materials found." />
