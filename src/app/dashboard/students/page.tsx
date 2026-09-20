@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX, Search, TrendingUp, ArrowUpRight, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -63,6 +63,7 @@ export default function StudentsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [pendingDelete, setPendingDelete] = useState<StudentRow | null>(null);
 
   // Teachers get a read-only view scoped to their own classes — matches
@@ -139,9 +140,15 @@ export default function StudentsPage() {
     active: allStudents.filter((s) => s.isActive).length,
     inactive: allStudents.filter((s) => !s.isActive).length,
   };
+  const withAttendance = allStudents.filter((s) => s.attendance > 0);
+  const avgAttendance = withAttendance.length
+    ? Math.round(withAttendance.reduce((sum, s) => sum + s.attendance, 0) / withAttendance.length)
+    : null;
 
   const filteredStudents = (students || []).filter((s) => {
     if (classFilter && s.class !== classFilter) return false;
+    if (statusFilter === "active" && !s.isActive) return false;
+    if (statusFilter === "inactive" && s.isActive) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -154,6 +161,19 @@ export default function StudentsPage() {
     }
     return true;
   });
+
+  const attendanceTone = (pct: number): "success" | "warning" | "destructive" =>
+    pct >= 90 ? "success" : pct >= 75 ? "warning" : "destructive";
+  const ATTENDANCE_BAR: Record<"success" | "warning" | "destructive", string> = {
+    success: "bg-success",
+    warning: "bg-warning",
+    destructive: "bg-destructive",
+  };
+  const ATTENDANCE_TEXT: Record<"success" | "warning" | "destructive", string> = {
+    success: "text-success",
+    warning: "text-warning",
+    destructive: "text-destructive",
+  };
 
   return (
     <div>
@@ -176,38 +196,49 @@ export default function StudentsPage() {
 
       {students && students.length > 0 && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Users className="h-5 w-5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <StatFilterCard
+              icon={Users}
+              color="#4F46E5"
+              colorDark="#4338CA"
+              value={counts.total}
+              label="Total Students"
+              active={statusFilter === "all"}
+              onClick={() => setStatusFilter("all")}
+            />
+            <StatFilterCard
+              icon={UserCheck}
+              color="#16A34A"
+              colorDark="#15803D"
+              value={counts.active}
+              label="Active"
+              active={statusFilter === "active"}
+              onClick={() => setStatusFilter(statusFilter === "active" ? "all" : "active")}
+            />
+            <StatFilterCard
+              icon={UserX}
+              color="#DC2626"
+              colorDark="#B91C1C"
+              value={counts.inactive}
+              label="Inactive"
+              active={statusFilter === "inactive"}
+              onClick={() => setStatusFilter(statusFilter === "inactive" ? "all" : "inactive")}
+            />
+            <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm shadow-black/10" style={{ background: "linear-gradient(135deg, #0EA5E9, #0284C7)" }}>
+                <TrendingUp className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-foreground">{counts.total}</p>
-                <p className="text-xs text-muted-foreground">Total Students</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                <UserCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-green-600">{counts.active}</p>
-                <p className="text-xs text-muted-foreground">Active</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                <UserX className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-red-600">{counts.inactive}</p>
-                <p className="text-xs text-muted-foreground">Inactive</p>
-              </div>
+              <p className="mt-4 text-sm font-medium text-muted-foreground">Avg. Attendance</p>
+              <p className="mt-1 text-[28px] font-bold leading-none text-foreground">{avgAttendance != null ? `${avgAttendance}%` : "—"}</p>
+              <p className="mt-2.5 text-xs text-muted-foreground">Across {withAttendance.length} marked student{withAttendance.length === 1 ? "" : "s"}</p>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:max-w-xs" />
+            <div className="relative sm:max-w-xs w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            </div>
             <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "")}>
               <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
@@ -217,6 +248,16 @@ export default function StudentsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {statusFilter !== "all" && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary/15 transition-colors"
+              >
+                {statusFilter === "active" ? "Active only" : "Inactive only"}
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </>
       )}
@@ -267,9 +308,9 @@ export default function StudentsPage() {
             <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
           </div>
           {filteredStudents.map((s) => (
-            <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
+            <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-11 w-11 shrink-0 border border-border">
+                <Avatar className={`h-11 w-11 shrink-0 border-2 ${s.isActive ? "border-success/30" : "border-destructive/30"}`}>
                   <AvatarImage src={s.photo} alt={s.name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                     {s.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -304,9 +345,9 @@ export default function StudentsPage() {
                 {s.attendance > 0 ? (
                   <>
                     <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${s.attendance}%` }} />
+                      <div className={`h-full rounded-full ${ATTENDANCE_BAR[attendanceTone(s.attendance)]}`} style={{ width: `${s.attendance}%` }} />
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground">{s.attendance}%</span>
+                    <span className={`text-xs font-medium ${ATTENDANCE_TEXT[attendanceTone(s.attendance)]}`}>{s.attendance}%</span>
                   </>
                 ) : (
                   <span className="text-xs text-muted-foreground/70">—</span>
@@ -356,5 +397,41 @@ export default function StudentsPage() {
         onConfirm={confirmDelete}
       />
     </div>
+  );
+}
+
+function StatFilterCard({
+  icon: Icon,
+  color,
+  colorDark,
+  value,
+  label,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  color: string;
+  colorDark: string;
+  value: number;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${active ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
+      style={active ? ({ "--tw-ring-color": color } as React.CSSProperties) : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm shadow-black/10" style={{ background: `linear-gradient(135deg, ${color}, ${colorDark})` }}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <ArrowUpRight className="h-4 w-4 text-muted-foreground/50" />
+      </div>
+      <p className="mt-4 text-[28px] font-bold leading-none text-foreground">{value}</p>
+      <p className="mt-1.5 text-sm font-medium text-muted-foreground">{label}</p>
+    </button>
   );
 }
