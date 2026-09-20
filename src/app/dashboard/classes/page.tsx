@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search, School } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search, School, UserX, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -13,6 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { StatFilterCard } from "@/components/StatFilterCard";
+import { statusPillClass } from "@/lib/statusStyles";
+
+const CARD_PALETTE = [
+  { color: "#4F46E5", colorDark: "#4338CA" },
+  { color: "#0EA5E9", colorDark: "#0284C7" },
+  { color: "#8B5CF6", colorDark: "#7C3AED" },
+  { color: "#16A34A", colorDark: "#15803D" },
+  { color: "#F59E0B", colorDark: "#D97706" },
+  { color: "#EC4899", colorDark: "#DB2777" },
+];
 
 interface ClassRow {
   _id: string;
@@ -61,6 +72,7 @@ export default function ClassesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [noTeacherFilter, setNoTeacherFilter] = useState(false);
 
   const isTeacher = user?.role === "teacher";
 
@@ -159,7 +171,12 @@ export default function ClassesPage() {
 
   if (!user) return null;
 
-  const filteredClasses = (classes || []).filter((c) => {
+  const allClasses = classes || [];
+  const totalStudents = allClasses.reduce((sum, c) => sum + c.studentCount, 0);
+  const withoutTeacher = allClasses.filter((c) => !c.classTeacher).length;
+
+  const filteredClasses = allClasses.filter((c) => {
+    if (noTeacherFilter && c.classTeacher) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -194,10 +211,39 @@ export default function ClassesPage() {
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
       {classes && classes.length > 0 && (
-        <div className="relative max-w-sm mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search classes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <StatFilterCard icon={School} color="#4F46E5" colorDark="#4338CA" value={allClasses.length} label="Total Classes" />
+            <StatFilterCard icon={Users} color="#0EA5E9" colorDark="#0284C7" value={totalStudents} label="Total Students" sublabel="Across all classes" />
+            <StatFilterCard
+              icon={UserX}
+              color="#DC2626"
+              colorDark="#B91C1C"
+              value={withoutTeacher}
+              label="Without Class Teacher"
+              sublabel={withoutTeacher === 0 ? "All classes covered" : "Needs assignment"}
+              active={noTeacherFilter}
+              onClick={!isTeacher ? () => setNoTeacherFilter((v) => !v) : undefined}
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative max-w-sm w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search classes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            </div>
+            {noTeacherFilter && (
+              <button
+                type="button"
+                onClick={() => setNoTeacherFilter(false)}
+                className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary/15 transition-colors"
+              >
+                Without teacher only
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       {error ? null : !classes ? (
@@ -214,56 +260,72 @@ export default function ClassesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClasses.map((c) => (
-            <div
-              key={c._id}
-              className="group rounded-2xl bg-card p-5 border border-border shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/30"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="icon-chip h-10 w-10 bg-blue-500/10 text-blue-600 font-heading font-bold text-sm">
-                    {c.name}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Class {c.name}-{c.section}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {c.classTeacher ? `${c.classTeacher.name} (${c.classTeacher.teacherId})` : "No class teacher assigned"}
-                    </p>
-                  </div>
-                </div>
-                {!isTeacher && (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleDelete(c)}
-                      disabled={busyId === c._id}
-                      aria-label="Delete"
-                      className="hover:text-destructive"
+          {filteredClasses.map((c, i) => {
+            const palette = CARD_PALETTE[i % CARD_PALETTE.length];
+            return (
+              <div
+                key={c._id}
+                className="group relative overflow-hidden rounded-2xl bg-card p-5 border border-border shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_24px_-16px_rgba(15,23,42,0.2)]"
+              >
+                <School
+                  className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 rotate-[-12deg] transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110"
+                  style={{ color: palette.color, opacity: 0.06 }}
+                />
+                <div className="relative flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-heading font-bold text-sm text-white transition-transform duration-300 group-hover:scale-110"
+                      style={{ background: `linear-gradient(135deg, ${palette.color}, ${palette.colorDark})`, boxShadow: `0 8px 18px -6px ${palette.color}80` }}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                      {c.name}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Class {c.name}-{c.section}</p>
+                      {c.classTeacher ? (
+                        <p className="text-xs text-muted-foreground mt-0.5">{c.classTeacher.name} ({c.classTeacher.teacherId})</p>
+                      ) : (
+                        <span className={`inline-flex mt-1 ${statusPillClass("warning")}`}>No class teacher</span>
+                      )}
+                    </div>
+                  </div>
+                  {!isTeacher && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleDelete(c)}
+                        disabled={busyId === c._id}
+                        aria-label="Delete"
+                        className="hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="relative mt-3 flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-3">
+                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.studentCount} students</span>
+                  {c.room && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" /> {c.room}</span>}
+                </div>
+                {c.assignedSubjects && c.assignedSubjects.length > 0 && (
+                  <div className="relative mt-2 flex flex-wrap gap-1.5">
+                    {c.assignedSubjects.map((s) => (
+                      <span key={s._id} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">
+                        {s.name}
+                      </span>
+                    ))}
                   </div>
                 )}
+                <div
+                  className="absolute inset-x-0 bottom-0 h-[3px] scale-x-0 transition-transform duration-300 group-hover:scale-x-100"
+                  style={{ background: `linear-gradient(90deg, ${palette.color}, ${palette.colorDark})`, transformOrigin: "left" }}
+                />
               </div>
-              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground border-t border-border pt-3">
-                <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {c.studentCount} students</span>
-                {c.room && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" /> {c.room}</span>}
-              </div>
-              {c.assignedSubjects && c.assignedSubjects.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {c.assignedSubjects.map((s) => (
-                    <span key={s._id} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">
-                      {s.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
