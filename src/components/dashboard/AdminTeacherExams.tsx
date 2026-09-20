@@ -164,6 +164,16 @@ function timeRangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: s
   return timeToMinutes(aStart) < timeToMinutes(bEnd) && timeToMinutes(bStart) < timeToMinutes(aEnd);
 }
 
+// Keeps marks entry within [0, totalMarks] as the teacher types — the
+// number input's `max` attribute alone doesn't stop it (no form submit
+// validation happens on these row buttons), so a stray digit can otherwise
+// save a score above the paper's total.
+function clampMarks(value: number, totalMarks: number | undefined): number {
+  if (Number.isNaN(value)) return 0;
+  const clamped = Math.max(0, value);
+  return totalMarks !== undefined ? Math.min(clamped, totalMarks) : clamped;
+}
+
 // Validates a set of {date, startTime, endTime} slots that may share a
 // class/exam batch: every slot needs both times, end must be after start,
 // and two slots landing on the same date can't overlap in time-of-day.
@@ -739,7 +749,7 @@ export function AdminTeacherExams() {
 
   const saveRows = async (examId: string, rows: MergedResultRow[]) => {
     const token = getToken();
-    if (!token) return;
+    if (!token) return null;
     const res = await fetch(`/api/exams/${examId}/marks`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -747,6 +757,10 @@ export function AdminTeacherExams() {
     });
     const json: ApiMessageResponse = await res.json();
     if (!res.ok || !json.success) throw new Error(json.message || "Failed to save marks.");
+    // Surfaces the server's message when it flags skipped out-of-range
+    // entries (client-side clamping should prevent this, but the server
+    // is the source of truth) instead of always showing a flat success toast.
+    return json.message && json.message.includes("skipped") ? json.message : null;
   };
 
   const publishResultIds = async (resultIds: string[], publish: boolean) => {
@@ -765,8 +779,8 @@ export function AdminTeacherExams() {
     if (!rTestRows || !rSourceId) return;
     setRSaving(true);
     try {
-      await saveRows(rSourceId, rTestRows);
-      toast.success("Marks saved");
+      const warning = await saveRows(rSourceId, rTestRows);
+      if (warning) toast.warning(warning); else toast.success("Marks saved");
       await loadTestSource(rSourceId);
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -795,7 +809,11 @@ export function AdminTeacherExams() {
     if (!rSourceId || row.marksObtained === null) return;
     setBusyId(row.student._id);
     try {
-      await saveRows(rSourceId, [row]);
+      const warning = await saveRows(rSourceId, [row]);
+      if (warning) {
+        toast.warning(warning);
+        return;
+      }
       const token = getToken();
       if (!token) return;
       const resultsRes = await apiGet<{ success: boolean; data: { results: ResultRow[] } }>(`/exams/${rSourceId}/results`, token);
@@ -830,8 +848,8 @@ export function AdminTeacherExams() {
     if (!rows) return;
     setRSaving(true);
     try {
-      await saveRows(rActiveSubjectId, rows);
-      toast.success("Marks saved");
+      const warning = await saveRows(rActiveSubjectId, rows);
+      if (warning) toast.warning(warning); else toast.success("Marks saved");
       const token = getToken();
       if (!token) return;
       const [rosterRes, resultsRes] = await Promise.all([
@@ -1233,7 +1251,7 @@ export function AdminTeacherExams() {
                           <Input
                             type="number" min={0} max={rTestMeta?.totalMarks}
                             value={row.marksObtained ?? ""}
-                            onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : Number(e.target.value) })}
+                            onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
                             className="w-20 h-8"
                           />
                         </TableCell>
@@ -1368,7 +1386,7 @@ export function AdminTeacherExams() {
                               type="number" min={0}
                               max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
                               value={row.marksObtained ?? ""}
-                              onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : Number(e.target.value) })}
+                              onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
                               className="w-20 h-8"
                             />
                           </TableCell>

@@ -36,10 +36,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     let saved = 0;
+    let outOfRange = 0;
     for (const r of results as { studentId: string; marksObtained: number | string | null; remarks?: string }[]) {
       if (r.marksObtained === "" || r.marksObtained === null || r.marksObtained === undefined) continue;
       const marksObtained = Number(r.marksObtained);
       if (Number.isNaN(marksObtained)) continue;
+      if (marksObtained < 0 || marksObtained > exam.totalMarks) {
+        outOfRange++;
+        continue;
+      }
 
       const existing = await Result.findOne({ exam: id, student: r.studentId });
       let result;
@@ -72,7 +77,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     exam.status = "completed";
     await exam.save();
 
-    return NextResponse.json({ success: true, message: "Marks entered.", count: saved });
+    const message = outOfRange > 0
+      ? `Marks entered. ${outOfRange} entr${outOfRange > 1 ? "ies" : "y"} skipped — must be between 0 and ${exam.totalMarks}.`
+      : "Marks entered.";
+    return NextResponse.json({ success: true, message, count: saved });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to save marks." },
