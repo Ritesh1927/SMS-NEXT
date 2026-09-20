@@ -405,7 +405,7 @@ export default function ChatPage() {
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {loadingThread ? (
-                <PageLoader label="Loading messages..." />
+                <PageLoader compact label="Loading messages..." />
               ) : messages.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
               ) : (
