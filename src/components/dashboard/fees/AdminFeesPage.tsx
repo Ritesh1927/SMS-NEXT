@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { StatFilterCard } from "@/components/StatFilterCard";
 import CollectFeeTab from "./CollectFeeTab";
 import ReportsTab from "./ReportsTab";
 
@@ -380,11 +381,11 @@ export default function AdminFeesPage() {
       {tab === "dashboard" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashStatCard title="Total Collected (Year)" value={fmt(dash.totalYear)} sub={`FY ${new Date().getFullYear()}`} icon={DollarSign} bg="bg-gradient-to-br from-orange-500 to-amber-500" />
-            <DashStatCard title="This Month" value={fmt(dash.thisMonth)} sub={new Date().toLocaleString("en", { month: "short" })} icon={TrendingUp} bg="bg-gradient-to-br from-cyan-500 to-blue-500" />
-            <DashStatCard title="Pending Dues" value={fmt(dash.totalPending)} sub="Across all students" icon={AlertCircle} bg="bg-gradient-to-br from-blue-500 to-indigo-500" />
+            <StatFilterCard icon={DollarSign} color="#F59E0B" colorDark="#D97706" value={fmt(dash.totalYear)} label="Total Collected (Year)" sublabel={`FY ${new Date().getFullYear()}`} />
+            <StatFilterCard icon={TrendingUp} color="#0EA5E9" colorDark="#0284C7" value={fmt(dash.thisMonth)} label="This Month" sublabel={new Date().toLocaleString("en", { month: "short" })} />
+            <StatFilterCard icon={AlertCircle} color="#4F46E5" colorDark="#4338CA" value={fmt(dash.totalPending)} label="Pending Dues" sublabel="Across all students" />
             {dash.totalLateFees > 0 && (
-              <DashStatCard title="Late Fees Collected" value={fmt(dash.totalLateFees)} sub="From overdue payments" icon={Clock} bg="bg-gradient-to-br from-red-500 to-rose-500" />
+              <StatFilterCard icon={Clock} color="#DC2626" colorDark="#B91C1C" value={fmt(dash.totalLateFees)} label="Late Fees Collected" sublabel="From overdue payments" />
             )}
           </div>
 
@@ -744,25 +745,6 @@ export default function AdminFeesPage() {
   );
 }
 
-function DashStatCard({ title, value, sub, icon: Icon, bg }: { title: string; value: string; sub?: string; icon: React.ElementType; bg: string }) {
-  return (
-    <div className="h-full rounded-[18px] overflow-hidden shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-      <div className={`${bg} h-full p-5 text-white relative`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-        <div className="relative flex items-start justify-between">
-          <div>
-            <p className="text-sm font-medium opacity-90">{title}</p>
-            <p className="text-3xl font-bold mt-1">{value}</p>
-            {sub && <p className="text-xs opacity-75 mt-1">{sub}</p>}
-          </div>
-          <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
-            <Icon className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
