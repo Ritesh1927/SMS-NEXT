@@ -1282,6 +1282,7 @@ export function AdminTeacherExams() {
                       <TableHead>Student</TableHead>
                       <TableHead>Roll</TableHead>
                       <TableHead>Marks</TableHead>
+                      <TableHead>Total Marks</TableHead>
                       <TableHead>Remarks</TableHead>
                       <TableHead className="text-center">Grade</TableHead>
                       <TableHead className="text-center">Result</TableHead>
@@ -1307,6 +1308,7 @@ export function AdminTeacherExams() {
                             className="w-20 h-8"
                           />
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{rTestMeta?.totalMarks ?? "—"}</TableCell>
                         <TableCell>
                           <Input value={row.remarks} onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })} disabled={!currentCanEnterMarks} className="w-32 h-8" />
                         </TableCell>
@@ -1418,6 +1420,7 @@ export function AdminTeacherExams() {
                         <TableHead>Student</TableHead>
                         <TableHead>Roll</TableHead>
                         <TableHead>Marks</TableHead>
+                        <TableHead>Total Marks</TableHead>
                         <TableHead>Remarks</TableHead>
                         <TableHead className="text-center">Grade</TableHead>
                         <TableHead className="text-center">Result</TableHead>
@@ -1443,6 +1446,7 @@ export function AdminTeacherExams() {
                               className="w-20 h-8"
                             />
                           </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{activeTermSubject?.totalMarks ?? "—"}</TableCell>
                           <TableCell>
                             <Input
                               value={row.remarks}
