@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RefreshCw, Check } from "lucide-react";
+import { RefreshCw, Check, CalendarCheck, CalendarRange, Calendar, TrendingUp, AlertCircle, Clock, Tag, AlertTriangle } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox, ComboboxInputGroup, ComboboxInput, ComboboxContent, ComboboxEmpty, ComboboxItem } from "@/components/ui/combobox";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface ClassOption { _id: string; name: string; section: string }
 interface StudentOption { _id: string; name: string; class: string; section: string; studentId: string }
@@ -62,16 +63,16 @@ function RptCollectionSummary() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">Today</p><p className="text-xl font-bold text-green-600">{fmt(data.today.collected)}</p><p className="text-xs text-muted-foreground">{data.today.payments} payments</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Week</p><p className="text-xl font-bold text-primary">{fmt(data.week.collected)}</p><p className="text-xs text-muted-foreground">{data.week.payments} payments</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Month</p><p className="text-xl font-bold text-foreground">{fmt(data.month.collected)}</p><p className="text-xs text-muted-foreground">{data.month.payments} payments</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Year</p><p className="text-xl font-bold text-foreground">{fmt(data.year.collected)}</p></div>
+        <StatFilterCard icon={CalendarCheck} color="#16A34A" colorDark="#15803D" value={fmt(data.today.collected)} label="Today" sublabel={`${data.today.payments} payments`} />
+        <StatFilterCard icon={CalendarRange} color="#4F46E5" colorDark="#4338CA" value={fmt(data.week.collected)} label="This Week" sublabel={`${data.week.payments} payments`} />
+        <StatFilterCard icon={Calendar} color="#8B5CF6" colorDark="#7C3AED" value={fmt(data.month.collected)} label="This Month" sublabel={`${data.month.payments} payments`} />
+        <StatFilterCard icon={TrendingUp} color="#0EA5E9" colorDark="#0284C7" value={fmt(data.year.collected)} label="This Year" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-amber-500"><p className="text-xs text-muted-foreground">Total Pending</p><p className="text-xl font-bold text-amber-600">{fmt(data.pending)}</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-red-500"><p className="text-xs text-muted-foreground">Late Fees Collected</p><p className="text-xl font-bold text-red-600">{fmt(data.lateFees)}</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-green-500"><p className="text-xs text-muted-foreground">Concessions Given</p><p className="text-xl font-bold text-green-600">{fmt(data.concessions)}</p></div>
-        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-blue-500"><p className="text-xs text-muted-foreground">Total Overdue</p><p className="text-xl font-bold text-blue-600">{fmt(data.overdue)}</p></div>
+        <StatFilterCard icon={AlertCircle} color="#F59E0B" colorDark="#D97706" value={fmt(data.pending)} label="Total Pending" />
+        <StatFilterCard icon={Clock} color="#DC2626" colorDark="#B91C1C" value={fmt(data.lateFees)} label="Late Fees Collected" />
+        <StatFilterCard icon={Tag} color="#16A34A" colorDark="#15803D" value={fmt(data.concessions)} label="Concessions Given" />
+        <StatFilterCard icon={AlertTriangle} color="#0EA5E9" colorDark="#0284C7" value={fmt(data.overdue)} label="Total Overdue" />
       </div>
     </div>
   );
