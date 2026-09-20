@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Activity, Search, Trash2, ChevronLeft, ChevronRight, Monitor, Smartphone, Tablet, Globe } from "lucide-react";
+import { Activity, Search, Trash2, ChevronLeft, ChevronRight, Monitor, Smartphone, Tablet, Globe, ShieldCheck, GraduationCap, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -10,11 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface LoginLogRow {
   _id: string;
@@ -35,6 +35,7 @@ interface LoginLogsResponse {
   total: number;
   page: number;
   pages: number;
+  roleCounts: { schooladmin: number; teacher: number; parent: number };
 }
 
 const ROLE_LABELS: Record<string, string> = { schooladmin: "Admin", teacher: "Teacher", parent: "Parent" };
@@ -42,6 +43,12 @@ const ROLE_COLORS: Record<string, string> = {
   schooladmin: "bg-blue-100 text-blue-700",
   teacher: "bg-green-100 text-green-700",
   parent: "bg-purple-100 text-purple-700",
+};
+const ROLE_ICON: Record<string, typeof ShieldCheck> = { schooladmin: ShieldCheck, teacher: GraduationCap, parent: Heart };
+const ROLE_GRADIENT: Record<string, { from: string; to: string }> = {
+  schooladmin: { from: "#3B82F6", to: "#2563EB" },
+  teacher: { from: "#10B981", to: "#059669" },
+  parent: { from: "#8B5CF6", to: "#7C3AED" },
 };
 
 function DeviceIcon({ device }: { device: string }) {
@@ -56,6 +63,7 @@ export default function LoginActivityPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [roleCounts, setRoleCounts] = useState({ schooladmin: 0, teacher: 0, parent: 0 });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -80,6 +88,7 @@ export default function LoginActivityPage() {
         setTotal(res.total);
         setPages(res.pages);
         setPage(res.page);
+        setRoleCounts(res.roleCounts);
       })
       .catch(() => toast.error("Failed to load login logs."))
       .finally(() => setLoading(false));
@@ -126,6 +135,21 @@ export default function LoginActivityPage() {
     <div className="space-y-6">
       <PageHeader icon={Activity} title="Login Activity" subtitle="Track all user logins across your school" accent="slate" />
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {(() => {
+          const grandTotal = roleCounts.schooladmin + roleCounts.teacher + roleCounts.parent;
+          const pct = (n: number) => (grandTotal > 0 ? `${Math.round((n / grandTotal) * 100)}% of logins` : undefined);
+          return (
+            <>
+              <StatFilterCard icon={Activity} color="#4F46E5" colorDark="#4338CA" value={grandTotal} label="Total Logins" active={roleFilter === ""} onClick={() => setRoleFilter("")} />
+              <StatFilterCard icon={ShieldCheck} color="#3B82F6" colorDark="#2563EB" value={roleCounts.schooladmin} label="Admin" sublabel={pct(roleCounts.schooladmin)} active={roleFilter === "schooladmin"} onClick={() => setRoleFilter(roleFilter === "schooladmin" ? "" : "schooladmin")} />
+              <StatFilterCard icon={GraduationCap} color="#10B981" colorDark="#059669" value={roleCounts.teacher} label="Teacher" sublabel={pct(roleCounts.teacher)} active={roleFilter === "teacher"} onClick={() => setRoleFilter(roleFilter === "teacher" ? "" : "teacher")} />
+              <StatFilterCard icon={Heart} color="#8B5CF6" colorDark="#7C3AED" value={roleCounts.parent} label="Parent" sublabel={pct(roleCounts.parent)} active={roleFilter === "parent"} onClick={() => setRoleFilter(roleFilter === "parent" ? "" : "parent")} />
+            </>
+          );
+        })()}
+      </div>
+
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
@@ -136,29 +160,6 @@ export default function LoginActivityPage() {
                 <Input placeholder="Search name or email…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
               </div>
             </div>
-            <div className="min-w-[140px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
-              <Select
-                items={[
-                  { value: "__all__", label: "All Roles" },
-                  { value: "schooladmin", label: "Admin" },
-                  { value: "teacher", label: "Teacher" },
-                  { value: "parent", label: "Parent" },
-                ]}
-                value={roleFilter || "__all__"}
-                onValueChange={(v) => setRoleFilter(v === "__all__" ? "" : v || "")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All Roles</SelectItem>
-                  <SelectItem value="schooladmin">Admin</SelectItem>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="min-w-[150px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -167,6 +168,15 @@ export default function LoginActivityPage() {
               <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
               <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
+            {roleFilter !== "" && (
+              <button
+                type="button"
+                onClick={() => setRoleFilter("")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear role filter ×
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -207,17 +217,35 @@ export default function LoginActivityPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                logs.map((log) => (
-                  <TableRow key={log._id}>
+                logs.map((log) => {
+                  const gradient = ROLE_GRADIENT[log.role];
+                  const RoleIcon = ROLE_ICON[log.role];
+                  return (
+                  <TableRow key={log._id} className="group">
                     <TableCell>
-                      <p className="font-medium text-sm text-foreground">{log.userName}</p>
-                      <p className="text-xs text-muted-foreground">{log.email}</p>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-bold shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105"
+                          style={gradient ? { background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` } : undefined}
+                        >
+                          {log.userName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm text-foreground">{log.userName}</p>
+                          <p className="text-xs text-muted-foreground">{log.email}</p>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${ROLE_COLORS[log.role] || ""}`}>{ROLE_LABELS[log.role] || log.role}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${ROLE_COLORS[log.role] || ""}`}>
+                        {RoleIcon && <RoleIcon className="h-3 w-3" />}
+                        {ROLE_LABELS[log.role] || log.role}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm">{format(new Date(log.loginAt), "dd MMM yyyy, hh:mm a")}</TableCell>
-                    <TableCell className="text-sm font-mono">{log.ip || "-"}</TableCell>
+                    <TableCell className="text-sm">
+                      <span className="font-mono text-xs bg-muted/60 rounded px-1.5 py-0.5">{log.ip || "-"}</span>
+                    </TableCell>
                     <TableCell className="text-sm">{log.browser || "-"}</TableCell>
                     <TableCell className="text-sm">{log.os || "-"}</TableCell>
                     <TableCell>
@@ -233,7 +261,8 @@ export default function LoginActivityPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

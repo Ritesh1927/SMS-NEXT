@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { LoginLog } from "@/models/LoginLog";
@@ -33,16 +34,28 @@ export async function GET(req: Request) {
       filter.loginAt = loginAt;
     }
 
-    const [total, logs] = await Promise.all([
+    const { role: _role, ...filterWithoutRole } = filter;
+    void _role;
+    // Aggregate pipelines skip Mongoose's schema-based casting, so the ObjectId
+    // filter has to be cast explicitly or $match silently matches nothing.
+    const aggregateFilter = { ...filterWithoutRole, school: new mongoose.Types.ObjectId(auth.schoolId) };
+
+    const [total, logs, roleCountRows] = await Promise.all([
       LoginLog.countDocuments(filter),
       LoginLog.find(filter)
         .sort({ loginAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),
+      LoginLog.aggregate([{ $match: aggregateFilter }, { $group: { _id: "$role", count: { $sum: 1 } } }]),
     ]);
 
-    return NextResponse.json({ success: true, data: logs, total, page, pages: Math.ceil(total / limit) });
+    const roleCounts = { schooladmin: 0, teacher: 0, parent: 0 };
+    for (const row of roleCountRows) {
+      if (row._id in roleCounts) roleCounts[row._id as keyof typeof roleCounts] = row.count;
+    }
+
+    return NextResponse.json({ success: true, data: logs, total, page, pages: Math.ceil(total / limit), roleCounts });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load login logs." },
