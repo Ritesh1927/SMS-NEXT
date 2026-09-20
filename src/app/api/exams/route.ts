@@ -49,34 +49,51 @@ export async function POST(req: Request) {
       }
     }
 
-    const { title, class: cls, section, subject, date, startTime, endTime, totalMarks, passingMarks, examType, instructions } =
+    const { title, class: cls, section, subject, subjects, date, startTime, endTime, totalMarks, passingMarks, examType, instructions } =
       await req.json();
-    if (!title || !cls || !subject || !date || totalMarks === undefined || passingMarks === undefined) {
+    // A "Test" can now be created for several subjects at once -- each
+    // subject still becomes its own Exam doc (own roster/marks/results),
+    // same as ScheduledExam's per-subject slots, just without the term
+    // wrapper. `subject` (singular) stays supported for editing a single
+    // existing exam, which never changes how many subjects it covers.
+    const subjectList: string[] = Array.isArray(subjects) && subjects.length ? subjects : subject ? [subject] : [];
+    if (!title || !cls || subjectList.length === 0 || !date || totalMarks === undefined || passingMarks === undefined) {
       return NextResponse.json(
-        { success: false, message: "Title, class, subject, date, totalMarks and passingMarks are required." },
+        { success: false, message: "Title, class, at least one subject, date, totalMarks and passingMarks are required." },
         { status: 400 },
       );
     }
 
-    const exam = await Exam.create({
-      school: auth.schoolId,
-      title,
-      class: cls,
-      section: section || "",
-      subject,
-      date,
-      startTime: startTime || "",
-      endTime: endTime || "",
-      totalMarks,
-      passingMarks,
-      examType: examType || "unit-test",
-      instructions: instructions || "",
-      createdBy: auth.id,
-      createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
-      status: "upcoming",
-    });
+    const created = await Promise.all(
+      subjectList.map((subj) =>
+        Exam.create({
+          school: auth.schoolId,
+          title,
+          class: cls,
+          section: section || "",
+          subject: subj,
+          date,
+          startTime: startTime || "",
+          endTime: endTime || "",
+          totalMarks,
+          passingMarks,
+          examType: examType || "unit-test",
+          instructions: instructions || "",
+          createdBy: auth.id,
+          createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+          status: "upcoming",
+        }),
+      ),
+    );
 
-    return NextResponse.json({ success: true, message: "Exam created.", data: exam }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        message: created.length > 1 ? `${created.length} tests created.` : "Exam created.",
+        data: created.length === 1 ? created[0] : created,
+      },
+      { status: 201 },
+    );
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to create exam." },
