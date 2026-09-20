@@ -204,17 +204,19 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
                             render={
                               <Link
                                 href={item.href}
-                                className={`relative flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-medium transition-colors ${
-                                  isActive ? `${theme.activeBg} ${theme.activeText} font-semibold` : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                className={`relative flex h-11 items-center gap-3 rounded-[8px]! px-3 text-sm font-medium transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0! ${
+                                  isActive
+                                    ? `${theme.activeBg.replaceAll("bg-accent/10", "bg-accent/10!").replaceAll("border-accent/20", "border-accent/20!")} ${theme.activeText} font-semibold`
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 }`}
                               >
                                 {isActive && (
-                                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary" />
+                                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary group-data-[collapsible=icon]:hidden" />
                                 )}
                                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]">
                                   <item.icon className={`h-4 w-4 shrink-0 ${isActive ? theme.activeText : theme.icon}`} />
                                 </span>
-                                <span className="truncate">{item.label}</span>
+                                <span className="truncate group-data-[collapsible=icon]:hidden">{item.label}</span>
                               </Link>
                             }
                           />
