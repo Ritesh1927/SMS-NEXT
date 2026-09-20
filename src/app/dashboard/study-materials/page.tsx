@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 type MaterialType = "notes" | "paper" | "worksheet";
 
@@ -263,18 +264,50 @@ export default function StudyMaterialsPage() {
         }
       />
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by title or subject…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {materials.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatFilterCard
+            icon={BookMarked}
+            color="#4F46E5"
+            colorDark="#4338CA"
+            value={materials.length}
+            label="Total Materials"
+            active={typeFilter === "all"}
+            onClick={() => setTypeFilter("all")}
+          />
+          <StatFilterCard
+            icon={BookMarked}
+            color="#0EA5E9"
+            colorDark="#0284C7"
+            value={materials.filter((m) => m.type === "notes").length}
+            label="Notes"
+            active={typeFilter === "notes"}
+            onClick={() => setTypeFilter(typeFilter === "notes" ? "all" : "notes")}
+          />
+          <StatFilterCard
+            icon={File}
+            color="#F59E0B"
+            colorDark="#D97706"
+            value={materials.filter((m) => m.type === "paper").length}
+            label="Past Papers"
+            active={typeFilter === "paper"}
+            onClick={() => setTypeFilter(typeFilter === "paper" ? "all" : "paper")}
+          />
+          <StatFilterCard
+            icon={BookOpen}
+            color="#16A34A"
+            colorDark="#15803D"
+            value={materials.filter((m) => m.type === "worksheet").length}
+            label="Worksheets"
+            active={typeFilter === "worksheet"}
+            onClick={() => setTypeFilter(typeFilter === "worksheet" ? "all" : "worksheet")}
+          />
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {(["all", "notes", "paper", "worksheet"] as const).map((t) => (
-            <Button key={t} variant={typeFilter === t ? "default" : "outline"} size="sm" onClick={() => setTypeFilter(t)}>
-              {t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}
-            </Button>
-          ))}
-        </div>
+      )}
+
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Search by title or subject…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {loading ? (
