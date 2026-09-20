@@ -1007,20 +1007,20 @@ export function AdminTeacherExams() {
                         {exam.status}
                       </span>
                       {locked && !isAdmin ? (
-                        <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Request change">
+                        <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Request change" title="This test starts within 2 hours, so changes need admin approval — request one">
                           <FileEdit className="h-3.5 w-3.5" />
                         </Button>
                       ) : (
                         <>
-                          <Button variant="ghost" size="icon-sm" onClick={() => openEditExam(exam)} aria-label="Edit">
+                          <Button variant="ghost" size="icon-sm" onClick={() => openEditExam(exam)} aria-label="Edit" title="Edit this test">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           {exam.status !== "cancelled" && (
-                            <Button variant="ghost" size="icon-sm" onClick={() => setCancelTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Cancel">
+                            <Button variant="ghost" size="icon-sm" onClick={() => setCancelTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Cancel" title="Cancel this test — marks it cancelled with a reason, visible to students & parents">
                               <Ban className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam)} disabled={busyId === exam._id} aria-label="Delete" className="hover:text-red-600">
+                          <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam)} disabled={busyId === exam._id} aria-label="Delete" title="Delete this test permanently" className="hover:text-red-600">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </>
@@ -1087,20 +1087,20 @@ export function AdminTeacherExams() {
                           {term.status}
                         </span>
                         {locked && !isAdmin ? (
-                          <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change">
+                          <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change" title="This exam starts within 2 hours, so changes need admin approval — request one">
                             <FileEdit className="h-3.5 w-3.5" />
                           </Button>
                         ) : (
                           <>
-                            <Button variant="ghost" size="icon-sm" onClick={() => openEditTerm(term)} aria-label="Edit">
+                            <Button variant="ghost" size="icon-sm" onClick={() => openEditTerm(term)} aria-label="Edit" title="Edit this exam">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             {term.status !== "cancelled" && (
-                              <Button variant="ghost" size="icon-sm" onClick={() => setCancelTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Cancel">
+                              <Button variant="ghost" size="icon-sm" onClick={() => setCancelTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Cancel" title="Cancel this exam and all its subjects — marks them cancelled with a reason, visible to students & parents">
                                 <Ban className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteTerm(term)} disabled={busyId === term._id} aria-label="Delete" className="hover:text-red-600">
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteTerm(term)} disabled={busyId === term._id} aria-label="Delete" title="Delete this exam permanently" className="hover:text-red-600">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </>
