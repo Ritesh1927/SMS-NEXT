@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 type ExamType = "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -216,6 +217,7 @@ export function AdminTeacherExams() {
   const [reviewReply, setReviewReply] = useState("");
   const [reviewing, setReviewing] = useState(false);
 
+  const [activeTab, setActiveTab] = useState("tests");
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
@@ -796,10 +798,26 @@ export function AdminTeacherExams() {
 
       {exams && exams.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <StatCard icon={<FileText className="h-4 w-4" />} label="Total Tests" value={exams.filter((e) => !e.scheduledExamId).length} />
-          <StatCard icon={<Layers className="h-4 w-4" />} label="Exams" value={(terms ?? []).length} />
-          <StatCard icon={<CalendarClock className="h-4 w-4" />} label="Upcoming" value={upcomingCount} />
-          <StatCard icon={<CheckSquare className="h-4 w-4" />} label="Completed" value={completedCount} />
+          <StatFilterCard
+            icon={FileText}
+            color="#4F46E5"
+            colorDark="#4338CA"
+            value={exams.filter((e) => !e.scheduledExamId).length}
+            label="Total Tests"
+            active={activeTab === "tests"}
+            onClick={() => setActiveTab("tests")}
+          />
+          <StatFilterCard
+            icon={Layers}
+            color="#8B5CF6"
+            colorDark="#7C3AED"
+            value={(terms ?? []).length}
+            label="Exams"
+            active={activeTab === "exams"}
+            onClick={() => setActiveTab("exams")}
+          />
+          <StatFilterCard icon={CalendarClock} color="#0EA5E9" colorDark="#0284C7" value={upcomingCount} label="Upcoming" />
+          <StatFilterCard icon={CheckSquare} color="#16A34A" colorDark="#15803D" value={completedCount} label="Completed" />
         </div>
       )}
 
@@ -826,7 +844,7 @@ export function AdminTeacherExams() {
         </div>
       )}
 
-      <Tabs defaultValue="tests">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-3 w-full sm:w-auto sm:inline-flex mb-4">
           <TabsTrigger value="tests" className="gap-1.5"><ClipboardList className="h-3.5 w-3.5" /> Tests</TabsTrigger>
           <TabsTrigger value="exams" className="gap-1.5"><GraduationCap className="h-3.5 w-3.5" /> Exams</TabsTrigger>
@@ -1606,18 +1624,6 @@ export function AdminTeacherExams() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <div className="rounded-2xl bg-card border border-border shadow-sm p-4 flex items-center gap-3">
-      <div className="icon-chip h-10 w-10 bg-primary/10 text-primary shrink-0">{icon}</div>
-      <div>
-        <p className="text-lg font-bold text-foreground leading-none">{value}</p>
-        <p className="text-xs text-muted-foreground mt-1">{label}</p>
-      </div>
     </div>
   );
 }
