@@ -242,7 +242,10 @@ export default function SubjectsPage() {
   };
 
   const isLoading = classesLoading || subjectsLoading;
-  const classesNeedingSubjects = subjects.length > 0 ? classes.filter((c) => getAssignedIds(c._id).length < subjects.length).length : 0;
+  // Classes legitimately vary in how many subjects they carry (a lower grade
+  // may have fewer than a higher one), so "fewer than the school's total
+  // subject count" is not a real gap. Zero subjects assigned at all is.
+  const classesWithNoSubjects = classes.filter((c) => getAssignedIds(c._id).length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -271,9 +274,9 @@ export default function SubjectsPage() {
             icon={Link2}
             color="#DC2626"
             colorDark="#B91C1C"
-            value={classesNeedingSubjects}
-            label="Classes Needing Subjects"
-            sublabel={classesNeedingSubjects === 0 ? "All classes fully covered" : "Missing at least one subject"}
+            value={classesWithNoSubjects}
+            label="Classes With No Subjects"
+            sublabel={classesWithNoSubjects === 0 ? "Every class has subjects assigned" : "Not set up yet"}
             active={activeTab === "assign"}
             onClick={() => setActiveTab("assign")}
           />
