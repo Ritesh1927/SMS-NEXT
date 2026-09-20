@@ -36,7 +36,14 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
 
       <div className="hidden sm:block pointer-events-none absolute inset-y-0 right-2 sm:right-6 w-[58%] sm:w-[62%]">
-        <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
+        <Image
+          src="/school-illustration.png"
+          alt=""
+          fill
+          className="object-contain object-right-bottom"
+          style={{ filter: "grayscale(1) sepia(1) hue-rotate(215deg) saturate(2.4) brightness(0.95)" }}
+          priority
+        />
       </div>
 
       <div className="relative z-10 flex min-h-[230px] sm:min-h-[250px] flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
