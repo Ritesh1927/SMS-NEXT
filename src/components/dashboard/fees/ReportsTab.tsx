@@ -348,13 +348,17 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit flex-wrap">
+      <div className="inline-flex w-fit flex-wrap items-center justify-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
         {REPORT_TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setRptTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${rptTab === t.id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`relative inline-flex items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+              rptTab === t.id
+                ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_14px_-2px_rgba(79,70,229,0.45)]"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+            }`}
           >
             {t.label}
           </button>
