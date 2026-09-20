@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save, BookOpen, Upload, FileText, X } from "lucide-react";
+import { ArrowLeft, Loader2, Save, BookOpen, Upload, FileText, X, ClipboardList, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -172,7 +172,7 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -180,18 +180,18 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" className="gap-2 text-[#64748B] hover:text-[#172554] -ml-2" onClick={() => router.push("/dashboard/homework")}>
+        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground -ml-2" onClick={() => router.push("/dashboard/homework")}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <h1 className="text-2xl font-bold text-[#172554]">{isEdit ? "Edit Homework" : "New Homework Assignment"}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{isEdit ? "Edit Homework" : "New Homework Assignment"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Section title="Assignment Details" icon={<BookOpen className="h-4 w-4 text-[#4F46E5]" />}>
+        <Section title="Assignment Details" icon={BookOpen}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Class" required>
               {classLoading ? (
-                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-slate-50 text-sm text-[#64748B]">
+                <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-slate-50 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                 </div>
               ) : classOptions.length === 0 ? (
@@ -213,7 +213,7 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
             {selectedClassId && (
               <Field label="Subject" required>
                 {subjectLoading ? (
-                  <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-slate-50 text-sm text-[#64748B]">
+                  <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-slate-50 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                   </div>
                 ) : subjectOptions.length > 0 ? (
@@ -234,7 +234,7 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
         </Section>
 
         {selectedClassId && (
-          <Section title="Homework Details">
+          <Section title="Homework Details" icon={ClipboardList}>
             <div className="space-y-4">
               <Field label="Title" required>
                 <Input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Chapter 5 - Exercise 2" maxLength={200} />
@@ -252,33 +252,33 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-[#172554]">Attachment (optional)</label>
+                <label className="text-sm font-medium text-foreground">Attachment (optional)</label>
                 {existingAttachment && !removeAttachment && !selectedFile ? (
-                  <div className="flex items-center gap-2 p-3 border border-[#E2E8F0] rounded-lg bg-[#F8FAFC]">
-                    <FileText className="h-4 w-4 text-[#4F46E5] shrink-0" />
-                    <a href={existingAttachment.url} target="_blank" rel="noreferrer" className="text-sm flex-1 truncate text-[#4F46E5] hover:underline">
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/50">
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
+                    <a href={existingAttachment.url} target="_blank" rel="noreferrer" className="text-sm flex-1 truncate text-primary hover:underline">
                       {existingAttachment.name}
                     </a>
                     <button type="button" onClick={() => setRemoveAttachment(true)}>
-                      <X className="h-4 w-4 text-[#64748B] hover:text-red-600" />
+                      <X className="h-4 w-4 text-muted-foreground hover:text-red-600" />
                     </button>
                   </div>
                 ) : selectedFile ? (
-                  <div className="flex items-center gap-2 p-3 border border-[#E2E8F0] rounded-lg bg-[#F8FAFC]">
-                    <FileText className="h-4 w-4 text-[#4F46E5] shrink-0" />
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/50">
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
                     <button type="button" onClick={() => { setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }}>
-                      <X className="h-4 w-4 text-[#64748B] hover:text-red-600" />
+                      <X className="h-4 w-4 text-muted-foreground hover:text-red-600" />
                     </button>
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed border-[#E2E8F0] rounded-lg p-6 text-center cursor-pointer hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all"
+                    className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/40 hover:bg-muted/50 transition-all"
                     onClick={() => fileRef.current?.click()}
                   >
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-[#94A3B8]" />
-                    <p className="text-sm text-[#64748B]">Click to attach a document or sheet</p>
-                    <p className="text-xs text-[#94A3B8] mt-1">PDF, DOC, PPT, XLS up to 20 MB</p>
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/70" />
+                    <p className="text-sm text-muted-foreground">Click to attach a document or sheet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">PDF, DOC, PPT, XLS up to 20 MB</p>
                   </div>
                 )}
                 <input
@@ -303,7 +303,7 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
 
         <div className="flex justify-end gap-3 pb-6">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard/homework")}>Cancel</Button>
-          <Button type="submit" disabled={saving || classLoading || classOptions.length === 0 || !selectedClassId} className="gap-2 bg-[#4F46E5] hover:bg-[#4338CA]">
+          <Button type="submit" disabled={saving || classLoading || classOptions.length === 0 || !selectedClassId} className="gap-2 bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : isEdit ? "Update Homework" : "Assign Homework"}
           </Button>
@@ -313,11 +313,15 @@ export function HomeworkForm({ homeworkId }: { homeworkId?: string }) {
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon?: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(79,70,229,0.15)]">
-      <h3 className="text-sm font-bold text-[#172554] mb-4 flex items-center gap-2">
-        {icon}
+    <div className="card-premium p-6">
+      <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
+        {Icon && (
+          <div className="icon-chip h-8 w-8 bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
         {title}
       </h3>
       {children}
@@ -328,9 +332,9 @@ function Section({ title, icon, children }: { title: string; icon?: React.ReactN
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-[#172554]">
+      <label className="text-sm font-medium text-foreground">
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-destructive"> *</span>}
       </label>
       {children}
     </div>

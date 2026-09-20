@@ -158,9 +158,9 @@ export default function ParentsPage() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : !parents ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+            <div key={i} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
               <div className="min-w-0 space-y-1.5">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-3 w-56" />
@@ -174,28 +174,28 @@ export default function ParentsPage() {
           ))}
         </div>
       ) : parents.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Users} message="No parents yet. They're created automatically when you admit a student." />
         </div>
       ) : (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           {parents.map((p) => (
-            <div key={p._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+            <div key={p._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#172554]">{p.name}</p>
+                  <p className="text-sm font-semibold text-foreground">{p.name}</p>
                   {!p.isActive && (
                     <span className={statusPillClass("destructive")}>Inactive</span>
                   )}
                 </div>
-                <p className="text-xs text-[#64748B] mt-0.5 flex items-center gap-1">
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                   <Users className="h-3.5 w-3.5" />
                   {p.students.length === 0
                     ? "No children linked"
                     : p.students.map((c) => `${c.name} (${c.class}${c.section ? "-" + c.section : ""})`).join(", ")}
                 </p>
               </div>
-              <div className="flex items-center gap-4 text-xs text-[#64748B] shrink-0">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
                 <span className="hidden sm:flex items-center gap-1">
                   <Mail className="h-3.5 w-3.5" /> {p.email}
                 </span>
@@ -247,7 +247,7 @@ export default function ParentsPage() {
       <Dialog open={!!editingParent} onOpenChange={(o) => { if (!o) setEditingParent(null); }}>
         <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">Edit Parent</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">Edit Parent</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-3 mt-2">
             <Field label="Father's Name">
@@ -262,7 +262,7 @@ export default function ParentsPage() {
             <Field label="Mother's Phone">
               <Input value={editForm.motherPhone} onChange={(e) => setEditForm((f) => ({ ...f, motherPhone: e.target.value }))} maxLength={10} />
             </Field>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={editSubmitting}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={editSubmitting}>
               {editSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
             </Button>
           </form>
@@ -275,7 +275,7 @@ export default function ParentsPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">{label}</label>
+      <label className="text-xs font-semibold text-foreground">{label}</label>
       {children}
     </div>
   );

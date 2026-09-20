@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Camera, School, X } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Save, Camera, School, X, UserRound, UserCog, Briefcase, FileBadge, Landmark, Siren, type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -287,7 +289,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -295,14 +297,14 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" className="gap-2 text-[#64748B] hover:text-[#172554] -ml-2" onClick={() => router.push("/dashboard/teachers")}>
+        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground -ml-2" onClick={() => router.push("/dashboard/teachers")}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <h1 className="text-2xl font-bold text-[#172554]">{isEdit ? "Edit Staff" : "Add New Staff"}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{isEdit ? "Edit Staff" : "Add New Staff"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Section title="Staff Type">
+        <Section title="Staff Type" icon={UserCog}>
           <div className="flex gap-3">
             <button
               type="button"
@@ -310,10 +312,10 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
               disabled={isEdit}
               className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-semibold transition-all ${
                 form.staffType === "teaching"
-                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                  ? "border-primary bg-primary/10 text-primary"
                   : isEdit
-                  ? "border-[#E2E8F0] bg-slate-50 text-slate-400 cursor-not-allowed"
-                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#4F46E5]/30"
+                  ? "border-border bg-slate-50 text-slate-400 cursor-not-allowed"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/30"
               }`}
             >
               Teaching Staff
@@ -324,19 +326,19 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
               disabled={isEdit}
               className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-semibold transition-all ${
                 form.staffType === "non-teaching"
-                  ? "border-[#4F46E5] bg-[#EEF2FF] text-[#4F46E5]"
+                  ? "border-primary bg-primary/10 text-primary"
                   : isEdit
-                  ? "border-[#E2E8F0] bg-slate-50 text-slate-400 cursor-not-allowed"
-                  : "border-[#E2E8F0] bg-white text-[#64748B] hover:border-[#4F46E5]/30"
+                  ? "border-border bg-slate-50 text-slate-400 cursor-not-allowed"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/30"
               }`}
             >
               Non-Teaching Staff
             </button>
           </div>
-          {isEdit && <p className="text-xs text-[#64748B] mt-2">Staff type cannot be changed after creation.</p>}
+          {isEdit && <p className="text-xs text-muted-foreground mt-2">Staff type cannot be changed after creation.</p>}
           {form.staffType === "non-teaching" && (
             <div className="mt-4 space-y-1.5">
-              <label className="text-sm font-medium text-[#172554]">Department</label>
+              <label className="text-sm font-medium text-foreground">Department</label>
               <Select
                 value={form.department}
                 onValueChange={(v) => {
@@ -368,12 +370,12 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           )}
         </Section>
 
-        <Section title="Basic Information">
+        <Section title="Basic Information" icon={UserRound}>
           <div className="flex items-center gap-4 mb-5">
             <div className="relative shrink-0">
-              <Avatar className="h-20 w-20 border-2 border-[#E2E8F0]">
+              <Avatar className="h-20 w-20 border-2 border-border">
                 <AvatarImage src={photoPreview} alt={form.name} />
-                <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-lg font-semibold">
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
                   {form.name ? form.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -381,7 +383,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-md hover:bg-[#4338CA] transition-colors disabled:opacity-60"
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60"
                 aria-label="Change photo"
               >
                 {uploadingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
@@ -389,8 +391,8 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
               <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhotoSelect} />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#172554]">Profile Photo</p>
-              <p className="text-xs text-[#64748B]">{isEdit ? "Click the camera icon to change it." : "Optional — click the camera icon to add one."}</p>
+              <p className="text-sm font-medium text-foreground">Profile Photo</p>
+              <p className="text-xs text-muted-foreground">{isEdit ? "Click the camera icon to change it." : "Optional — click the camera icon to add one."}</p>
             </div>
           </div>
 
@@ -444,7 +446,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           </div>
         </Section>
 
-        <Section title="Employment Details">
+        <Section title="Employment Details" icon={Briefcase}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Job Title">
               <Input value={form.designation} placeholder="Job title" maxLength={50} disabled className="opacity-60 cursor-not-allowed" />
@@ -488,14 +490,14 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         </Section>
 
         {form.staffType === "teaching" && (
-          <Section title="Classes & Subject">
-            <label className="text-sm font-medium text-[#172554] flex items-center gap-1.5 mb-2">
-              <School className="h-4 w-4 text-[#4F46E5]" /> Assign Classes
+          <Section title="Classes & Subject" icon={School}>
+            <label className="text-sm font-medium text-foreground flex items-center gap-1.5 mb-2">
+              <School className="h-4 w-4 text-primary" /> Assign Classes
             </label>
             {classLoading ? (
-              <p className="text-xs text-[#64748B]">Loading classes...</p>
+              <p className="text-xs text-muted-foreground">Loading classes...</p>
             ) : classOptions.length === 0 ? (
-              <p className="text-xs text-[#64748B]">No classes found. Create classes first.</p>
+              <p className="text-xs text-muted-foreground">No classes found. Create classes first.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {classOptions.map((c) => {
@@ -506,7 +508,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
                       type="button"
                       onClick={() => toggleClass(c._id)}
                       className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                        selected ? "bg-[#4F46E5] text-white border-[#4F46E5]" : "bg-white text-[#64748B] border-[#E2E8F0] hover:border-[#4F46E5]/50"
+                        selected ? "bg-primary text-white border-primary" : "bg-card text-muted-foreground border-border hover:border-primary/50"
                       }`}
                     >
                       {c.name}-{c.section}
@@ -517,7 +519,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
               </div>
             )}
             {selectedClassIds.length > 0 && (
-              <p className="text-xs text-[#64748B] mt-1">{selectedClassIds.length} class{selectedClassIds.length > 1 ? "es" : ""} selected</p>
+              <p className="text-xs text-muted-foreground mt-1">{selectedClassIds.length} class{selectedClassIds.length > 1 ? "es" : ""} selected</p>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
@@ -530,7 +532,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-[#64748B]">Used to suggest this teacher first for matching periods on the Timetable.</p>
+                <p className="text-xs text-muted-foreground">Used to suggest this teacher first for matching periods on the Timetable.</p>
               </Field>
               <Field label="Secondary Subject">
                 <Select value={form.secondarySubject || "__none__"} onValueChange={(v) => update("secondarySubject", !v || v === "__none__" ? "" : v)}>
@@ -547,7 +549,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           </Section>
         )}
 
-        <Section title="Documents">
+        <Section title="Documents" icon={FileBadge}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Aadhaar Number">
               <Input value={form.aadhaarNumber} onChange={(e) => update("aadhaarNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar" inputMode="numeric" maxLength={12} />
@@ -558,7 +560,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           </div>
         </Section>
 
-        <Section title="Bank Details">
+        <Section title="Bank Details" icon={Landmark}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Bank Name">
               <Input value={form.bankName} onChange={(e) => update("bankName", e.target.value)} placeholder="Bank name" maxLength={100} />
@@ -572,7 +574,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           </div>
         </Section>
 
-        <Section title="Emergency Contact">
+        <Section title="Emergency Contact" icon={Siren}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Contact Name">
               <Input value={form.emergencyContact} onChange={(e) => update("emergencyContact", e.target.value)} placeholder="Contact name" maxLength={100} />
@@ -595,7 +597,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
 
         <div className="flex justify-end gap-3 pb-6">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard/teachers")}>Cancel</Button>
-          <Button type="submit" disabled={saving} className="gap-2 bg-[#4F46E5] hover:bg-[#4338CA]">
+          <Button type="submit" disabled={saving} className="gap-2 bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : isEdit ? "Update Staff" : "Add Staff"}
           </Button>
@@ -605,10 +607,17 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon?: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(79,70,229,0.15)]">
-      <h3 className="text-sm font-bold text-[#172554] mb-4">{title}</h3>
+    <div className="card-premium p-6">
+      <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
+        {Icon && (
+          <div className="icon-chip h-8 w-8 bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+        {title}
+      </h3>
       {children}
     </div>
   );
@@ -617,9 +626,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-[#172554]">
+      <label className="text-sm font-medium text-foreground">
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-destructive"> *</span>}
       </label>
       {children}
     </div>

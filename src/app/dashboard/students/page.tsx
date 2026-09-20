@@ -177,31 +177,31 @@ export default function StudentsPage() {
       {students && students.length > 0 && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Users className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
-                <p className="text-xs text-[#64748B]">Total Students</p>
+                <p className="text-xl font-bold text-foreground">{counts.total}</p>
+                <p className="text-xs text-muted-foreground">Total Students</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
                 <UserCheck className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-xl font-bold text-green-600">{counts.active}</p>
-                <p className="text-xs text-[#64748B]">Active</p>
+                <p className="text-xs text-muted-foreground">Active</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
                 <UserX className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-xl font-bold text-red-600">{counts.inactive}</p>
-                <p className="text-xs text-[#64748B]">Inactive</p>
+                <p className="text-xs text-muted-foreground">Inactive</p>
               </div>
             </div>
           </div>
@@ -222,16 +222,16 @@ export default function StudentsPage() {
       )}
 
       {error ? null : !students ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
-            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Student</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Class</p>
-            <p className="w-16 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Roll No.</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
+            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
+            <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
           </div>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Skeleton className="h-11 w-11 rounded-full shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -247,44 +247,44 @@ export default function StudentsPage() {
           ))}
         </div>
       ) : students.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState
             icon={Users}
             message={isTeacher ? "No students in your classes yet." : "No students yet. Add your first admission to get started."}
           />
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Users} message="No students match your filters." />
         </div>
       ) : (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
-            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Student</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Class</p>
-            <p className="w-16 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Roll No.</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
+            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
+            <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
+            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
           </div>
           {filteredStudents.map((s) => (
-            <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+            <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
+                <Avatar className="h-11 w-11 shrink-0 border border-border">
                   <AvatarImage src={s.photo} alt={s.name} />
-                  <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-sm font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                     {s.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-[#172554] truncate">{s.name}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{s.name}</p>
                     {!s.isActive && (
                       <span className={`shrink-0 ${statusPillClass("destructive")}`}>Inactive</span>
                     )}
                   </div>
-                  <p className="text-xs text-[#64748B] mt-0.5 truncate">{s.studentId}</p>
-                  {s.parent?.email && <p className="text-xs text-[#94A3B8] truncate">{s.parent.email}</p>}
-                  <p className="text-xs text-[#64748B] mt-0.5 sm:hidden">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{s.studentId}</p>
+                  {s.parent?.email && <p className="text-xs text-muted-foreground/70 truncate">{s.parent.email}</p>}
+                  <p className="text-xs text-muted-foreground mt-0.5 sm:hidden">
                     Class {s.class}
                     {s.section ? `-${s.section}` : ""} · Roll {s.rollNumber || "—"}
                   </p>
@@ -292,24 +292,24 @@ export default function StudentsPage() {
               </div>
 
               <div className="hidden sm:block w-28 shrink-0">
-                <p className="text-sm text-[#334155] truncate">
+                <p className="text-sm text-foreground/90 truncate">
                   Class {s.class}
                   {s.section ? `-${s.section}` : ""}
                 </p>
               </div>
               <div className="hidden sm:block w-16 shrink-0">
-                <p className="text-sm text-[#334155]">{s.rollNumber || "—"}</p>
+                <p className="text-sm text-foreground/90">{s.rollNumber || "—"}</p>
               </div>
               <div className="hidden sm:flex items-center gap-2 w-32 shrink-0">
                 {s.attendance > 0 ? (
                   <>
-                    <div className="w-16 h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden shrink-0">
-                      <div className="h-full rounded-full bg-[#4F46E5]" style={{ width: `${s.attendance}%` }} />
+                    <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${s.attendance}%` }} />
                     </div>
-                    <span className="text-xs font-medium text-[#475569]">{s.attendance}%</span>
+                    <span className="text-xs font-medium text-muted-foreground">{s.attendance}%</span>
                   </>
                 ) : (
-                  <span className="text-xs text-[#94A3B8]">—</span>
+                  <span className="text-xs text-muted-foreground/70">—</span>
                 )}
               </div>
 

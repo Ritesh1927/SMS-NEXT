@@ -27,7 +27,7 @@ function renderMarkdown(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/`(.*?)`/g, '<code class="bg-[#F1F5F9] px-1.5 py-0.5 rounded text-xs font-mono">$1</code>')
+    .replace(/`(.*?)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">$1</code>')
     .replace(/\n/g, "<br/>");
 }
 
@@ -405,7 +405,7 @@ Format with clear headings and bullet points.`;
   };
 
   if (!user || visibleTools.length === 0) {
-    return <p className="text-sm text-[#64748B]">No AI tools available for your role.</p>;
+    return <p className="text-sm text-muted-foreground">No AI tools available for your role.</p>;
   }
 
   return (
@@ -421,13 +421,13 @@ Format with clear headings and bullet points.`;
                 key={tool.id}
                 onClick={() => setSelectedTool(tool.id)}
                 className={`w-full text-left rounded-xl p-3.5 border transition-all flex items-center gap-3 ${
-                  isActive ? "border-[#4F46E5] bg-[#4F46E5]/5" : "border-[#E2E8F0] bg-white hover:bg-[#F8FAFC]"
+                  isActive ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-muted/50"
                 }`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#4F46E5]" : "bg-[#4F46E5]/10"}`}>
-                  <tool.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-[#4F46E5]"}`} />
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-primary" : "bg-primary/10"}`}>
+                  <tool.icon className={`h-4 w-4 ${isActive ? "text-white" : "text-primary"}`} />
                 </div>
-                <span className={`text-sm font-medium ${isActive ? "text-[#4F46E5]" : "text-[#172554]"}`}>{tool.label}</span>
+                <span className={`text-sm font-medium ${isActive ? "text-primary" : "text-foreground"}`}>{tool.label}</span>
               </button>
             );
           })}
@@ -436,9 +436,9 @@ Format with clear headings and bullet points.`;
         <div className="lg:col-span-2">
           {activeTool === "insights" && (
             <Card className="flex flex-col h-[600px]">
-              <CardHeader className="pb-3 border-b border-[#E2E8F0] shrink-0">
+              <CardHeader className="pb-3 border-b border-border shrink-0">
                 <CardTitle className="text-sm">School Insights</CardTitle>
-                <p className="text-xs text-[#64748B]">Ask about students, fees, attendance or results — grounded in your live data.</p>
+                <p className="text-xs text-muted-foreground">Ask about students, fees, attendance or results — grounded in your live data.</p>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
                 {insightMessages.length === 0 && (
@@ -447,7 +447,7 @@ Format with clear headings and bullet points.`;
                       <button
                         key={p}
                         onClick={() => handleInsightSend(p)}
-                        className="text-xs px-3 py-1.5 rounded-full border border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]/40 hover:text-[#4F46E5]"
+                        className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
                       >
                         {p}
                       </button>
@@ -458,7 +458,7 @@ Format with clear headings and bullet points.`;
                   <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm ${
-                        m.role === "user" ? "bg-[#4F46E5] text-white" : "bg-[#F8FAFC] text-[#172554]"
+                        m.role === "user" ? "bg-primary text-white" : "bg-muted/50 text-foreground"
                       }`}
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }}
                     />
@@ -466,12 +466,12 @@ Format with clear headings and bullet points.`;
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#4F46E5]" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   </div>
                 )}
                 <div ref={endRef} />
               </CardContent>
-              <div className="p-3 border-t border-[#E2E8F0] flex gap-2 shrink-0">
+              <div className="p-3 border-t border-border flex gap-2 shrink-0">
                 <Input
                   value={insightInput}
                   onChange={(e) => setInsightInput(e.target.value)}
@@ -488,7 +488,7 @@ Format with clear headings and bullet points.`;
 
           {activeTool === "reportcard" && (
             <Card>
-              <CardHeader className="border-b border-[#E2E8F0]">
+              <CardHeader className="border-b border-border">
                 <CardTitle className="text-sm">Report Card Comments</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-4">
@@ -541,8 +541,8 @@ Format with clear headings and bullet points.`;
                   Generate Comment
                 </Button>
                 {rcComment && (
-                  <div className="rounded-lg border border-[#E2E8F0] p-4 bg-[#F8FAFC] space-y-2">
-                    <p className="text-sm text-[#172554]" dangerouslySetInnerHTML={{ __html: renderMarkdown(rcComment) }} />
+                  <div className="rounded-lg border border-border p-4 bg-muted/50 space-y-2">
+                    <p className="text-sm text-foreground" dangerouslySetInnerHTML={{ __html: renderMarkdown(rcComment) }} />
                     <CopyButton text={rcComment} copied={copied} onCopy={handleCopy} />
                   </div>
                 )}
@@ -552,7 +552,7 @@ Format with clear headings and bullet points.`;
 
           {activeTool === "feeletter" && (
             <Card>
-              <CardHeader className="border-b border-[#E2E8F0]">
+              <CardHeader className="border-b border-border">
                 <CardTitle className="text-sm">Fee Reminder Letter</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
@@ -590,8 +590,8 @@ Format with clear headings and bullet points.`;
                   Generate Letter
                 </Button>
                 {flLetter && (
-                  <div className="rounded-lg border border-[#E2E8F0] p-4 bg-[#F8FAFC] space-y-2">
-                    <p className="text-sm text-[#172554] whitespace-pre-wrap">{flLetter}</p>
+                  <div className="rounded-lg border border-border p-4 bg-muted/50 space-y-2">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{flLetter}</p>
                     <CopyButton text={flLetter} copied={copied} onCopy={handleCopy} />
                   </div>
                 )}
@@ -601,7 +601,7 @@ Format with clear headings and bullet points.`;
 
           {activeTool === "quiz" && (
             <Card>
-              <CardHeader className="border-b border-[#E2E8F0]">
+              <CardHeader className="border-b border-border">
                 <CardTitle className="text-sm">Quiz Generator</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
@@ -620,18 +620,18 @@ Format with clear headings and bullet points.`;
                 {quizResult.length > 0 && (
                   <div className="space-y-3">
                     {quizResult.map((q, i) => (
-                      <div key={i} className="rounded-lg border border-[#E2E8F0] p-3">
-                        <p className="text-sm font-medium text-[#172554]">
+                      <div key={i} className="rounded-lg border border-border p-3">
+                        <p className="text-sm font-medium text-foreground">
                           {i + 1}. {q.question}
                         </p>
                         <div className="mt-2 space-y-1">
                           {(q.options || []).map((o, j) => (
-                            <p key={j} className={`text-xs px-2 py-1 rounded ${o.startsWith(q.correct || "") ? "bg-green-50 text-green-700" : "text-[#64748B]"}`}>
+                            <p key={j} className={`text-xs px-2 py-1 rounded ${o.startsWith(q.correct || "") ? "bg-green-50 text-green-700" : "text-muted-foreground"}`}>
                               {o}
                             </p>
                           ))}
                         </div>
-                        {q.explanation && <p className="text-xs text-[#64748B] mt-2 italic">{q.explanation}</p>}
+                        {q.explanation && <p className="text-xs text-muted-foreground mt-2 italic">{q.explanation}</p>}
                       </div>
                     ))}
                   </div>
@@ -642,7 +642,7 @@ Format with clear headings and bullet points.`;
 
           {activeTool === "notice" && (
             <Card>
-              <CardHeader className="border-b border-[#E2E8F0]">
+              <CardHeader className="border-b border-border">
                 <CardTitle className="text-sm">Notice Generator</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
@@ -653,8 +653,8 @@ Format with clear headings and bullet points.`;
                   Generate Notice
                 </Button>
                 {noticeResult && (
-                  <div className="rounded-lg border border-[#E2E8F0] p-4 bg-[#F8FAFC] space-y-2">
-                    <p className="text-sm text-[#172554] whitespace-pre-wrap">{noticeResult}</p>
+                  <div className="rounded-lg border border-border p-4 bg-muted/50 space-y-2">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{noticeResult}</p>
                     <CopyButton text={noticeResult} copied={copied} onCopy={handleCopy} />
                   </div>
                 )}
@@ -664,7 +664,7 @@ Format with clear headings and bullet points.`;
 
           {activeTool === "eventplanner" && (
             <Card>
-              <CardHeader className="border-b border-[#E2E8F0]">
+              <CardHeader className="border-b border-border">
                 <CardTitle className="text-sm">Event Planner</CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
@@ -682,8 +682,8 @@ Format with clear headings and bullet points.`;
                   Generate Plan
                 </Button>
                 {epPlan && (
-                  <div className="rounded-lg border border-[#E2E8F0] p-4 bg-[#F8FAFC] space-y-2">
-                    <p className="text-sm text-[#172554]" dangerouslySetInnerHTML={{ __html: renderMarkdown(epPlan) }} />
+                  <div className="rounded-lg border border-border p-4 bg-muted/50 space-y-2">
+                    <p className="text-sm text-foreground" dangerouslySetInnerHTML={{ __html: renderMarkdown(epPlan) }} />
                     <CopyButton text={epPlan} copied={copied} onCopy={handleCopy} />
                   </div>
                 )}

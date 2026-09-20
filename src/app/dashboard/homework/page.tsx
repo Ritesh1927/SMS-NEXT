@@ -204,25 +204,25 @@ export default function HomeworkPage() {
       )}
 
       {error ? null : !homework ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>
       ) : homework.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <BookOpen className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-          <p className="text-sm text-[#64748B]">No homework assigned yet.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <BookOpen className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No homework assigned yet.</p>
         </div>
       ) : filteredHomework.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No homework matches your filters.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-muted-foreground">No homework matches your filters.</p>
         </div>
       ) : (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           {filteredHomework.map((hw) => (
-            <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+            <div key={hw._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#172554]">{hw.title}</p>
+                  <p className="text-sm font-semibold text-foreground">{hw.title}</p>
                   <span
                     className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                       new Date(hw.dueDate).getTime() < now ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
@@ -231,16 +231,16 @@ export default function HomeworkPage() {
                     {new Date(hw.dueDate).getTime() < now ? "Expired" : "Active"}
                   </span>
                 </div>
-                <p className="text-xs text-[#64748B] mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Class {hw.class}
                   {hw.section ? `-${hw.section}` : ""} · {hw.subject} · Due{" "}
                   {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} ·{" "}
                   {hw.submissions.length}/{hw.totalStudents} submitted
                 </p>
                 {hw.totalStudents > 0 && (
-                  <div className="w-full max-w-xs h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden mt-2">
+                  <div className="w-full max-w-xs h-1.5 rounded-full bg-muted overflow-hidden mt-2">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]"
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
                       style={{ width: `${Math.min(100, (hw.submissions.length / hw.totalStudents) * 100)}%` }}
                     />
                   </div>
@@ -250,7 +250,7 @@ export default function HomeworkPage() {
                     href={hw.attachmentUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-[#4F46E5] hover:underline mt-2"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
                   >
                     <Paperclip className="h-3 w-3" /> {hw.attachmentName || "Attachment"}
                   </a>
@@ -284,22 +284,22 @@ export default function HomeworkPage() {
       <Dialog open={!!gradingHw} onOpenChange={(o) => { if (!o) setGradingHw(null); }}>
         <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">
+            <DialogTitle className="text-lg text-foreground">
               Submissions {gradingHw ? `— ${gradingHw.title}` : ""}
             </DialogTitle>
           </DialogHeader>
           {gradingHw && (
             <div className="space-y-3 mt-2">
               {gradingHw.submissions.length === 0 ? (
-                <p className="text-sm text-[#64748B]">No submissions yet.</p>
+                <p className="text-sm text-muted-foreground">No submissions yet.</p>
               ) : (
                 gradingHw.submissions.map((s) => {
                   const student = typeof s.student === "string" ? { _id: s.student, name: "Unknown" } : s.student;
                   const draft = gradeDrafts[student._id] || { marks: "", feedback: "" };
                   return (
-                    <div key={student._id} className="rounded-xl border border-[#F1F5F9] p-3 space-y-2">
+                    <div key={student._id} className="rounded-xl border border-border p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-[#172554]">{student.name}</p>
+                        <p className="text-sm font-medium text-foreground">{student.name}</p>
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                             s.status === "graded" ? "bg-green-100 text-green-700" : s.status === "late" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
@@ -308,7 +308,7 @@ export default function HomeworkPage() {
                           {s.status}
                         </span>
                       </div>
-                      {s.note && <p className="text-xs text-[#64748B]">{s.note}</p>}
+                      {s.note && <p className="text-xs text-muted-foreground">{s.note}</p>}
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
@@ -327,7 +327,7 @@ export default function HomeworkPage() {
                           size="sm"
                           onClick={() => saveGrade(student._id)}
                           disabled={savingGradeFor === student._id}
-                          className="bg-[#4F46E5] hover:bg-[#4338CA]"
+                          className="bg-primary hover:bg-primary/90"
                         >
                           {savingGradeFor === student._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
                         </Button>
@@ -449,9 +449,9 @@ function ParentHomework() {
           </Select>
         )}
         {selectedChild && children && children.length === 1 && (
-          <div className="rounded-full bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
-            <span className="font-semibold text-[#172554]">{selectedChild.name}</span>
-            <span className="text-[#64748B]"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
+          <div className="rounded-full bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
+            <span className="font-semibold text-foreground">{selectedChild.name}</span>
+            <span className="text-muted-foreground"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
           </div>
         )}
       </div>
@@ -459,28 +459,28 @@ function ParentHomework() {
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
       {error ? null : children === null || (childId && !items) ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>
       ) : children.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No children linked to your account yet.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-muted-foreground">No children linked to your account yet.</p>
         </div>
       ) : !items || items.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <BookOpen className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-          <p className="text-sm text-[#64748B]">No homework assigned yet.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <BookOpen className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No homework assigned yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {items.map((hw) => {
             const isExpired = new Date(hw.dueDate).getTime() < now;
             return (
-              <div key={hw._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div key={hw._id} className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-[#172554]">{hw.title}</p>
+                      <p className="text-sm font-semibold text-foreground">{hw.title}</p>
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           isExpired ? "bg-slate-100 text-slate-600" : "bg-green-100 text-green-700"
@@ -498,24 +498,24 @@ function ParentHomework() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#64748B] mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {hw.subject} · Due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       {hw.maxMarks ? ` · ${hw.maxMarks} marks` : ""}
                       {hw.assignedBy ? ` · Assigned by ${hw.assignedBy.name}` : ""}
                     </p>
-                    {hw.description && <p className="text-sm text-[#475569] mt-2">{hw.description}</p>}
+                    {hw.description && <p className="text-sm text-muted-foreground mt-2">{hw.description}</p>}
                     {hw.attachmentUrl && (
                       <a
                         href={hw.attachmentUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-[#4F46E5] hover:underline mt-2"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2"
                       >
                         <Paperclip className="h-3 w-3" /> {hw.attachmentName || "Attachment"}
                       </a>
                     )}
                     {hw.submission?.status === "graded" && (
-                      <p className="text-xs text-[#4F46E5] font-semibold mt-2 flex items-center gap-1">
+                      <p className="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Scored {hw.submission.marks}{hw.maxMarks ? ` / ${hw.maxMarks}` : ""}
                         {hw.submission.feedback ? ` — ${hw.submission.feedback}` : ""}
@@ -527,7 +527,7 @@ function ParentHomework() {
                       size="sm"
                       onClick={() => handleSubmit(hw)}
                       disabled={submittingId === hw._id}
-                      className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA] shrink-0"
+                      className="gap-1.5 bg-primary hover:bg-primary/90 shrink-0"
                     >
                       {submittingId === hw._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       Mark Submitted

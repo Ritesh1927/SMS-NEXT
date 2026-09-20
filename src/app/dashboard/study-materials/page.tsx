@@ -265,7 +265,7 @@ export default function StudyMaterialsPage() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search by title or subject…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -296,36 +296,36 @@ export default function StudyMaterialsPage() {
               <Card key={mat._id}>
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
-                      <Icon className="h-5 w-5 text-[#4F46E5]" />
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Icon className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-[#172554] truncate" title={mat.title}>
+                      <h3 className="text-sm font-semibold text-foreground truncate" title={mat.title}>
                         {mat.title}
                       </h3>
-                      <p className="text-xs text-[#64748B]">
+                      <p className="text-xs text-muted-foreground">
                         {mat.uploaderName} · {mat.uploaderModel === "Admin" ? "Admin" : "Teacher"}
                       </p>
                     </div>
                     {canDelete && (
-                      <button onClick={() => handleDelete(mat._id)} className="text-[#64748B] hover:text-red-600 transition-colors shrink-0">
+                      <button onClick={() => handleDelete(mat._id)} className="text-muted-foreground hover:text-red-600 transition-colors shrink-0">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </div>
 
-                  {mat.description && <p className="text-xs text-[#64748B] mt-2 line-clamp-2">{mat.description}</p>}
+                  {mat.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{mat.description}</p>}
 
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${TYPE_COLOR[mat.type] || ""}`}>{mat.type}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155] font-medium">{mat.subject}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#E2E8F0] text-[#64748B] font-medium">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-foreground/90 font-medium">{mat.subject}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground font-medium">
                       Class {mat.class}
                       {mat.section ? `-${mat.section}` : ""}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-3 text-xs text-[#64748B]">
+                  <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                     <span>{fmtDate(mat.createdAt)}</span>
                     <span>{mat.downloads} downloads</span>
                   </div>
@@ -366,7 +366,7 @@ export default function StudyMaterialsPage() {
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-[#4F46E5]" /> Upload Study Material
+                <Upload className="h-5 w-5 text-primary" /> Upload Study Material
               </DialogTitle>
             </DialogHeader>
 
@@ -387,7 +387,7 @@ export default function StudyMaterialsPage() {
                   Class <span className="text-red-500">*</span>
                 </Label>
                 {classesLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-[#64748B] h-9">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground h-9">
                     <Loader2 className="h-3 w-3 animate-spin" /> Loading…
                   </div>
                 ) : classes.length === 0 ? (
@@ -460,8 +460,8 @@ export default function StudyMaterialsPage() {
                   File <span className="text-red-500">*</span>
                 </Label>
                 {selectedFile ? (
-                  <div className="flex items-center gap-2 p-3 border border-[#E2E8F0] rounded-lg bg-[#F8FAFC]">
-                    <FileText className="h-4 w-4 text-[#4F46E5] shrink-0" />
+                  <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/50">
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-sm flex-1 truncate">{selectedFile.name}</span>
                     <button
                       onClick={() => {
@@ -469,17 +469,17 @@ export default function StudyMaterialsPage() {
                         if (fileRef.current) fileRef.current.value = "";
                       }}
                     >
-                      <X className="h-4 w-4 text-[#64748B] hover:text-red-600" />
+                      <X className="h-4 w-4 text-muted-foreground hover:text-red-600" />
                     </button>
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed border-[#E2E8F0] rounded-lg p-6 text-center cursor-pointer hover:border-[#4F46E5]/40 hover:bg-[#F8FAFC] transition-all"
+                    className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/40 hover:bg-muted/50 transition-all"
                     onClick={() => fileRef.current?.click()}
                   >
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-[#64748B] opacity-50" />
-                    <p className="text-sm text-[#64748B]">Click to select a file</p>
-                    <p className="text-xs text-[#64748B] mt-1">PDF, DOC, PPT, XLS up to 20 MB</p>
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">Click to select a file</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, PPT, XLS up to 20 MB</p>
                   </div>
                 )}
                 <input

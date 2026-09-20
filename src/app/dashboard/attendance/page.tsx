@@ -366,20 +366,20 @@ function ParentAttendance() {
           </Select>
         )}
         {selectedChild && children && children.length === 1 && (
-          <div className="rounded-full bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
-            <span className="font-semibold text-[#172554]">{selectedChild.name}</span>
-            <span className="text-[#64748B]"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
+          <div className="rounded-full bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
+            <span className="font-semibold text-foreground">{selectedChild.name}</span>
+            <span className="text-muted-foreground"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
           </div>
         )}
       </div>
 
       {children === null ? (
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>
       ) : children.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">No children linked to your account yet.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-muted-foreground">No children linked to your account yet.</p>
         </div>
       ) : (
         <>
@@ -402,25 +402,25 @@ function ParentAttendance() {
             </div>
           </div>
 
-          <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-5">
+          <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-5">
             <div className="flex items-center justify-between mb-4">
               <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)} aria-label="Previous month">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <p className="text-sm font-semibold text-[#172554]">{MONTH_NAMES[month - 1]} {year}</p>
+              <p className="text-sm font-semibold text-foreground">{MONTH_NAMES[month - 1]} {year}</p>
               <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)} aria-label="Next month">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             {loading ? (
-              <div className="flex items-center gap-2 text-sm text-[#64748B] py-8 justify-center">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading...
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-7 gap-2 mb-2">
                   {WEEKDAYS.map((d) => (
-                    <p key={d} className="text-center text-xs font-medium text-[#94A3B8]">{d}</p>
+                    <p key={d} className="text-center text-xs font-medium text-muted-foreground/70">{d}</p>
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-2">
@@ -430,7 +430,7 @@ function ParentAttendance() {
                       <div
                         key={i}
                         className={`h-14 rounded-lg flex flex-col items-center justify-center text-sm ${
-                          day ? "bg-[#F8FAFC] text-[#172554]" : ""
+                          day ? "bg-muted/50 text-foreground" : ""
                         }`}
                       >
                         {day && (
@@ -443,7 +443,7 @@ function ParentAttendance() {
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-[#F1F5F9] text-xs text-[#64748B]">
+                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" /> Present</span>
                   <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Absent</span>
                   <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /> Late</span>
@@ -452,17 +452,17 @@ function ParentAttendance() {
             )}
           </div>
 
-          <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-[#F1F5F9]">
-              <CalendarCheck className="h-4 w-4 text-[#4F46E5]" />
-              <p className="text-sm font-semibold text-[#172554]">Daily Records</p>
+          <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+              <CalendarCheck className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">Daily Records</p>
             </div>
             {!data || data.records.length === 0 ? (
-              <p className="text-sm text-[#64748B] px-5 py-6 text-center">No attendance records for this month.</p>
+              <p className="text-sm text-muted-foreground px-5 py-6 text-center">No attendance records for this month.</p>
             ) : (
               data.records.map((r) => (
-                <div key={r._id} className="flex items-center justify-between px-5 py-3 border-b border-[#F1F5F9] last:border-0">
-                  <p className="text-sm text-[#172554]">
+                <div key={r._id} className="flex items-center justify-between px-5 py-3 border-b border-border last:border-0">
+                  <p className="text-sm text-foreground">
                     {new Date(r.date).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                   </p>
                   <span

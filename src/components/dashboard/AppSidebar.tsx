@@ -114,10 +114,10 @@ type SectionTheme = { icon: string; activeBg: string; activeText: string; label:
 // the original app's sidebar (one active-item highlight color throughout,
 // not a different color per section).
 const DEFAULT_THEME: SectionTheme = {
-  icon: "text-[#4F46E5]/60",
-  activeBg: "bg-[#F4F1FF] border border-[#E7DEFF]",
-  activeText: "text-[#6D5DF6]",
-  label: "text-[#64748B]",
+  icon: "text-primary/60",
+  activeBg: "bg-accent/10 border border-accent/20",
+  activeText: "text-primary",
+  label: "text-muted-foreground",
 };
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -174,12 +174,12 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border/70 rounded-br-[20px]">
       <div className="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-5 group-data-[collapsible=icon]:pr-2 border-b border-sidebar-border/70 overflow-hidden">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
           <Logo className="h-5 w-5 text-white" />
         </div>
         <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
-          <span className="text-sm font-bold text-[#172554] tracking-tight truncate">{user.schoolName || "EduNivo"}</span>
-          <span className="text-[11px] text-[#64748B] truncate">{ROLE_LABEL[user.role]}</span>
+          <span className="text-sm font-bold text-foreground tracking-tight truncate">{user.schoolName || "EduNivo"}</span>
+          <span className="text-[11px] text-muted-foreground truncate">{ROLE_LABEL[user.role]}</span>
         </div>
       </div>
 
@@ -205,11 +205,11 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
                               <Link
                                 href={item.href}
                                 className={`relative flex h-11 items-center gap-3 rounded-[8px] px-3 text-sm font-medium transition-colors ${
-                                  isActive ? `${theme.activeBg} ${theme.activeText} font-semibold` : "text-[#475569] hover:bg-[#F1F5F9] hover:text-[#172554]"
+                                  isActive ? `${theme.activeBg} ${theme.activeText} font-semibold` : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 }`}
                               >
                                 {isActive && (
-                                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-[#6D5DF6]" />
+                                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full bg-primary" />
                                 )}
                                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]">
                                   <item.icon className={`h-4 w-4 shrink-0 ${isActive ? theme.activeText : theme.icon}`} />
@@ -233,21 +233,21 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
           })}
         </div>
 
-        <div className="mt-auto pt-4 border-t border-[#E2E8F0]">
+        <div className="mt-auto pt-4 border-t border-border">
           <div className="flex items-center gap-2 px-1 py-2 mb-1 group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-2">
             <Avatar className="h-8 w-8 shrink-0">
-              <AvatarFallback className="bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                 {user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-medium text-[#172554] truncate">{user.name}</p>
-              <p className="text-xs text-[#64748B] truncate">{user.email}</p>
+              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
           <button
             onClick={onLogout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#64748B] hover:bg-red-50 hover:text-red-600 transition-colors group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-4"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors group-data-[collapsible=icon]:justify-start group-data-[collapsible=icon]:pl-4"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             <span className="group-data-[collapsible=icon]:hidden">Logout</span>

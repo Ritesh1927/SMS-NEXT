@@ -176,13 +176,13 @@ export default function UserMasterPage() {
           { label: "Non-Teaching", value: counts.nonTeaching, icon: Heart },
           { label: "Parents", value: counts.parents, icon: Heart },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-white p-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
-              <s.icon className="h-4 w-4 text-[#4F46E5]" />
+          <div key={s.label} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <s.icon className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-lg font-bold text-[#172554]">{s.value}</p>
-              <p className="text-xs text-[#64748B]">{s.label}</p>
+              <p className="text-lg font-bold text-foreground">{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
             </div>
           </div>
         ))}
@@ -195,7 +195,7 @@ export default function UserMasterPage() {
               key={tab.key}
               variant={roleFilter === tab.key ? "default" : "outline"}
               size="sm"
-              className={`gap-1.5 ${roleFilter === tab.key ? "bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white" : ""}`}
+              className={`gap-1.5 ${roleFilter === tab.key ? "bg-gradient-to-r from-primary to-accent border-0 text-white" : ""}`}
               onClick={() => setRoleFilter(tab.key)}
             >
               <tab.icon className="h-3.5 w-3.5" />
@@ -204,7 +204,7 @@ export default function UserMasterPage() {
           ))}
         </div>
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
           <Input placeholder="Search by name, email, phone, ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchCounts(); }} className="gap-1.5">
@@ -212,65 +212,65 @@ export default function UserMasterPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-[#F8FAFC]">
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Name</th>
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Email</th>
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Phone</th>
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Role</th>
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">ID</th>
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Status</th>
-                <th className="p-3 text-right text-xs font-semibold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">Actions</th>
+              <tr className="bg-muted/50">
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Name</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Email</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Phone</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Role</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">ID</th>
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Status</th>
+                <th className="p-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="p-3 border-b border-[#F1F5F9]">
+                    <td className="p-3 border-b border-border">
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-8 w-8 rounded-full shrink-0" />
                         <Skeleton className="h-4 w-28" />
                       </div>
                     </td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-36" /></td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-20" /></td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16" /></td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16" /></td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-14" /></td>
-                    <td className="p-3 border-b border-[#F1F5F9]"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-36" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-20" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-14" /></td>
+                    <td className="p-3 border-b border-border"><Skeleton className="h-4 w-16 ml-auto" /></td>
                   </tr>
                 ))
               ) : users.length === 0 ? (
                 <tr><td colSpan={7} className="p-0"><EmptyState icon={UserCog} message="No users found." /></td></tr>
               ) : (
                 users.map((u) => (
-                  <tr key={`${u.role}-${u.userId}`} className="hover:bg-[#F8FAFC]/60 transition-colors">
-                    <td className="p-3 border-b border-[#F1F5F9]">
+                  <tr key={`${u.role}-${u.userId}`} className="hover:bg-muted/50/60 transition-colors">
+                    <td className="p-3 border-b border-border">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-[#4F46E5]">{u.name.split(" ").map((w) => w[0]).join("")}</span>
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-primary">{u.name.split(" ").map((w) => w[0]).join("")}</span>
                         </div>
-                        <span className="text-sm font-medium text-[#172554]">{u.name}</span>
+                        <span className="text-sm font-medium text-foreground">{u.name}</span>
                       </div>
                     </td>
-                    <td className="p-3 border-b border-[#F1F5F9] text-sm text-[#64748B]">{u.email}</td>
-                    <td className="p-3 border-b border-[#F1F5F9] text-sm text-[#64748B]">{u.phone || "-"}</td>
-                    <td className="p-3 border-b border-[#F1F5F9]">
+                    <td className="p-3 border-b border-border text-sm text-muted-foreground">{u.email}</td>
+                    <td className="p-3 border-b border-border text-sm text-muted-foreground">{u.phone || "-"}</td>
+                    <td className="p-3 border-b border-border">
                       <span className={`text-[10px] px-2 py-1 rounded-full border font-medium capitalize ${ROLE_COLORS[u.role] || ""}`}>{u.role}</span>
                     </td>
-                    <td className="p-3 border-b border-[#F1F5F9] text-xs font-mono text-[#64748B]">{u.teacherId || "-"}</td>
-                    <td className="p-3 border-b border-[#F1F5F9]">
+                    <td className="p-3 border-b border-border text-xs font-mono text-muted-foreground">{u.teacherId || "-"}</td>
+                    <td className="p-3 border-b border-border">
                       <span className={statusPillClass(u.isActive ? "success" : "destructive")}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="p-3 border-b border-[#F1F5F9]">
+                    <td className="p-3 border-b border-border">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#4F46E5] hover:bg-[#4F46E5]/10" title="Change Password"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" title="Change Password"
                           onClick={() => { setPwDialog({ open: true, user: u }); setNewPassword(""); setShowPw(false); }}>
                           <Key className="h-3.5 w-3.5" />
                         </Button>
@@ -296,17 +296,17 @@ export default function UserMasterPage() {
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-[#4F46E5]" /> Change Password
+              <Key className="h-5 w-5 text-primary" /> Change Password
             </DialogTitle>
           </DialogHeader>
           {pwDialog.user && (
             <div className="space-y-4 mt-2">
-              <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-                <p className="text-sm font-medium text-[#172554]">{pwDialog.user.name}</p>
-                <p className="text-xs text-[#64748B]">{pwDialog.user.email} · <span className="capitalize">{pwDialog.user.role}</span></p>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-sm font-medium text-foreground">{pwDialog.user.name}</p>
+                <p className="text-xs text-muted-foreground">{pwDialog.user.email} · <span className="capitalize">{pwDialog.user.role}</span></p>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#64748B]">New Password</label>
+                <label className="text-xs font-medium text-muted-foreground">New Password</label>
                 <div className="relative">
                   <Input
                     type={showPw ? "text" : "password"}
@@ -316,14 +316,14 @@ export default function UserMasterPage() {
                     className="pr-10"
                     onKeyDown={(e) => e.key === "Enter" && handlePasswordChange()}
                   />
-                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#172554]">
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => { setPwDialog({ open: false, user: null }); setNewPassword(""); }} disabled={saving}>Cancel</Button>
-                <Button className="gap-2 bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] border-0 text-white" onClick={handlePasswordChange} disabled={saving || !newPassword.trim()}>
+                <Button className="gap-2 bg-gradient-to-r from-primary to-accent border-0 text-white" onClick={handlePasswordChange} disabled={saving || !newPassword.trim()}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
                   {saving ? "Updating..." : "Update Password"}
                 </Button>

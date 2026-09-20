@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save, Camera } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Save, Camera, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -305,7 +307,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -313,19 +315,19 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" className="gap-2 text-[#64748B] hover:text-[#172554] -ml-2" onClick={() => router.push("/dashboard/students")}>
+        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground -ml-2" onClick={() => router.push("/dashboard/students")}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <h1 className="text-2xl font-bold text-[#172554]">{isEdit ? "Edit Student" : "Add New Student"}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{isEdit ? "Edit Student" : "Add New Student"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Section title="Basic Information">
+        <Section title="Basic Information" icon={UserRound}>
           <div className="flex items-center gap-4 mb-5">
             <div className="relative shrink-0">
-              <Avatar className="h-20 w-20 border-2 border-[#E2E8F0]">
+              <Avatar className="h-20 w-20 border-2 border-border">
                 <AvatarImage src={photoPreview} alt={form.name} />
-                <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-lg font-semibold">
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
                   {form.name ? form.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -333,7 +335,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center shadow-md hover:bg-[#4338CA] transition-colors disabled:opacity-60"
+                className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-60"
                 aria-label="Change photo"
               >
                 {uploadingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
@@ -341,8 +343,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
               <input ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhotoSelect} />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#172554]">Profile Photo</p>
-              <p className="text-xs text-[#64748B]">{isEdit ? "Click the camera icon to change it." : "Optional — click the camera icon to add one."}</p>
+              <p className="text-sm font-medium text-foreground">Profile Photo</p>
+              <p className="text-xs text-muted-foreground">{isEdit ? "Click the camera icon to change it." : "Optional — click the camera icon to add one."}</p>
             </div>
           </div>
 
@@ -388,20 +390,20 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                   required
                 />
                 {checkingParentEmail && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#94A3B8]" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground/70" />
                 )}
               </div>
               {!isEdit && (
-                <p className="text-xs text-[#64748B]">Already a parent here? Enter their email to link this as a sibling.</p>
+                <p className="text-xs text-muted-foreground">Already a parent here? Enter their email to link this as a sibling.</p>
               )}
             </Field>
           </div>
         </Section>
 
-        <Section title="Class Details">
+        <Section title="Class Details" icon={GraduationCap}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2 space-y-1.5">
-              <label className="text-sm font-medium text-[#172554]">Class <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium text-foreground">Class <span className="text-red-500">*</span></label>
               <Select value={classSelectValue} onValueChange={handleClassChange} disabled={classLoading}>
                 <SelectTrigger className="w-full"><SelectValue placeholder={classLoading ? "Loading classes..." : "Select class"} /></SelectTrigger>
                 <SelectContent>
@@ -421,7 +423,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
         </Section>
 
-        <Section title="Parent / Guardian">
+        <Section title="Parent / Guardian" icon={Users}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Father Name" required>
               <Input value={form.parentName} onChange={(e) => update("parentName", e.target.value)} placeholder="Father's name" maxLength={100} required />
@@ -444,7 +446,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
         </Section>
 
-        <Section title="Admission Details">
+        <Section title="Admission Details" icon={CalendarClock}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Admission Date" required>
               <Input
@@ -456,7 +458,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                 required
                 max={todayISO()}
               />
-              {isEdit && <p className="text-xs text-[#64748B] mt-1">Admission date cannot be changed after creation.</p>}
+              {isEdit && <p className="text-xs text-muted-foreground mt-1">Admission date cannot be changed after creation.</p>}
             </Field>
             <Field label="Admission No">
               <Input value={form.admissionNo} placeholder="Auto-generated on save" disabled maxLength={30} />
@@ -469,7 +471,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
         </Section>
 
-        <Section title="Documents">
+        <Section title="Documents" icon={FileBadge}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Aadhaar Number">
               <Input value={form.aadhaarNumber} onChange={(e) => update("aadhaarNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar" inputMode="numeric" maxLength={12} />
@@ -477,7 +479,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
         </Section>
 
-        <Section title="Emergency Contact">
+        <Section title="Emergency Contact" icon={Siren}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Contact Name">
               <Input value={form.emergencyContact} onChange={(e) => update("emergencyContact", e.target.value)} placeholder="Contact name" maxLength={100} />
@@ -498,7 +500,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
         </Section>
 
-        <Section title="Category">
+        <Section title="Category" icon={Tags}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Religion">
               <Select value={form.religion} onValueChange={(v) => update("religion", v || "")}>
@@ -525,7 +527,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
         <div className="flex justify-end gap-3 pb-6">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard/students")}>Cancel</Button>
-          <Button type="submit" disabled={saving || classLoading || !form.studentClass} className="gap-2 bg-[#4F46E5] hover:bg-[#4338CA]">
+          <Button type="submit" disabled={saving || classLoading || !form.studentClass} className="gap-2 bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving..." : isEdit ? "Update Student" : "Add Student"}
           </Button>
@@ -535,10 +537,17 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon?: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(79,70,229,0.15)]">
-      <h3 className="text-sm font-bold text-[#172554] mb-4">{title}</h3>
+    <div className="card-premium p-6">
+      <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
+        {Icon && (
+          <div className="icon-chip h-8 w-8 bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+        {title}
+      </h3>
       {children}
     </div>
   );
@@ -547,9 +556,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-[#172554]">
+      <label className="text-sm font-medium text-foreground">
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-destructive"> *</span>}
       </label>
       {children}
     </div>

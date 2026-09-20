@@ -247,31 +247,31 @@ export default function TeachersPage() {
       {teachers && teachers.length > 0 && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#172554]">{counts.total}</p>
-                <p className="text-xs text-[#64748B]">Total Staff</p>
+                <p className="text-xl font-bold text-foreground">{counts.total}</p>
+                <p className="text-xs text-muted-foreground">Total Staff</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#4F46E5]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <GraduationCap className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xl font-bold text-[#4F46E5]">{counts.teaching}</p>
-                <p className="text-xs text-[#64748B]">Teaching</p>
+                <p className="text-xl font-bold text-primary">{counts.teaching}</p>
+                <p className="text-xs text-muted-foreground">Teaching</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center gap-3 rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
                 <Briefcase className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-xl font-bold text-amber-600">{counts.nonTeaching}</p>
-                <p className="text-xs text-[#64748B]">Non-Teaching</p>
+                <p className="text-xs text-muted-foreground">Non-Teaching</p>
               </div>
             </div>
           </div>
@@ -288,7 +288,7 @@ export default function TeachersPage() {
                   variant={staffFilter === tab.key ? "default" : "outline"}
                   size="sm"
                   onClick={() => setStaffFilter(tab.key)}
-                  className={`gap-1.5 ${staffFilter === tab.key ? "bg-[#4F46E5] hover:bg-[#4338CA]" : ""}`}
+                  className={`gap-1.5 ${staffFilter === tab.key ? "bg-primary hover:bg-primary/90" : ""}`}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   {tab.label}
@@ -301,17 +301,17 @@ export default function TeachersPage() {
       )}
 
       {error ? null : !teachers ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
-            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Name</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Type</p>
-            <p className="w-48 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Phone</p>
-            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Subjects</p>
-            <p className="w-[136px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
+            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Name</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Type</p>
+            <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
+            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
           </div>
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Skeleton className="h-11 w-11 rounded-full shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -328,41 +328,41 @@ export default function TeachersPage() {
           ))}
         </div>
       ) : teachers.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Users} message="No teachers yet. Add your first one to get started." />
         </div>
       ) : filteredTeachers.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Users} message="No staff match your filters." />
         </div>
       ) : (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-[#F1F5F9]">
-            <p className="flex-1 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Name</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Type</p>
-            <p className="w-48 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Email</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Phone</p>
-            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">Subjects</p>
-            <p className="w-[136px] shrink-0 text-xs font-semibold text-[#94A3B8] uppercase tracking-wider text-right">Actions</p>
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
+            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Name</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Type</p>
+            <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
+            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
+            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
-            <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-[#F1F5F9] last:border-0">
+            <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-11 w-11 shrink-0 border border-[#E2E8F0]">
+                <Avatar className="h-11 w-11 shrink-0 border border-border">
                   <AvatarImage src={t.photo} alt={t.name} />
-                  <AvatarFallback className="bg-[#EEF2FF] text-[#4F46E5] text-sm font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                     {t.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-[#172554] truncate">{t.name}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{t.name}</p>
                     {!t.isActive && (
                       <span className={`shrink-0 ${statusPillClass("destructive")}`}>Inactive</span>
                     )}
                   </div>
-                  <p className="text-xs text-[#64748B] mt-0.5 truncate">{t.qualification || t.teacherId}</p>
-                  <p className="text-xs text-[#64748B] mt-0.5 sm:hidden truncate">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.qualification || t.teacherId}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 sm:hidden truncate">
                     {t.email}
                     {t.phone ? ` · ${t.phone}` : ""}
                   </p>
@@ -372,20 +372,20 @@ export default function TeachersPage() {
               <div className="hidden sm:block w-28 shrink-0">
                 <span
                   className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${
-                    t.staffType === "teaching" ? "bg-[#EFF6FF] text-blue-700" : "bg-amber-50 text-amber-700"
+                    t.staffType === "teaching" ? "bg-info/10 text-blue-700" : "bg-amber-50 text-amber-700"
                   }`}
                 >
                   {t.staffType === "teaching" ? "Teaching" : "Non-Teaching"}
                 </span>
               </div>
               <div className="hidden sm:block w-48 shrink-0">
-                <p className="text-sm text-[#334155] truncate">{t.email}</p>
+                <p className="text-sm text-foreground/90 truncate">{t.email}</p>
               </div>
               <div className="hidden sm:block w-32 shrink-0">
-                <p className="text-sm text-[#334155]">{t.phone || "—"}</p>
+                <p className="text-sm text-foreground/90">{t.phone || "—"}</p>
               </div>
               <div className="hidden lg:block w-40 shrink-0">
-                <p className="text-sm text-[#334155] truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
+                <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0">
@@ -433,7 +433,7 @@ export default function TeachersPage() {
       <Dialog open={!!permTeacher} onOpenChange={(o) => { if (!o) setPermTeacher(null); }}>
         <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">
+            <DialogTitle className="text-lg text-foreground">
               Permissions {permTeacher ? `— ${permTeacher.name}` : ""}
             </DialogTitle>
           </DialogHeader>
@@ -441,10 +441,10 @@ export default function TeachersPage() {
             <form onSubmit={handlePermSubmit} className="space-y-4 mt-2">
               {PERMISSION_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider mb-2">{group.label}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{group.label}</p>
                   <div className="grid grid-cols-2 gap-2">
                     {group.keys.map((key) => (
-                      <label key={key} className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
+                      <label key={key} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                         <input
                           type="checkbox"
                           checked={permForm[key]}
@@ -456,7 +456,7 @@ export default function TeachersPage() {
                   </div>
                 </div>
               ))}
-              <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={permSubmitting}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={permSubmitting}>
                 {permSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Permissions"}
               </Button>
             </form>

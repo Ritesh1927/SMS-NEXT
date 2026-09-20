@@ -16,23 +16,23 @@ export function StatCard({ title, value, trend, color, colorDark, icon: Icon, sp
   const hasSparkline = sparkline && sparkline.length > 1 && sparkline.some((v) => v > 0);
 
   return (
-    <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5">
+    <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-0.5">
       <div
         className="flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm shadow-black/10"
         style={{ background: `linear-gradient(135deg, ${color}, ${colorDark})` }}
       >
         <Icon className="h-5 w-5 text-white" />
       </div>
-      <p className="mt-4 text-sm font-medium text-[#475569]">{title}</p>
-      <p className="mt-1 text-[28px] font-bold leading-none text-[#0F172A]">{value}</p>
+      <p className="mt-4 text-sm font-medium text-muted-foreground">{title}</p>
+      <p className="mt-1 text-[28px] font-bold leading-none text-foreground">{value}</p>
       <div className="mt-2.5 flex items-center gap-1.5">
         {trend ? (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#22C55E]">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">
             <ArrowUp className="h-3 w-3" />
             {trend}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-[#64748B]">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <Minus className="h-3 w-3" /> No change this month
           </span>
         )}

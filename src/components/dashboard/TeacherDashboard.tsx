@@ -61,7 +61,7 @@ const FEE_STATUS_TONE: Record<FeeRow["feeStatus"], StatusTone> = {
   pending: "warning",
 };
 
-const panelClass = "rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]";
+const panelClass = "rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]";
 
 export function TeacherDashboard() {
   const [data, setData] = useState<TeacherDashboardData | null>(null);
@@ -83,7 +83,7 @@ export function TeacherDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[#64748B]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
       </div>
     );
@@ -143,8 +143,8 @@ export function TeacherDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-[#8B5CF6]" />
-            <h2 className="text-sm font-semibold text-[#172554]">
+            <TrendingUp className="h-4 w-4 text-accent" />
+            <h2 className="text-sm font-semibold text-foreground">
               Weekly Attendance Trend{weeklyTrendMonth ? ` — ${weeklyTrendMonth}` : ""}
             </h2>
           </div>
@@ -166,7 +166,7 @@ export function TeacherDashboard() {
         <div className={panelClass}>
           <div className="flex items-center gap-2 mb-4">
             <ClipboardList className="h-4 w-4 text-fuchsia-600" />
-            <h2 className="text-sm font-semibold text-[#172554]">Class Performance Average</h2>
+            <h2 className="text-sm font-semibold text-foreground">Class Performance Average</h2>
           </div>
           {classPerformance.length === 0 ? (
             <EmptyStateCompact message="No result data yet." />
@@ -186,10 +186,10 @@ export function TeacherDashboard() {
 
       {teacher.subjects.length > 0 && (
         <div className={panelClass}>
-          <h2 className="text-sm font-semibold text-[#172554] mb-2">Subjects</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-2">Subjects</h2>
           <div className="flex flex-wrap gap-2">
             {teacher.subjects.map((s) => (
-              <span key={s} className="text-xs font-medium text-[#4F46E5] bg-[#4F46E5]/10 px-2.5 py-1 rounded-full">
+              <span key={s} className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
                 {s}
               </span>
             ))}
@@ -198,17 +198,17 @@ export function TeacherDashboard() {
       )}
 
       <div className={panelClass}>
-        <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-[#4F46E5]" /> My Classes
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary" /> My Classes
         </h2>
         {classBreakdown.length === 0 ? (
           <EmptyStateCompact message="No classes assigned yet. Ask your school admin to assign classes on your profile." />
         ) : (
           <div className="space-y-3">
             {classBreakdown.map((c) => (
-              <div key={c.label} className="flex items-center justify-between border-b border-[#F1F5F9] pb-2 last:border-0">
-                <span className="text-sm font-medium text-[#172554]">{c.label}</span>
-                <span className="text-xs text-[#64748B]">{c.studentCount} students</span>
+              <div key={c.label} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
+                <span className="text-sm font-medium text-foreground">{c.label}</span>
+                <span className="text-xs text-muted-foreground">{c.studentCount} students</span>
               </div>
             ))}
           </div>
@@ -217,30 +217,30 @@ export function TeacherDashboard() {
 
       {fees && fees.data.length > 0 && (
         <div className={panelClass}>
-          <h2 className="text-sm font-semibold text-[#172554] mb-4 flex items-center gap-2">
-            <IndianRupee className="h-4 w-4 text-[#4F46E5]" /> Student Fee Details
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <IndianRupee className="h-4 w-4 text-primary" /> Student Fee Details
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#F1F5F9]">
-                  <th className="text-left p-2 font-medium text-[#64748B]">Student</th>
-                  <th className="text-left p-2 font-medium text-[#64748B]">Class</th>
-                  <th className="text-right p-2 font-medium text-[#64748B]">Total Due</th>
-                  <th className="text-right p-2 font-medium text-[#64748B]">Paid</th>
-                  <th className="text-right p-2 font-medium text-[#64748B]">Pending</th>
-                  <th className="text-center p-2 font-medium text-[#64748B]">Status</th>
+                <tr className="border-b border-border">
+                  <th className="text-left p-2 font-medium text-muted-foreground">Student</th>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Class</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground">Total Due</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground">Paid</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground">Pending</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {fees.data.map((s) => (
-                  <tr key={s._id} className="border-b border-[#F1F5F9] last:border-0">
+                  <tr key={s._id} className="border-b border-border last:border-0">
                     <td className="p-2">
-                      <p className="font-medium text-[#172554]">{s.name}</p>
-                      <p className="text-xs text-[#94A3B8]">{s.rollNumber}</p>
+                      <p className="font-medium text-foreground">{s.name}</p>
+                      <p className="text-xs text-muted-foreground/70">{s.rollNumber}</p>
                     </td>
-                    <td className="p-2 text-[#475569]">{s.class}-{s.section}</td>
-                    <td className="p-2 text-right font-mono text-[#172554]">₹{s.totalDue.toLocaleString("en-IN")}</td>
+                    <td className="p-2 text-muted-foreground">{s.class}-{s.section}</td>
+                    <td className="p-2 text-right font-mono text-foreground">₹{s.totalDue.toLocaleString("en-IN")}</td>
                     <td className="p-2 text-right font-mono text-green-600">₹{s.totalPaid.toLocaleString("en-IN")}</td>
                     <td className="p-2 text-right font-mono text-amber-600">₹{Math.max(0, s.pendingAmount).toLocaleString("en-IN")}</td>
                     <td className="p-2 text-center">

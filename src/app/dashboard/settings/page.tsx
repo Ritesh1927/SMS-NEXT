@@ -195,7 +195,7 @@ export default function SettingsPage() {
 
   if (!profile) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[#64748B]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading settings...
       </div>
     );
@@ -261,12 +261,12 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   {profile.logo && (
                     // eslint-disable-next-line @next/next/no-img-element -- data-URI/arbitrary remote logo, not an optimizable static asset.
-                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-lg object-cover border border-[#E2E8F0]" />
+                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-lg object-cover border border-border" />
                   )}
                   <button
                     type="button"
                     onClick={() => logoInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#E2E8F0] rounded-lg hover:bg-[#F8FAFC] transition-colors text-sm text-[#64748B]"
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-border rounded-lg hover:bg-muted/50 transition-colors text-sm text-muted-foreground"
                   >
                     <Upload className="h-4 w-4" /> {profile.logo ? "Change Logo" : "Upload Logo"}
                   </button>
@@ -281,7 +281,7 @@ export default function SettingsPage() {
                       type="color"
                       value={profile.themeColor}
                       onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })}
-                      className="h-10 w-10 rounded-lg border border-[#E2E8F0] cursor-pointer"
+                      className="h-10 w-10 rounded-lg border border-border cursor-pointer"
                     />
                     <Input value={profile.themeColor} onChange={(e) => setProfile((p) => p && { ...p, themeColor: e.target.value })} className="font-mono" />
                   </div>
@@ -292,7 +292,7 @@ export default function SettingsPage() {
                       type="color"
                       value={profile.secondaryColor}
                       onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })}
-                      className="h-10 w-10 rounded-lg border border-[#E2E8F0] cursor-pointer"
+                      className="h-10 w-10 rounded-lg border border-border cursor-pointer"
                     />
                     <Input value={profile.secondaryColor} onChange={(e) => setProfile((p) => p && { ...p, secondaryColor: e.target.value })} className="font-mono" />
                   </div>
@@ -301,7 +301,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full" style={{ background: profile.themeColor }} />
                 <div className="h-6 w-6 rounded-full" style={{ background: profile.secondaryColor }} />
-                <span className="text-xs text-[#64748B]">Preview</span>
+                <span className="text-xs text-muted-foreground">Preview</span>
               </div>
             </Panel>
           </TabsContent>
@@ -309,7 +309,7 @@ export default function SettingsPage() {
           <TabsContent value="academic" className="mt-4">
             <Panel icon={SlidersHorizontal} title="Academic Settings">
               {sessionRange.label && (
-                <div className="px-4 py-2.5 rounded-lg text-white text-sm font-semibold bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6]">
+                <div className="px-4 py-2.5 rounded-lg text-white text-sm font-semibold bg-gradient-to-br from-primary to-accent">
                   {sessionRange.label}
                 </div>
               )}
@@ -329,7 +329,7 @@ export default function SettingsPage() {
                   </Select>
                 </Field>
                 <Field label="Current Year (Auto)">
-                  <Input value={sessionRange.startYear && sessionRange.endYear ? `${sessionRange.startYear}-${sessionRange.endYear}` : ""} disabled className="bg-[#F8FAFC] font-mono" />
+                  <Input value={sessionRange.startYear && sessionRange.endYear ? `${sessionRange.startYear}-${sessionRange.endYear}` : ""} disabled className="bg-muted/50 font-mono" />
                 </Field>
               </div>
 
@@ -402,10 +402,10 @@ export default function SettingsPage() {
                   ["examNotifications", "Exam Notifications", "Notify students and parents about upcoming exams"],
                 ] as [keyof SchoolProfile["settings"]["notifications"], string, string][]
               ).map(([key, label, desc]) => (
-                <div key={key} className="flex items-center justify-between py-2.5 border-b border-[#F1F5F9] last:border-0">
+                <div key={key} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
                   <div>
-                    <p className="text-sm font-medium text-[#172554]">{label}</p>
-                    <p className="text-xs text-[#64748B]">{desc}</p>
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
                   </div>
                   <Switch
                     checked={profile.settings.notifications[key]}
@@ -436,10 +436,10 @@ export default function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div className="flex items-center justify-between py-3 border-t border-[#F1F5F9]">
+              <div className="flex items-center justify-between py-3 border-t border-border">
                 <div>
-                  <p className="text-sm font-medium text-[#172554]">Two-Factor Authentication</p>
-                  <p className="text-xs text-[#64748B]">Add an extra layer of security</p>
+                  <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
+                  <p className="text-xs text-muted-foreground">Add an extra layer of security</p>
                 </div>
                 <Switch
                   checked={profile.settings.security.twoFactorAuth}
@@ -479,7 +479,7 @@ export default function SettingsPage() {
                     />
                   </Field>
                 </div>
-                <Button type="submit" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={changingPassword}>
+                <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/90" disabled={changingPassword}>
                   {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
                 </Button>
               </Panel>
@@ -488,10 +488,10 @@ export default function SettingsPage() {
 
           <TabsContent value="fees" className="mt-4">
             <Panel icon={DollarSign} title="Late Fee Configuration">
-              <div className="flex items-center justify-between py-3 border-b border-[#F1F5F9]">
+              <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm font-medium text-[#172554]">Enable Late Fees</p>
-                  <p className="text-xs text-[#64748B]">Automatically apply late fees on overdue payments</p>
+                  <p className="text-sm font-medium text-foreground">Enable Late Fees</p>
+                  <p className="text-xs text-muted-foreground">Automatically apply late fees on overdue payments</p>
                 </div>
                 <Switch
                   checked={profile.settings.lateFee.enabled}
@@ -507,7 +507,7 @@ export default function SettingsPage() {
                       value={profile.settings.lateFee.gracePeriod}
                       onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, gracePeriod: Number(e.target.value) } } })}
                     />
-                    <p className="text-xs text-[#94A3B8] mt-1">Days after due date before late fee applies</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Days after due date before late fee applies</p>
                   </Field>
                   <Field label="Late Fee Type">
                     <Select
@@ -548,7 +548,7 @@ export default function SettingsPage() {
                       value={profile.settings.lateFee.maxAmount}
                       onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, maxAmount: Number(e.target.value) } } })}
                     />
-                    <p className="text-xs text-[#94A3B8] mt-1">Cap on late fee amount</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Cap on late fee amount</p>
                   </Field>
                 </div>
               )}

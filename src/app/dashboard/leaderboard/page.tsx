@@ -69,17 +69,17 @@ export default function LeaderboardPage() {
       ) : (
         <>
       {star && (
-        <Card className="border-[#FDE68A] bg-gradient-to-br from-[#FFFBEB] to-white">
+        <Card className="border-warning/30 bg-gradient-to-br from-warning/10 to-white">
           <CardContent className="flex items-center gap-4 py-5">
-            <div className="h-12 w-12 rounded-full bg-[#F59E0B]/10 flex items-center justify-center shrink-0">
-              <Trophy className="h-5 w-5 text-[#F59E0B]" />
+            <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+              <Trophy className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#B45309]">Star Student</p>
-              <p className="text-base font-bold text-[#172554]">
-                {star.name} <span className="font-normal text-[#64748B]">· {star.class}{star.section ? `-${star.section}` : ""}</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-warning">Star Student</p>
+              <p className="text-base font-bold text-foreground">
+                {star.name} <span className="font-normal text-muted-foreground">· {star.class}{star.section ? `-${star.section}` : ""}</span>
               </p>
-              <p className="text-sm text-[#64748B]">{star.points} pts · {star.streakDays} day streak</p>
+              <p className="text-sm text-muted-foreground">{star.points} pts · {star.streakDays} day streak</p>
             </div>
           </CardContent>
         </Card>
@@ -93,24 +93,24 @@ export default function LeaderboardPage() {
           {rows.length === 0 ? (
             <EmptyState icon={Trophy} message="No points earned yet." />
           ) : (
-            <div className="divide-y divide-[#E2E8F0]">
+            <div className="divide-y divide-border">
               {rows.map((r) => (
                 <div key={r._id} className="flex items-center gap-4 px-6 py-3">
-                  <div className={`w-6 text-center font-bold ${RANK_STYLE[r.rank] || "text-[#64748B]"}`}>
+                  <div className={`w-6 text-center font-bold ${RANK_STYLE[r.rank] || "text-muted-foreground"}`}>
                     {r.rank <= 3 ? <Medal className="h-5 w-5 mx-auto" /> : r.rank}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#172554] truncate">{r.name}</p>
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {r.class}{r.section ? `-${r.section}` : ""} · {r.studentId}
                     </p>
                   </div>
                   {r.streakDays > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-[#F59E0B] font-medium">
+                    <div className="flex items-center gap-1 text-xs text-warning font-medium">
                       <Flame className="h-3.5 w-3.5" /> {r.streakDays}
                     </div>
                   )}
-                  <div className="text-sm font-bold text-[#4F46E5] w-16 text-right">{r.points} pts</div>
+                  <div className="text-sm font-bold text-primary w-16 text-right">{r.points} pts</div>
                 </div>
               ))}
             </div>

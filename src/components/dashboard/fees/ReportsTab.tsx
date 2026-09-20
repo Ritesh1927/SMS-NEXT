@@ -22,17 +22,17 @@ const getMonthLabel = (month: string) => {
 function Spinner() {
   return (
     <div className="flex justify-center py-12">
-      <RefreshCw className="h-6 w-6 text-[#94A3B8] animate-spin" />
+      <RefreshCw className="h-6 w-6 text-muted-foreground/70 animate-spin" />
     </div>
   );
 }
 
 function Th({ children }: { children: React.ReactNode }) {
-  return <th className="text-left text-xs font-medium text-[#64748B] px-4 py-3 uppercase tracking-wider">{children}</th>;
+  return <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3 uppercase tracking-wider">{children}</th>;
 }
 
 function EmptyRow({ cols, msg }: { cols: number; msg: string }) {
-  return <tr><td colSpan={cols} className="px-4 py-10 text-center text-sm text-[#64748B]">{msg}</td></tr>;
+  return <tr><td colSpan={cols} className="px-4 py-10 text-center text-sm text-muted-foreground">{msg}</td></tr>;
 }
 
 interface CollectionSummaryData {
@@ -58,20 +58,20 @@ function RptCollectionSummary() {
       .finally(() => setLoading(false));
   }, []);
   if (loading) return <Spinner />;
-  if (!data) return <div className="text-center py-10 text-[#64748B]">Failed to load</div>;
+  if (!data) return <div className="text-center py-10 text-muted-foreground">Failed to load</div>;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-[#64748B]">Today</p><p className="text-xl font-bold text-green-600">{fmt(data.today.collected)}</p><p className="text-xs text-[#64748B]">{data.today.payments} payments</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-[#64748B]">This Week</p><p className="text-xl font-bold text-[#4F46E5]">{fmt(data.week.collected)}</p><p className="text-xs text-[#64748B]">{data.week.payments} payments</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-[#64748B]">This Month</p><p className="text-xl font-bold text-[#172554]">{fmt(data.month.collected)}</p><p className="text-xs text-[#64748B]">{data.month.payments} payments</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-[#64748B]">This Year</p><p className="text-xl font-bold text-[#172554]">{fmt(data.year.collected)}</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">Today</p><p className="text-xl font-bold text-green-600">{fmt(data.today.collected)}</p><p className="text-xs text-muted-foreground">{data.today.payments} payments</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Week</p><p className="text-xl font-bold text-primary">{fmt(data.week.collected)}</p><p className="text-xs text-muted-foreground">{data.week.payments} payments</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Month</p><p className="text-xl font-bold text-foreground">{fmt(data.month.collected)}</p><p className="text-xs text-muted-foreground">{data.month.payments} payments</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]"><p className="text-xs text-muted-foreground">This Year</p><p className="text-xl font-bold text-foreground">{fmt(data.year.collected)}</p></div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-amber-500"><p className="text-xs text-[#64748B]">Total Pending</p><p className="text-xl font-bold text-amber-600">{fmt(data.pending)}</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-red-500"><p className="text-xs text-[#64748B]">Late Fees Collected</p><p className="text-xl font-bold text-red-600">{fmt(data.lateFees)}</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-green-500"><p className="text-xs text-[#64748B]">Concessions Given</p><p className="text-xl font-bold text-green-600">{fmt(data.concessions)}</p></div>
-        <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-blue-500"><p className="text-xs text-[#64748B]">Total Overdue</p><p className="text-xl font-bold text-blue-600">{fmt(data.overdue)}</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-amber-500"><p className="text-xs text-muted-foreground">Total Pending</p><p className="text-xl font-bold text-amber-600">{fmt(data.pending)}</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-red-500"><p className="text-xs text-muted-foreground">Late Fees Collected</p><p className="text-xl font-bold text-red-600">{fmt(data.lateFees)}</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-green-500"><p className="text-xs text-muted-foreground">Concessions Given</p><p className="text-xl font-bold text-green-600">{fmt(data.concessions)}</p></div>
+        <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] border-l-4 border-blue-500"><p className="text-xs text-muted-foreground">Total Overdue</p><p className="text-xl font-bold text-blue-600">{fmt(data.overdue)}</p></div>
       </div>
     </div>
   );
@@ -121,9 +121,9 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
 
   if (loading) return <Spinner />;
   return (
-    <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-      <div className="p-4 border-b border-[#F1F5F9] flex items-center justify-between flex-wrap gap-3">
-        <h3 className="text-base font-semibold text-[#172554]">Outstanding Dues ({filtered.length})</h3>
+    <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+      <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
+        <h3 className="text-base font-semibold text-foreground">Outstanding Dues ({filtered.length})</h3>
         <div className="flex items-center gap-3">
           <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "all")}>
             <SelectTrigger className="w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
@@ -156,7 +156,7 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
+          <thead><tr className="border-b border-border bg-muted/50">
             {["Student", "Class", "Month", "Amount", "Days Overdue", "Status"].map((h) => <Th key={h}>{h}</Th>)}
           </tr></thead>
           <tbody>
@@ -164,10 +164,10 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
             {filtered.map((inv) => {
               const status = getStatus(inv);
               return (
-                <tr key={`${inv._id}-${inv.student?._id}`} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]">
-                  <td className="px-4 py-3 text-sm font-medium text-[#172554]">{inv.student?.name || "—"}</td>
-                  <td className="px-4 py-3 text-sm text-[#64748B]">{inv.student ? `Class ${inv.student.class}-${inv.student.section}` : "—"}</td>
-                  <td className="px-4 py-3 text-sm text-[#64748B]">{inv.month === "one-time" ? "One-Time" : getMonthLabel(inv.month)}</td>
+                <tr key={`${inv._id}-${inv.student?._id}`} className="border-b border-border hover:bg-muted/50">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{inv.student?.name || "—"}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{inv.student ? `Class ${inv.student.class}-${inv.student.section}` : "—"}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{inv.month === "one-time" ? "One-Time" : getMonthLabel(inv.month)}</td>
                   <td className="px-4 py-3 text-sm font-semibold">{fmt(inv.total)}</td>
                   <td className="px-4 py-3 text-sm text-red-600 font-semibold">{inv.daysOverdue > 0 ? `${inv.daysOverdue}d` : "—"}</td>
                   <td className="px-4 py-3"><Badge variant="secondary" className={`text-xs ${getStatusBadge(status)}`}>{status}</Badge></td>
@@ -196,19 +196,19 @@ function RptClassWise() {
   }, []);
   if (loading) return <Spinner />;
   return (
-    <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-      <div className="p-4 border-b border-[#F1F5F9]"><h3 className="text-base font-semibold text-[#172554]">Class-wise Report</h3></div>
+    <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+      <div className="p-4 border-b border-border"><h3 className="text-base font-semibold text-foreground">Class-wise Report</h3></div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
+          <thead><tr className="border-b border-border bg-muted/50">
             {["Class", "Total Students", "Paid", "Unpaid", "Collected", "Outstanding Amt"].map((h) => <Th key={h}>{h}</Th>)}
           </tr></thead>
           <tbody>
             {data.length === 0 && <EmptyRow cols={6} msg="No data" />}
             {data.map((c) => (
-              <tr key={c.className} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]">
-                <td className="px-4 py-3 text-sm font-medium text-[#172554]">{c.className}</td>
-                <td className="px-4 py-3 text-sm text-[#64748B]">{c.totalCount}</td>
+              <tr key={c.className} className="border-b border-border hover:bg-muted/50">
+                <td className="px-4 py-3 text-sm font-medium text-foreground">{c.className}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{c.totalCount}</td>
                 <td className="px-4 py-3 text-sm text-green-600 font-semibold">{c.paid}</td>
                 <td className="px-4 py-3 text-sm text-amber-600 font-semibold">{c.pendingCount}</td>
                 <td className="px-4 py-3 text-sm font-semibold">{fmt(c.collected)}</td>
@@ -263,28 +263,28 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
   if (loading) return <Spinner />;
   return (
     <div className="space-y-4">
-      {data.length === 0 && <div className="p-10 text-center text-sm text-[#64748B]">No fee data for this student</div>}
+      {data.length === 0 && <div className="p-10 text-center text-sm text-muted-foreground">No fee data for this student</div>}
       {data.map((group) => {
         const fs = group.feeStructure;
         const months = group.months || [];
         const summary = group.summary;
         return (
-          <div key={fs._id} className="border border-[#E2E8F0] rounded-lg overflow-hidden">
-            <div className="bg-[#F8FAFC] px-4 py-3 flex items-center justify-between">
+          <div key={fs._id} className="border border-border rounded-lg overflow-hidden">
+            <div className="bg-muted/50 px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">{fs.title}</span>
                 {freqBadge(fs.frequency)}
               </div>
-              <span className="text-xs text-[#64748B]">₹{fs.amount.toLocaleString("en-IN")}{fs.frequency === "one-time" || fs.frequency === "yearly" ? "" : "/month"}</span>
+              <span className="text-xs text-muted-foreground">₹{fs.amount.toLocaleString("en-IN")}{fs.frequency === "one-time" || fs.frequency === "yearly" ? "" : "/month"}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]/60">
+                <thead><tr className="border-b border-border bg-muted/50/60">
                   <Th>Month</Th><Th>Amount</Th><Th>Late Fee</Th><Th>Concession</Th><Th>Total</Th><Th>Paid</Th><Th>Balance</Th><Th>Status</Th><Th>Receipt</Th>
                 </tr></thead>
                 <tbody>
                   {months.map((row) => (
-                    <tr key={row.month} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]/60">
+                    <tr key={row.month} className="border-b border-border hover:bg-muted/50/60">
                       <td className="px-4 py-2.5 text-sm">{row.month === "one-time" ? "One-Time" : getMonthLabel(row.month)}</td>
                       <td className="px-4 py-2.5 text-sm">{fmt(row.amount)}</td>
                       <td className="px-4 py-2.5 text-sm text-red-600">{row.lateFee > 0 ? `+${fmt(row.lateFee)}` : "—"}</td>
@@ -293,12 +293,12 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
                       <td className="px-4 py-2.5 text-sm text-green-600">{row.paidAmount > 0 ? fmt(row.paidAmount) : "—"}</td>
                       <td className="px-4 py-2.5 text-sm text-red-600 font-semibold">{row.balance > 0 ? fmt(row.balance) : "—"}</td>
                       <td className="px-4 py-2.5">{getStatusBadge(row.status)}</td>
-                      <td className="px-4 py-2.5 text-xs font-mono text-[#94A3B8] max-w-[140px] truncate" title={row.receiptNo || ""}>{row.receiptNo || "—"}</td>
+                      <td className="px-4 py-2.5 text-xs font-mono text-muted-foreground/70 max-w-[140px] truncate" title={row.receiptNo || ""}>{row.receiptNo || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-[#F8FAFC] font-semibold text-sm">
+                  <tr className="bg-muted/50 font-semibold text-sm">
                     <td className="px-4 py-2.5">Total</td>
                     <td className="px-4 py-2.5">{fmt(summary.totalAmount)}</td>
                     <td className="px-4 py-2.5 text-red-600">{summary.totalLateFee > 0 ? `+${fmt(summary.totalLateFee)}` : "—"}</td>
@@ -315,14 +315,14 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
         );
       })}
       {grandSummary && (
-        <div className="border border-[#4F46E5]/20 rounded-lg bg-[#4F46E5]/5 p-4">
+        <div className="border border-primary/20 rounded-lg bg-primary/5 p-4">
           <h4 className="text-sm font-semibold mb-3">Grand Summary</h4>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-            <div><span className="text-[#64748B]">Total Amount</span><p className="font-bold">{fmt(grandSummary.totalAmount)}</p></div>
-            <div><span className="text-[#64748B]">Late Fees</span><p className="font-bold text-red-600">{fmt(grandSummary.totalLateFee)}</p></div>
-            <div><span className="text-[#64748B]">Concessions</span><p className="font-bold text-green-600">{fmt(grandSummary.totalConcession)}</p></div>
-            <div><span className="text-[#64748B]">Total Paid</span><p className="font-bold text-green-600">{fmt(grandSummary.totalPaid)}</p></div>
-            <div><span className="text-[#64748B]">Balance</span><p className="font-bold text-red-600">{fmt(grandSummary.totalBalance)}</p></div>
+            <div><span className="text-muted-foreground">Total Amount</span><p className="font-bold">{fmt(grandSummary.totalAmount)}</p></div>
+            <div><span className="text-muted-foreground">Late Fees</span><p className="font-bold text-red-600">{fmt(grandSummary.totalLateFee)}</p></div>
+            <div><span className="text-muted-foreground">Concessions</span><p className="font-bold text-green-600">{fmt(grandSummary.totalConcession)}</p></div>
+            <div><span className="text-muted-foreground">Total Paid</span><p className="font-bold text-green-600">{fmt(grandSummary.totalPaid)}</p></div>
+            <div><span className="text-muted-foreground">Balance</span><p className="font-bold text-red-600">{fmt(grandSummary.totalBalance)}</p></div>
           </div>
         </div>
       )}
@@ -347,13 +347,13 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 p-1 bg-[#F1F5F9] rounded-xl w-fit flex-wrap">
+      <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit flex-wrap">
         {REPORT_TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setRptTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${rptTab === t.id ? "bg-white text-[#4F46E5] shadow-sm" : "text-[#64748B] hover:text-[#172554]"}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${rptTab === t.id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             {t.label}
           </button>
@@ -364,9 +364,9 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
       {rptTab === "outstanding" && <RptOutstandingDues classFilter={rptClass} setClassFilter={setRptClass} classes={classes} students={students} />}
       {rptTab === "classwise" && <RptClassWise />}
       {rptTab === "ledger" && (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <div className="p-4 border-b border-[#F1F5F9] flex items-center gap-3 flex-wrap">
-            <h3 className="text-base font-semibold text-[#172554]">Student Ledger</h3>
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <div className="p-4 border-b border-border flex items-center gap-3 flex-wrap">
+            <h3 className="text-base font-semibold text-foreground">Student Ledger</h3>
             <Select value={rptClass} onValueChange={(v) => { setRptClass(v || "all"); setRptStudent(""); }}>
               <SelectTrigger className="w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
@@ -396,7 +396,7 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
             </Combobox>
           </div>
           {rptStudent ? <RptStudentLedger studentId={rptStudent} /> : (
-            <div className="p-10 text-center text-sm text-[#64748B]">Select a student to view ledger</div>
+            <div className="p-10 text-center text-sm text-muted-foreground">Select a student to view ledger</div>
           )}
         </div>
       )}

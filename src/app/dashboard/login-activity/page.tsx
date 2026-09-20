@@ -46,9 +46,9 @@ const ROLE_COLORS: Record<string, string> = {
 
 function DeviceIcon({ device }: { device: string }) {
   const d = device.toLowerCase();
-  if (d.includes("iphone") || d.includes("android") || d.includes("mobile")) return <Smartphone className="h-4 w-4 text-[#64748B]" />;
-  if (d.includes("ipad") || d.includes("tablet")) return <Tablet className="h-4 w-4 text-[#64748B]" />;
-  return <Monitor className="h-4 w-4 text-[#64748B]" />;
+  if (d.includes("iphone") || d.includes("android") || d.includes("mobile")) return <Smartphone className="h-4 w-4 text-muted-foreground" />;
+  if (d.includes("ipad") || d.includes("tablet")) return <Tablet className="h-4 w-4 text-muted-foreground" />;
+  return <Monitor className="h-4 w-4 text-muted-foreground" />;
 }
 
 export default function LoginActivityPage() {
@@ -130,14 +130,14 @@ export default function LoginActivityPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">Search</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search name or email…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
               </div>
             </div>
             <div className="min-w-[140px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">Role</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Role</label>
               <Select
                 items={[
                   { value: "__all__", label: "All Roles" },
@@ -160,11 +160,11 @@ export default function LoginActivityPage() {
               </Select>
             </div>
             <div className="min-w-[150px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">From</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </div>
             <div className="min-w-[150px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">To</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
               <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function LoginActivityPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">
-            Login History <span className="text-sm font-normal text-[#64748B] ml-2">({total} records)</span>
+            Login History <span className="text-sm font-normal text-muted-foreground ml-2">({total} records)</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -210,8 +210,8 @@ export default function LoginActivityPage() {
                 logs.map((log) => (
                   <TableRow key={log._id}>
                     <TableCell>
-                      <p className="font-medium text-sm text-[#172554]">{log.userName}</p>
-                      <p className="text-xs text-[#64748B]">{log.email}</p>
+                      <p className="font-medium text-sm text-foreground">{log.userName}</p>
+                      <p className="text-xs text-muted-foreground">{log.email}</p>
                     </TableCell>
                     <TableCell>
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${ROLE_COLORS[log.role] || ""}`}>{ROLE_LABELS[log.role] || log.role}</span>
@@ -228,7 +228,7 @@ export default function LoginActivityPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        <Globe className="h-3.5 w-3.5 text-[#64748B]" />
+                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-sm">{log.location || "-"}</span>
                       </div>
                     </TableCell>
@@ -240,7 +240,7 @@ export default function LoginActivityPage() {
 
           {pages > 1 && (
             <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-[#64748B]">
+              <p className="text-sm text-muted-foreground">
                 Page {page} of {pages}
               </p>
               <div className="flex gap-2">
@@ -279,14 +279,14 @@ export default function LoginActivityPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-[#64748B] mb-4">Select a date range to permanently delete login records.</p>
+          <p className="text-sm text-muted-foreground mb-4">Select a date range to permanently delete login records.</p>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="min-w-[150px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">From</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
               <Input type="date" value={purgeFrom} onChange={(e) => setPurgeFrom(e.target.value)} />
             </div>
             <div className="min-w-[150px]">
-              <label className="text-xs font-medium text-[#64748B] mb-1 block">To</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
               <Input type="date" value={purgeTo} onChange={(e) => setPurgeTo(e.target.value)} />
             </div>
             <Button variant="destructive" disabled={purging || !purgeFrom || !purgeTo} onClick={handlePurgeClick}>

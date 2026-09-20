@@ -31,9 +31,9 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
   const quote = QUOTES[quoteIndex];
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-[#E2E8F0] bg-gradient-to-br from-[#EEF2FF] via-[#F5F3FF] to-white">
-      <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#8B5CF6]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-[#4F46E5]/10 blur-3xl" />
+    <div className="relative overflow-hidden rounded-[22px] border border-border bg-gradient-to-br from-primary/10 via-accent/5 to-white">
+      <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
 
       <div className="hidden sm:block pointer-events-none absolute inset-y-0 right-2 sm:right-6 w-[58%] sm:w-[62%]">
         <Image src="/school-illustration.png" alt="" fill className="object-contain object-right-bottom" priority />
@@ -41,18 +41,18 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
 
       <div className="relative z-10 flex min-h-[230px] sm:min-h-[250px] flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
         <div className="max-w-xl">
-          <h1 className="text-2xl sm:text-[26px] font-extrabold text-[#172554]">
-            {getGreeting()}, <span className="text-[#4F46E5]">{name}</span>
+          <h1 className="text-2xl sm:text-[26px] font-extrabold text-foreground">
+            {getGreeting()}, <span className="text-primary">{name}</span>
           </h1>
-          <p className="text-sm text-[#475569] mt-1.5">{subtitle}</p>
-          <p className="text-sm text-[#334155] mt-4 italic border-l-2 border-[#8B5CF6]/40 pl-3">
+          <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>
+          <p className="text-sm text-foreground/90 mt-4 italic border-l-2 border-accent/40 pl-3">
             &ldquo;{quote.text}&rdquo;
-            <span className="block not-italic text-xs text-[#64748B] mt-1">— {quote.author}</span>
+            <span className="block not-italic text-xs text-muted-foreground mt-1">— {quote.author}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md px-4 py-2.5 border border-white/50 shadow-[0_4px_20px_rgba(79,70,229,0.12)] shrink-0 self-start">
-          <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
-          <span className="text-sm font-semibold text-[#172554]">
+          <CalendarDays className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">
             {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </span>
         </div>

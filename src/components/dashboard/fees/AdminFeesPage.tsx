@@ -343,7 +343,7 @@ export default function AdminFeesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 text-[#4F46E5] animate-spin" />
+        <RefreshCw className="h-8 w-8 text-primary animate-spin" />
       </div>
     );
   }
@@ -352,21 +352,21 @@ export default function AdminFeesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Fee Management</h1>
-          <p className="text-sm text-[#64748B] mt-1">Class-wise fee structure, collection &amp; reports.</p>
+          <h1 className="text-2xl font-bold text-foreground">Fee Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">Class-wise fee structure, collection &amp; reports.</p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={loadAll}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
 
-      <div className="flex gap-1 p-1 bg-[#F1F5F9] rounded-xl w-fit flex-wrap">
+      <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit flex-wrap">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? "bg-white text-[#4F46E5] shadow-sm" : "text-[#64748B] hover:text-[#172554]"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             <t.icon className="h-4 w-4" />{t.label}
           </button>
@@ -385,11 +385,11 @@ export default function AdminFeesPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="p-4 border-b border-[#F1F5F9]"><h3 className="text-base font-semibold text-[#172554]">Monthly Collection Trend</h3></div>
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="p-4 border-b border-border"><h3 className="text-base font-semibold text-foreground">Monthly Collection Trend</h3></div>
               <div className="p-4">
                 {!analytics || analytics.data.every((a) => a.collected === 0 && a.pending === 0) ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-[#64748B]">No data yet</div>
+                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={analytics.data}>
@@ -405,11 +405,11 @@ export default function AdminFeesPage() {
               </div>
             </div>
 
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="p-4 border-b border-[#F1F5F9]"><h3 className="text-base font-semibold text-[#172554]">Class-wise Collection</h3></div>
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="p-4 border-b border-border"><h3 className="text-base font-semibold text-foreground">Class-wise Collection</h3></div>
               <div className="p-4">
                 {dash.classWise.every((c) => c.collected === 0) ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-[#64748B]">No data yet</div>
+                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={dash.classWise}>
@@ -436,22 +436,22 @@ export default function AdminFeesPage() {
                   key={c._id}
                   type="button"
                   onClick={() => setStructClass(c.name)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${structClass === c.name ? "bg-[#4F46E5] text-white border-transparent" : "border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5] hover:text-[#4F46E5]"}`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${structClass === c.name ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
                 >
                   {c.name}{c.section ? `-${c.section}` : ""}
                 </button>
               ))}
             </div>
             {canManage && (
-              <Button size="sm" className="bg-[#4F46E5] hover:bg-[#4338CA] gap-1.5 ml-auto" onClick={openAddStruct}>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 gap-1.5 ml-auto" onClick={openAddStruct}>
                 <Plus className="h-4 w-4" /> Add Fee Head
               </Button>
             )}
           </div>
 
-          <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <div className="p-4 border-b border-[#F1F5F9]">
-              <h3 className="text-base font-semibold text-[#172554]">{structClass || "Select a class"} — Fee Heads</h3>
+          <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-base font-semibold text-foreground">{structClass || "Select a class"} — Fee Heads</h3>
             </div>
             {structures.filter((s) => s.class === structClass).length === 0 ? (
               <EmptyState icon={DollarSign} message={structClass ? "No fee heads for this class. Click 'Add Fee Head' to create one." : "Select a class first."} />
@@ -459,19 +459,19 @@ export default function AdminFeesPage() {
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead><tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
+                    <thead><tr className="border-b border-border bg-muted/50">
                       {["Title", "Amount", "Frequency", "Due Date", "Academic Year", "Actions"].map((h) => (
-                        <th key={h} className="text-left text-xs font-medium text-[#64748B] px-4 py-3 uppercase tracking-wider">{h}</th>
+                        <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
                       {structures.filter((s) => s.class === structClass).map((s) => (
-                        <tr key={s._id} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]">
-                          <td className="px-4 py-3 text-sm font-medium text-[#172554]">{s.title}</td>
-                          <td className="px-4 py-3 text-sm text-[#4F46E5] font-semibold">{fmt(s.amount)}</td>
+                        <tr key={s._id} className="border-b border-border hover:bg-muted/50">
+                          <td className="px-4 py-3 text-sm font-medium text-foreground">{s.title}</td>
+                          <td className="px-4 py-3 text-sm text-primary font-semibold">{fmt(s.amount)}</td>
                           <td className="px-4 py-3"><Badge variant="secondary" className="text-xs capitalize">{s.frequency}</Badge></td>
-                          <td className="px-4 py-3 text-sm text-[#64748B]">{fmtDate(s.dueDate)}</td>
-                          <td className="px-4 py-3 text-sm text-[#64748B]">{s.academicYear || "—"}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{fmtDate(s.dueDate)}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground">{s.academicYear || "—"}</td>
                           <td className="px-4 py-3">
                             {canManage && (
                               <div className="flex gap-1">
@@ -485,12 +485,12 @@ export default function AdminFeesPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="p-4 border-t border-[#F1F5F9] text-right text-sm">
-                  <span className="text-[#64748B]">Total structures: </span>
+                <div className="p-4 border-t border-border text-right text-sm">
+                  <span className="text-muted-foreground">Total structures: </span>
                   <span className="font-semibold">{structures.filter((s) => s.class === structClass).length}</span>
-                  <span className="mx-3 text-[#94A3B8]">|</span>
-                  <span className="text-[#64748B]">Sum of amounts: </span>
-                  <span className="font-semibold text-[#4F46E5]">{fmt(structures.filter((s) => s.class === structClass).reduce((sum, s) => sum + s.amount, 0))}</span>
+                  <span className="mx-3 text-muted-foreground/70">|</span>
+                  <span className="text-muted-foreground">Sum of amounts: </span>
+                  <span className="font-semibold text-primary">{fmt(structures.filter((s) => s.class === structClass).reduce((sum, s) => sum + s.amount, 0))}</span>
                 </div>
               </>
             )}
@@ -506,37 +506,37 @@ export default function AdminFeesPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-[#172554]">Concession / Discount Management</h3>
-              <p className="text-sm text-[#64748B] mt-0.5">Apply % or flat discounts per student per fee head.</p>
+              <h3 className="text-base font-semibold text-foreground">Concession / Discount Management</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">Apply % or flat discounts per student per fee head.</p>
             </div>
-            <Button size="sm" className="bg-[#4F46E5] hover:bg-[#4338CA] gap-1.5" onClick={openAddCon}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 gap-1.5" onClick={openAddCon}>
               <Plus className="h-4 w-4" /> Add Concession
             </Button>
           </div>
           {concessions.length === 0 ? (
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <EmptyState icon={Tag} message="No concessions configured yet." />
             </div>
           ) : (
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-x-auto">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-x-auto">
               <table className="w-full">
-                <thead><tr className="border-b border-[#F1F5F9] bg-[#F8FAFC]">
+                <thead><tr className="border-b border-border bg-muted/50">
                   {["Student", "Class", "Fee Structure", "Type", "Discount", "Duration", "Description", "Actions"].map((h) => (
-                    <th key={h} className="text-left text-xs font-medium text-[#64748B] px-4 py-3 uppercase tracking-wider">{h}</th>
+                    <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {concessions.map((c) => {
                     const durationLabel = c.duration === "one-time" ? "One-time" : c.duration === "until-date" ? `Until ${c.validUntil ? new Date(c.validUntil).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" }) : "—"}` : "Recurring";
                     return (
-                      <tr key={c._id} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]">
-                        <td className="px-4 py-3 text-sm font-medium text-[#172554]">{c.student?.name || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-[#64748B]">{c.student?.class || "—"}</td>
-                        <td className="px-4 py-3 text-sm text-[#64748B]">{c.feeStructure?.title || "All Structures"}</td>
+                      <tr key={c._id} className="border-b border-border hover:bg-muted/50">
+                        <td className="px-4 py-3 text-sm font-medium text-foreground">{c.student?.name || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{c.student?.class || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{c.feeStructure?.title || "All Structures"}</td>
                         <td className="px-4 py-3"><Badge variant="secondary" className="text-xs">{c.type}</Badge></td>
                         <td className="px-4 py-3 text-sm font-semibold text-green-600">{c.isPct ? `${c.value}%` : fmt(c.value)}</td>
                         <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{durationLabel}</Badge></td>
-                        <td className="px-4 py-3 text-sm text-[#64748B]">{c.description || "—"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{c.description || "—"}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon-sm" onClick={() => openEditCon(c)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -556,7 +556,7 @@ export default function AdminFeesPage() {
       <Dialog open={structModal.open} onOpenChange={(o) => { if (!o) setStructModal({ open: false, editing: null }); }}>
         <DialogContent className={`${batchMode ? "sm:max-w-2xl" : "sm:max-w-lg"} rounded-2xl max-h-[90vh] overflow-y-auto`}>
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">{structModal.editing ? "Edit Fee Head" : "Create Fee Heads"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">{structModal.editing ? "Edit Fee Head" : "Create Fee Heads"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={saveStruct} className="space-y-4 mt-2">
             {!structModal.editing && (
@@ -571,15 +571,15 @@ export default function AdminFeesPage() {
             )}
 
             <Field label="Academic Year">
-              <Input value={academicYear} disabled placeholder="Auto-filled from settings" className="bg-[#F1F5F9]" />
+              <Input value={academicYear} disabled placeholder="Auto-filled from settings" className="bg-muted" />
             </Field>
 
             {batchMode && !structModal.editing ? (
               <>
                 {batchFees.map((f, idx) => (
-                  <div key={idx} className="rounded-lg border border-[#E2E8F0] p-4 space-y-3 relative">
+                  <div key={idx} className="rounded-lg border border-border p-4 space-y-3 relative">
                     {batchFees.length > 1 && (
-                      <button type="button" onClick={() => removeBatchRow(idx)} className="absolute top-2 right-2 text-[#94A3B8] hover:text-red-600">
+                      <button type="button" onClick={() => removeBatchRow(idx)} className="absolute top-2 right-2 text-muted-foreground/70 hover:text-red-600">
                         <X className="h-4 w-4" />
                       </button>
                     )}
@@ -639,7 +639,7 @@ export default function AdminFeesPage() {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1 bg-[#4F46E5] hover:bg-[#4338CA]" disabled={structSaving}>
+              <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={structSaving}>
                 {structSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : structModal.editing ? "Update" : batchMode ? `Create ${validBatchCount} Fee Head(s)` : "Create Fee Head"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setStructModal({ open: false, editing: null })}>Cancel</Button>
@@ -651,7 +651,7 @@ export default function AdminFeesPage() {
       <Dialog open={conModal.open} onOpenChange={(o) => { if (!o) setConModal({ open: false, editing: null }); }}>
         <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554] flex items-center gap-2"><Tag className="h-4 w-4 text-[#4F46E5]" /> {conModal.editing ? "Edit Concession" : "Add Concession"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground flex items-center gap-2"><Tag className="h-4 w-4 text-primary" /> {conModal.editing ? "Edit Concession" : "Add Concession"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={saveCon} className="space-y-3 mt-2">
             <Field label="Student" required>
@@ -685,7 +685,7 @@ export default function AdminFeesPage() {
                   {[{ l: "Percent (%)", v: true }, { l: "Flat (₹)", v: false }].map((opt) => (
                     <button
                       key={opt.l} type="button" onClick={() => setConForm((f) => ({ ...f, isPct: opt.v }))}
-                      className={`flex-1 h-10 rounded-lg border text-xs font-medium transition-all ${conForm.isPct === opt.v ? "bg-[#4F46E5] text-white border-transparent" : "border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]"}`}
+                      className={`flex-1 h-10 rounded-lg border text-xs font-medium transition-all ${conForm.isPct === opt.v ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary"}`}
                     >
                       {opt.l}
                     </button>
@@ -713,7 +713,7 @@ export default function AdminFeesPage() {
                 </Field>
               )}
             </div>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={conSaving || !conForm.studentId}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={conSaving || !conForm.studentId}>
               {conSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : conModal.editing ? "Update Concession" : "Add Concession"}
             </Button>
           </form>
@@ -763,7 +763,7 @@ function DashStatCard({ title, value, sub, icon: Icon, bg }: { title: string; va
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">{label}{required && <span className="text-red-500"> *</span>}</label>
+      <label className="text-xs font-semibold text-foreground">{label}{required && <span className="text-red-500"> *</span>}</label>
       {children}
     </div>
   );

@@ -20,7 +20,7 @@ export default function SuperAdminProtectedLayout({ children }: { children: Reac
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
+      <div className="min-h-screen flex items-center justify-center bg-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-white/70" />
       </div>
     );

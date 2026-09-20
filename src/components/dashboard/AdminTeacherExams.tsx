@@ -810,12 +810,12 @@ export function AdminTeacherExams() {
           </h3>
           <div className="space-y-2">
             {changeRequests.map((r) => (
-              <div key={r._id} className="flex items-center justify-between gap-3 bg-white rounded-xl px-4 py-3">
+              <div key={r._id} className="flex items-center justify-between gap-3 bg-card rounded-xl px-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[#172554] truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {r.sourceType === "exam" ? "Test" : "Exam"} change requested by {r.requestedBy?.name || "a teacher"}
                   </p>
-                  <p className="text-xs text-[#64748B] truncate">{r.reason}</p>
+                  <p className="text-xs text-muted-foreground truncate">{r.reason}</p>
                 </div>
                 <Button size="sm" variant="outline" className="shrink-0" onClick={() => { setReviewRequest(r); setReviewReply(""); }}>
                   Review
@@ -836,8 +836,8 @@ export function AdminTeacherExams() {
         {/* ── TESTS ── */}
         <TabsContent value="tests">
           <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <h2 className="text-sm font-bold text-[#172554]">All Tests</h2>
-            <Button onClick={openAdd} size="sm" className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
+            <h2 className="text-sm font-bold text-foreground">All Tests</h2>
+            <Button onClick={openAdd} size="sm" className="gap-1.5 bg-primary hover:bg-primary/90">
               <Plus className="h-3.5 w-3.5" /> New Test
             </Button>
           </div>
@@ -866,25 +866,25 @@ export function AdminTeacherExams() {
           )}
 
           {error ? null : !exams ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
           ) : exams.filter((e) => !e.scheduledExamId).length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <ClipboardList className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-              <p className="text-sm text-[#64748B]">No tests yet. Create one to get started.</p>
+            <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <ClipboardList className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No tests yet. Create one to get started.</p>
             </div>
           ) : filteredExams.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-sm text-[#64748B]">No tests match your filters.</p>
+            <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-sm text-muted-foreground">No tests match your filters.</p>
             </div>
           ) : (
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
               {filteredExams.map((exam) => {
                 const locked = !isEditWindowOpen(exam.date);
                 return (
-                  <div key={exam._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+                  <div key={exam._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#172554]">{exam.title}</p>
-                      <p className="text-xs text-[#64748B] mt-0.5">
+                      <p className="text-sm font-semibold text-foreground">{exam.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Class {exam.class}{exam.section ? `-${exam.section}` : ""} · {exam.subject} ·{" "}
                         {new Date(exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {exam.totalMarks} marks
                       </p>
@@ -923,7 +923,7 @@ export function AdminTeacherExams() {
         {/* ── EXAMS ── */}
         <TabsContent value="exams">
           <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <h2 className="text-sm font-bold text-[#172554]">All Exams</h2>
+            <h2 className="text-sm font-bold text-foreground">All Exams</h2>
             <Button variant="outline" onClick={openAddTerm} size="sm" className="gap-1.5">
               <Plus className="h-3.5 w-3.5" /> New Exam
             </Button>
@@ -944,25 +944,25 @@ export function AdminTeacherExams() {
           )}
 
           {!terms ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
           ) : filteredTerms.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <GraduationCap className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-              <p className="text-sm text-[#64748B]">No exams yet. Create one to schedule a multi-subject exam like Mid-Terms.</p>
+            <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <GraduationCap className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No exams yet. Create one to schedule a multi-subject exam like Mid-Terms.</p>
             </div>
           ) : (
-            <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
               {filteredTerms.map((term) => {
                 const expanded = expandedTerms.has(term._id);
                 const locked = !isEditWindowOpen(term.startDate);
                 return (
-                  <div key={term._id} className="border-b border-[#F1F5F9] last:border-0">
+                  <div key={term._id} className="border-b border-border last:border-0">
                     <div className="flex items-center justify-between px-5 py-4 gap-4">
                       <button type="button" onClick={() => toggleExpandTerm(term)} className="flex items-center gap-2 min-w-0 text-left">
-                        {expanded ? <ChevronDown className="h-4 w-4 text-[#64748B] shrink-0" /> : <ChevronRight className="h-4 w-4 text-[#64748B] shrink-0" />}
+                        {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[#172554] truncate">{term.title}</p>
-                          <p className="text-xs text-[#64748B] mt-0.5">
+                          <p className="text-sm font-semibold text-foreground truncate">{term.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             Class {term.class}{term.section ? `-${term.section}` : ""} · {term.examType} ·{" "}
                             {new Date(term.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} –{" "}
                             {new Date(term.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -997,16 +997,16 @@ export function AdminTeacherExams() {
                     {expanded && (
                       <div className="px-5 pb-4">
                         {!term.subjects ? (
-                          <div className="flex items-center gap-2 text-xs text-[#64748B] py-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading subjects...</div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading subjects...</div>
                         ) : term.subjects.length === 0 ? (
-                          <p className="text-xs text-[#64748B] py-2">No subjects scheduled.</p>
+                          <p className="text-xs text-muted-foreground py-2">No subjects scheduled.</p>
                         ) : (
-                          <div className="rounded-xl border border-[#F1F5F9] overflow-hidden">
+                          <div className="rounded-xl border border-border overflow-hidden">
                             {term.subjects.map((sub) => (
-                              <div key={sub._id} className="flex items-center justify-between px-4 py-2.5 border-b border-[#F1F5F9] last:border-0 gap-3">
+                              <div key={sub._id} className="flex items-center justify-between px-4 py-2.5 border-b border-border last:border-0 gap-3">
                                 <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-[#172554]">{sub.subject}</p>
-                                  <p className="text-[11px] text-[#64748B]">
+                                  <p className="text-xs font-semibold text-foreground">{sub.subject}</p>
+                                  <p className="text-[11px] text-muted-foreground">
                                     {new Date(sub.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {sub.totalMarks} marks
                                     {sub.duration ? ` · ${sub.duration} min` : ""}
                                   </p>
@@ -1027,9 +1027,9 @@ export function AdminTeacherExams() {
 
         {/* ── RESULTS ── */}
         <TabsContent value="results">
-          <div className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-4">
-            <h2 className="text-sm font-bold text-[#172554] mb-1 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Result Entry</h2>
-            <p className="text-xs text-[#64748B] mb-3">Select a class and a test or exam — enter marks and publish results.</p>
+          <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-4">
+            <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Result Entry</h2>
+            <p className="text-xs text-muted-foreground mb-3">Select a class and a test or exam — enter marks and publish results.</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Select value={rClass} onValueChange={(v) => { setRClass(v || "all"); setRSourceId(""); }}>
                 <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
@@ -1063,29 +1063,29 @@ export function AdminTeacherExams() {
           </div>
 
           {!rSourceId ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <BarChart3 className="h-6 w-6 text-[#94A3B8] mx-auto mb-2" />
-              <p className="text-sm text-[#64748B]">Pick a test or exam above to enter marks and publish results.</p>
+            <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <BarChart3 className="h-6 w-6 text-muted-foreground/70 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Pick a test or exam above to enter marks and publish results.</p>
             </div>
           ) : rLoading ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
           ) : rSourceType === "test" ? (
             !rTestRows ? null : rTestRows.length === 0 ? (
-              <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-                <p className="text-sm text-[#64748B]">No active students in this class.</p>
+              <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                <p className="text-sm text-muted-foreground">No active students in this class.</p>
               </div>
             ) : (
-              <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] gap-3 flex-wrap">
+              <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border gap-3 flex-wrap">
                   <div>
-                    <p className="text-sm font-semibold text-[#172554]">{rTestMeta?.title}</p>
-                    <p className="text-xs text-[#64748B]">{rTestMeta?.subject} · Out of {rTestMeta?.totalMarks} · {rTestRows.length} students</p>
+                    <p className="text-sm font-semibold text-foreground">{rTestMeta?.title}</p>
+                    <p className="text-xs text-muted-foreground">{rTestMeta?.subject} · Out of {rTestMeta?.totalMarks} · {rTestRows.length} students</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={handleSaveAllTest} disabled={rSaving} className="gap-1.5">
                       {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save All
                     </Button>
-                    <Button size="sm" onClick={() => handlePublishAllTest(true)} disabled={rPublishing} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
+                    <Button size="sm" onClick={() => handlePublishAllTest(true)} disabled={rPublishing} className="gap-1.5 bg-primary hover:bg-primary/90">
                       {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => handlePublishAllTest(false)} disabled={rPublishing} className="text-red-600 hover:text-red-700">
@@ -1110,12 +1110,12 @@ export function AdminTeacherExams() {
                   <TableBody>
                     {rTestRows.map((row, i) => (
                       <TableRow key={row.student._id}>
-                        <TableCell className="text-[#94A3B8]">{i + 1}</TableCell>
+                        <TableCell className="text-muted-foreground/70">{i + 1}</TableCell>
                         <TableCell>
-                          <p className="text-sm font-medium text-[#172554]">{row.student.name}</p>
-                          <p className="text-[11px] text-[#94A3B8]">{row.student.studentId}</p>
+                          <p className="text-sm font-medium text-foreground">{row.student.name}</p>
+                          <p className="text-[11px] text-muted-foreground/70">{row.student.studentId}</p>
                         </TableCell>
-                        <TableCell className="text-sm text-[#64748B]">{row.student.rollNumber || "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{row.student.rollNumber || "—"}</TableCell>
                         <TableCell>
                           <Input
                             type="number" min={0} max={rTestMeta?.totalMarks}
@@ -1131,12 +1131,12 @@ export function AdminTeacherExams() {
                           {row.grade ? (
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${gradeColor(row.grade)}`}>{row.grade}</span>
                           ) : (
-                            <span className="text-[#94A3B8] text-xs">—</span>
+                            <span className="text-muted-foreground/70 text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
                           {row.isPassed === null ? (
-                            <span className="text-[#94A3B8] text-xs">—</span>
+                            <span className="text-muted-foreground/70 text-xs">—</span>
                           ) : row.isPassed ? (
                             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Pass</span>
                           ) : (
@@ -1151,7 +1151,7 @@ export function AdminTeacherExams() {
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Draft</span>
                             )
                           ) : (
-                            <span className="text-[#94A3B8] text-xs">—</span>
+                            <span className="text-muted-foreground/70 text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -1161,7 +1161,7 @@ export function AdminTeacherExams() {
                                 {busyId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Save & Publish
                               </Button>
                             ) : (
-                              <span className="text-[11px] text-[#94A3B8]">Enter marks first</span>
+                              <span className="text-[11px] text-muted-foreground/70">Enter marks first</span>
                             )
                           ) : (
                             <Button size="xs" variant="outline" onClick={() => handleRowTogglePublish(row)} disabled={busyId === row.student._id} className="gap-1">
@@ -1177,19 +1177,19 @@ export function AdminTeacherExams() {
               </div>
             )
           ) : !rTermSubjects ? null : rTermSubjects.length === 0 ? (
-            <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <p className="text-sm text-[#64748B]">This exam has no subjects scheduled.</p>
+            <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <p className="text-sm text-muted-foreground">This exam has no subjects scheduled.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center justify-between flex-wrap gap-3">
-                <p className="text-xs text-[#64748B]">{rTermSubjects.length} subjects · {Object.values(rSubjectRows).flat().length} total entries</p>
+              <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center justify-between flex-wrap gap-3">
+                <p className="text-xs text-muted-foreground">{rTermSubjects.length} subjects · {Object.values(rSubjectRows).flat().length} total entries</p>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="outline" onClick={handleSaveActiveSubject} disabled={rSaving} className="gap-1.5">
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save {rTermSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
-                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing} className="gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]">
+                  <Button size="sm" onClick={() => handlePublishAllSubjects(true)} disabled={rPublishing} className="gap-1.5 bg-primary hover:bg-primary/90">
                     {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All Subjects
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing} className="text-red-600 hover:text-red-700">
@@ -1209,11 +1209,11 @@ export function AdminTeacherExams() {
                       key={s._id}
                       onClick={() => setRActiveSubjectId(s._id)}
                       className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                        activeTab ? "bg-[#4F46E5] text-white" : "bg-white text-[#64748B] shadow-[0_0_0_1px_rgba(15,23,42,0.07)] hover:bg-[#F8FAFC]"
+                        activeTab ? "bg-primary text-white" : "bg-card text-muted-foreground shadow-[0_0_0_1px_rgba(15,23,42,0.07)] hover:bg-muted/50"
                       }`}
                     >
                       {s.subject}
-                      <span className={activeTab ? "text-white/80" : "text-[#94A3B8]"}>
+                      <span className={activeTab ? "text-white/80" : "text-muted-foreground/70"}>
                         ({new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {s.totalMarks}m)
                       </span>
                       {allSaved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="text-[10px]">{savedCount}/{rows.length}</span>}
@@ -1223,11 +1223,11 @@ export function AdminTeacherExams() {
               </div>
 
               {(rSubjectRows[rActiveSubjectId] || []).length === 0 ? (
-                <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-                  <p className="text-sm text-[#64748B]">No active students in this class.</p>
+                <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                  <p className="text-sm text-muted-foreground">No active students in this class.</p>
                 </div>
               ) : (
-                <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+                <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1244,12 +1244,12 @@ export function AdminTeacherExams() {
                     <TableBody>
                       {(rSubjectRows[rActiveSubjectId] || []).map((row, i) => (
                         <TableRow key={row.student._id}>
-                          <TableCell className="text-[#94A3B8]">{i + 1}</TableCell>
+                          <TableCell className="text-muted-foreground/70">{i + 1}</TableCell>
                           <TableCell>
-                            <p className="text-sm font-medium text-[#172554]">{row.student.name}</p>
-                            <p className="text-[11px] text-[#94A3B8]">{row.student.studentId}</p>
+                            <p className="text-sm font-medium text-foreground">{row.student.name}</p>
+                            <p className="text-[11px] text-muted-foreground/70">{row.student.studentId}</p>
                           </TableCell>
-                          <TableCell className="text-sm text-[#64748B]">{row.student.rollNumber || "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{row.student.rollNumber || "—"}</TableCell>
                           <TableCell>
                             <Input
                               type="number" min={0}
@@ -1270,12 +1270,12 @@ export function AdminTeacherExams() {
                             {row.grade ? (
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${gradeColor(row.grade)}`}>{row.grade}</span>
                             ) : (
-                              <span className="text-[#94A3B8] text-xs">—</span>
+                              <span className="text-muted-foreground/70 text-xs">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center">
                             {row.isPassed === null ? (
-                              <span className="text-[#94A3B8] text-xs">—</span>
+                              <span className="text-muted-foreground/70 text-xs">—</span>
                             ) : row.isPassed ? (
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Pass</span>
                             ) : (
@@ -1290,7 +1290,7 @@ export function AdminTeacherExams() {
                                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Draft</span>
                               )
                             ) : (
-                              <span className="text-[#94A3B8] text-xs">—</span>
+                              <span className="text-muted-foreground/70 text-xs">—</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -1308,7 +1308,7 @@ export function AdminTeacherExams() {
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingExamId(null); }}>
         <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">{editingExamId ? "Edit Test" : "New Test"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">{editingExamId ? "Edit Test" : "New Test"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
             <Field label="Title" required>
@@ -1376,7 +1376,7 @@ export function AdminTeacherExams() {
                 <Input type="number" min={0} value={form.passingMarks} onChange={(e) => setForm((f) => ({ ...f, passingMarks: e.target.value }))} required />
               </Field>
             </div>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingExamId ? "Save Changes" : "Create Test"}
             </Button>
           </form>
@@ -1387,7 +1387,7 @@ export function AdminTeacherExams() {
       <Dialog open={termOpen} onOpenChange={(o) => { setTermOpen(o); if (!o) setEditingTermId(null); }}>
         <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">{editingTermId ? "Edit Exam" : "New Exam"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">{editingTermId ? "Edit Exam" : "New Exam"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleTermSubmit} className="space-y-3 mt-2">
             <Field label="Title" required>
@@ -1462,7 +1462,7 @@ export function AdminTeacherExams() {
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-[#172554]">Subjects</label>
+                <label className="text-sm font-medium text-foreground">Subjects</label>
                 <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
               <div className="space-y-2">
@@ -1508,7 +1508,7 @@ export function AdminTeacherExams() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={termSubmitting}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={termSubmitting}>
               {termSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingTermId ? "Save Changes" : "Create Exam"}
             </Button>
           </form>
@@ -1519,7 +1519,7 @@ export function AdminTeacherExams() {
       <Dialog open={!!cancelTarget} onOpenChange={(o) => { if (!o) { setCancelTarget(null); setCancelReason(""); } }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">Cancel {cancelTarget?.title}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">Cancel {cancelTarget?.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
             <Field label="Reason" required>
@@ -1536,10 +1536,10 @@ export function AdminTeacherExams() {
       <Dialog open={!!requestTarget} onOpenChange={(o) => { if (!o) { setRequestTarget(null); setRequestReason(""); setRequestField(""); setRequestValue(""); } }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">Request Change — {requestTarget?.title}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">Request Change — {requestTarget?.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            <p className="text-xs text-[#64748B]">This starts within 2 hours, so changes need admin approval.</p>
+            <p className="text-xs text-muted-foreground">This starts within 2 hours, so changes need admin approval.</p>
             <Field label="What needs to change?" required>
               <Select value={requestField} onValueChange={(v) => setRequestField(v || "")}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select a field" /></SelectTrigger>
@@ -1571,7 +1571,7 @@ export function AdminTeacherExams() {
             <Field label="Reason" required>
               <Textarea rows={3} value={requestReason} onChange={(e) => setRequestReason(e.target.value)} placeholder="Why does this need to change?" />
             </Field>
-            <Button onClick={submitChangeRequest} className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submittingRequest}>
+            <Button onClick={submitChangeRequest} className="w-full bg-primary hover:bg-primary/90" disabled={submittingRequest}>
               {submittingRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Request"}
             </Button>
           </div>
@@ -1582,14 +1582,14 @@ export function AdminTeacherExams() {
       <Dialog open={!!reviewRequest} onOpenChange={(o) => { if (!o) { setReviewRequest(null); setReviewReply(""); } }}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554] flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#4F46E5]" /> Review Change Request</DialogTitle>
+            <DialogTitle className="text-lg text-foreground flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Review Change Request</DialogTitle>
           </DialogHeader>
           {reviewRequest && (
             <div className="space-y-3 mt-2">
-              <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs space-y-1">
-                <p><span className="font-semibold text-[#172554]">Requested by:</span> {reviewRequest.requestedBy?.name || "—"}</p>
-                <p><span className="font-semibold text-[#172554]">Reason:</span> {reviewRequest.reason}</p>
-                <p><span className="font-semibold text-[#172554]">Change:</span> {JSON.stringify(reviewRequest.requestedChanges)}</p>
+              <div className="rounded-xl bg-muted/50 border border-border p-3 text-xs space-y-1">
+                <p><span className="font-semibold text-foreground">Requested by:</span> {reviewRequest.requestedBy?.name || "—"}</p>
+                <p><span className="font-semibold text-foreground">Reason:</span> {reviewRequest.reason}</p>
+                <p><span className="font-semibold text-foreground">Change:</span> {JSON.stringify(reviewRequest.requestedChanges)}</p>
               </div>
               <Field label="Reply">
                 <Textarea rows={2} value={reviewReply} onChange={(e) => setReviewReply(e.target.value)} placeholder="Optional note to the teacher (required if rejecting)." />
@@ -1598,7 +1598,7 @@ export function AdminTeacherExams() {
                 <Button variant="outline" className="flex-1 gap-1.5 text-red-600 hover:text-red-700" onClick={() => decideRequest(false)} disabled={reviewing}>
                   {reviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reject"}
                 </Button>
-                <Button className="flex-1 gap-1.5 bg-[#4F46E5] hover:bg-[#4338CA]" onClick={() => decideRequest(true)} disabled={reviewing}>
+                <Button className="flex-1 gap-1.5 bg-primary hover:bg-primary/90" onClick={() => decideRequest(true)} disabled={reviewing}>
                   {reviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve & Apply"}
                 </Button>
               </div>
@@ -1626,7 +1626,7 @@ function Field({ label, required, children }: { label?: string; required?: boole
   return (
     <div className="space-y-1">
       {label && (
-        <label className="text-xs font-semibold text-[#172554]">
+        <label className="text-xs font-semibold text-foreground">
           {label}
           {required && <span className="text-red-500"> *</span>}
         </label>

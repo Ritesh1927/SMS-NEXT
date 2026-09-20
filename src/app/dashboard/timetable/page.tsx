@@ -459,21 +459,21 @@ export default function TimetablePage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
-              <tr className="bg-[#F8FAFC]">
-                <th className="p-3 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wider w-[140px] border-b border-[#E2E8F0]">
+              <tr className="bg-muted/50">
+                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px] border-b border-border">
                   <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-[#4F46E5]" /> Time
+                    <Clock className="h-3.5 w-3.5 text-primary" /> Time
                   </div>
                 </th>
                 {DAYS.map((day) => (
                   <th
                     key={day}
-                    className={`p-3 text-center text-xs font-semibold uppercase tracking-wider border-b border-[#E2E8F0] ${
-                      day === today ? "text-[#4F46E5] bg-[#4F46E5]/5" : "text-[#64748B]"
+                    className={`p-3 text-center text-xs font-semibold uppercase tracking-wider border-b border-border ${
+                      day === today ? "text-primary bg-primary/5" : "text-muted-foreground"
                     }`}
                   >
                     {day}
@@ -484,36 +484,36 @@ export default function TimetablePage() {
             <tbody>
               {periodsLoading || loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-[#64748B] text-sm">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
                     Loading timetable…
                   </td>
                 </tr>
               ) : periods.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-[#64748B] text-sm">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
                     {isAdmin ? 'No periods configured. Click "Manage Periods" to add periods.' : "No periods configured yet."}
                   </td>
                 </tr>
               ) : (isAdmin && !selectedClassId) || (isParent && !selectedChildId) ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-[#64748B] text-sm">
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
                     {isParent ? "No child linked to your account yet." : "Select a class to view its timetable."}
                   </td>
                 </tr>
               ) : (
                 periods.map((period) => (
-                  <tr key={period._id} className={period.isBreak ? "bg-[#F8FAFC]" : "hover:bg-[#F8FAFC] transition-colors"}>
-                    <td className="p-3 border-b border-[#E2E8F0]">
-                      <div className="text-xs font-semibold text-[#172554]">{period.label}</div>
-                      <div className="text-[11px] text-[#64748B]">
+                  <tr key={period._id} className={period.isBreak ? "bg-muted/50" : "hover:bg-muted/50 transition-colors"}>
+                    <td className="p-3 border-b border-border">
+                      <div className="text-xs font-semibold text-foreground">{period.label}</div>
+                      <div className="text-[11px] text-muted-foreground">
                         {period.startTime} – {period.endTime}
                       </div>
                     </td>
                     {DAYS.map((day) => {
                       if (period.isBreak) {
                         return (
-                          <td key={day} className="p-2 border-b border-[#E2E8F0] text-center">
-                            <span className="text-xs text-[#64748B] italic">{period.label}</span>
+                          <td key={day} className="p-2 border-b border-border text-center">
+                            <span className="text-xs text-muted-foreground italic">{period.label}</span>
                           </td>
                         );
                       }
@@ -522,14 +522,14 @@ export default function TimetablePage() {
                       const isToday = day === today;
                       const isCurrent = isToday && pNum === currentPeriod;
                       return (
-                        <td key={day} className={`p-1.5 border-b border-[#E2E8F0] ${isToday ? "bg-[#4F46E5]/[0.02]" : ""}`}>
+                        <td key={day} className={`p-1.5 border-b border-border ${isToday ? "bg-primary/[0.02]" : ""}`}>
                           {entry ? (
                             <div
                               onClick={() => openEditModal(day, pNum)}
                               className={`rounded-xl p-2.5 border text-center transition-all ${
                                 isAdmin ? "cursor-pointer hover:scale-[1.03]" : "cursor-default"
                               } ${subjectColor(entry.subject, uniqueSubjects)} ${
-                                isCurrent ? "ring-2 ring-[#4F46E5] ring-offset-1 shadow-md" : ""
+                                isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""
                               }`}
                             >
                               <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
@@ -540,16 +540,16 @@ export default function TimetablePage() {
                                   {entry.classId.section ? `-${entry.classId.section}` : ""}
                                 </p>
                               )}
-                              {isCurrent && <span className="mt-1 inline-block text-[9px] font-bold bg-[#4F46E5] text-white px-1.5 py-0 rounded">NOW</span>}
+                              {isCurrent && <span className="mt-1 inline-block text-[9px] font-bold bg-primary text-white px-1.5 py-0 rounded">NOW</span>}
                             </div>
                           ) : (
                             <div
                               onClick={() => openEditModal(day, pNum)}
                               className={`h-full min-h-[48px] flex items-center justify-center rounded-xl transition-colors ${
-                                isAdmin ? "cursor-pointer hover:bg-[#4F46E5]/5" : ""
+                                isAdmin ? "cursor-pointer hover:bg-primary/5" : ""
                               }`}
                             >
-                              <span className="text-[#94A3B8]/50 text-xs">—</span>
+                              <span className="text-muted-foreground/70/50 text-xs">—</span>
                             </div>
                           )}
                         </td>
@@ -565,21 +565,21 @@ export default function TimetablePage() {
 
       {entries.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-[#172554]">{entries.length}</p>
-            <p className="text-xs text-[#64748B]">Total Periods</p>
+          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-foreground">{entries.length}</p>
+            <p className="text-xs text-muted-foreground">Total Periods</p>
           </div>
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-[#4F46E5]">{uniqueSubjects.length}</p>
-            <p className="text-xs text-[#64748B]">Subjects</p>
+          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-primary">{uniqueSubjects.length}</p>
+            <p className="text-xs text-muted-foreground">Subjects</p>
           </div>
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-            <p className="text-xl font-bold text-[#8B5CF6]">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
-            <p className="text-xs text-[#64748B]">Teachers</p>
+          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <p className="text-xl font-bold text-accent">{new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size}</p>
+            <p className="text-xs text-muted-foreground">Teachers</p>
           </div>
-          <div className="rounded-[18px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
             <p className="text-xl font-bold text-amber-600">{periods.length}</p>
-            <p className="text-xs text-[#64748B]">Period Rows</p>
+            <p className="text-xs text-muted-foreground">Period Rows</p>
           </div>
         </div>
       )}
@@ -627,7 +627,7 @@ export default function TimetablePage() {
                   <SelectContent>
                     <SelectItem value="__none__">— None —</SelectItem>
                     {filteredTeachers.length === 0 && (
-                      <p className="px-2 py-1.5 text-xs text-[#94A3B8]">No teacher assigned to this class.</p>
+                      <p className="px-2 py-1.5 text-xs text-muted-foreground/70">No teacher assigned to this class.</p>
                     )}
                     {filteredTeachers.map((t) => {
                       const busyClass = busyTeachers[t._id];
@@ -644,7 +644,7 @@ export default function TimetablePage() {
                   </SelectContent>
                 </Select>
                 {usingSubjectFallback && (
-                  <p className="text-xs text-[#94A3B8]">No assigned teacher has {editSubject} as a subject — showing everyone assigned to this class.</p>
+                  <p className="text-xs text-muted-foreground/70">No assigned teacher has {editSubject} as a subject — showing everyone assigned to this class.</p>
                 )}
               </div>
             </div>
@@ -689,20 +689,20 @@ export default function TimetablePage() {
             </DialogHeader>
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {periods.length === 0 ? (
-                <p className="text-sm text-[#64748B] text-center py-4">No periods yet. Add your first period below.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No periods yet. Add your first period below.</p>
               ) : (
                 periods.map((p) => (
                   <div
                     key={p._id}
                     className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border ${
-                      p.isBreak ? "bg-[#F8FAFC] border-[#E2E8F0]" : "bg-white border-[#E2E8F0]"
+                      p.isBreak ? "bg-muted/50 border-border" : "bg-card border-border"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="text-xs text-[#64748B] w-5 shrink-0 font-mono text-center">{p.isBreak ? "—" : p.periodNumber}</div>
+                      <div className="text-xs text-muted-foreground w-5 shrink-0 font-mono text-center">{p.isBreak ? "—" : p.periodNumber}</div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#172554] truncate">{p.label}</p>
-                        <p className="text-[11px] text-[#64748B]">
+                        <p className="text-sm font-medium text-foreground truncate">{p.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
                           {p.startTime} – {p.endTime}
                           {p.isBreak && <span className="ml-2 text-amber-600 italic">break</span>}
                         </p>
@@ -716,12 +716,12 @@ export default function TimetablePage() {
               )}
             </div>
 
-            <div className="border-t border-[#E2E8F0] pt-4 space-y-3">
+            <div className="border-t border-border pt-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-[#4F46E5]" />
-                <p className="text-sm font-semibold text-[#172554]">Quick Generate</p>
+                <Zap className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Quick Generate</p>
               </div>
-              <p className="text-xs text-[#64748B]">Auto-create all periods with correct timings in one click.</p>
+              <p className="text-xs text-muted-foreground">Auto-create all periods with correct timings in one click.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>First Period Starts</Label>
@@ -750,8 +750,8 @@ export default function TimetablePage() {
               </Button>
             </div>
 
-            <div className="border-t border-[#E2E8F0] pt-4 space-y-3">
-              <p className="text-sm font-semibold text-[#172554]">Add Manually</p>
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Add Manually</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1.5">
                   <Label htmlFor="p-label">Label</Label>

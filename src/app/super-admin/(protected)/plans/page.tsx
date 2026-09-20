@@ -151,22 +151,22 @@ export default function PlansManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-muted/50">
+      <div className="bg-card border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => router.push("/super-admin")} className="gap-1.5 text-gray-500 hover:text-gray-700">
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-[#172554]">Plans Management</h1>
-            <p className="text-xs text-[#64748B]">Create and manage subscription plans</p>
+            <h1 className="text-lg font-bold text-foreground">Plans Management</h1>
+            <p className="text-xs text-muted-foreground">Create and manage subscription plans</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={openCreate} className="gap-2 bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] text-white border-0 rounded-xl">
+          <Button onClick={openCreate} className="gap-2 bg-gradient-to-r from-primary to-accent text-white border-0 rounded-xl">
             <Plus className="h-4 w-4" /> Create Plan
           </Button>
           <Button variant="outline" onClick={handleLogout} className="rounded-xl">Logout</Button>
@@ -176,11 +176,11 @@ export default function PlansManagementPage() {
       <div className="max-w-6xl mx-auto p-6">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5]" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : plans.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-[#64748B]">No plans created yet.</p>
+            <p className="text-muted-foreground">No plans created yet.</p>
             <Button onClick={openCreate} className="mt-4 gap-2">
               <Plus className="h-4 w-4" /> Create your first plan
             </Button>
@@ -190,13 +190,13 @@ export default function PlansManagementPage() {
             {plans.map((plan) => {
               const Icon = PLAN_ICONS[plan.name.toLowerCase()] || Crown;
               return (
-                <div key={plan._id} className="bg-white rounded-2xl border border-[#E2E8F0] p-6 hover:shadow-lg transition-shadow">
+                <div key={plan._id} className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center">
-                        <Icon className="h-5 w-5 text-[#4F46E5]" />
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
-                      <h3 className="font-bold text-[#172554]">{plan.name}</h3>
+                      <h3 className="font-bold text-foreground">{plan.name}</h3>
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(plan)} className="h-8 w-8 p-0">
@@ -210,22 +210,22 @@ export default function PlansManagementPage() {
 
                   <div className="space-y-2 text-sm mb-4">
                     <div className="flex justify-between">
-                      <span className="text-[#64748B]">Price Per User</span>
+                      <span className="text-muted-foreground">Price Per User</span>
                       <span className="font-medium">₹{plan.pricePerUser}/user/mo</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#64748B]">Free Users</span>
+                      <span className="text-muted-foreground">Free Users</span>
                       <span className="font-medium">{plan.includedUsers}</span>
                     </div>
                   </div>
 
-                  <div className="border-t border-[#E2E8F0] pt-3">
-                    <p className="text-xs font-semibold text-[#64748B] mb-2">
+                  <div className="border-t border-border pt-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">
                       Features ({plan.features.length}/{ALL_FEATURES.length})
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {plan.features.slice(0, 6).map((f) => (
-                        <span key={f} className="text-[10px] bg-[#4F46E5]/10 text-[#4F46E5] px-2 py-0.5 rounded-full">
+                        <span key={f} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                           {ALL_FEATURES.find((af) => af.key === f)?.label || f}
                         </span>
                       ))}
@@ -239,7 +239,7 @@ export default function PlansManagementPage() {
 
                   <div className="mt-3 flex items-center gap-1.5">
                     <div className={`h-2 w-2 rounded-full ${plan.isActive ? "bg-green-500" : "bg-gray-400"}`} />
-                    <span className="text-xs text-[#64748B]">{plan.isActive ? "Active" : "Inactive"}</span>
+                    <span className="text-xs text-muted-foreground">{plan.isActive ? "Active" : "Inactive"}</span>
                   </div>
                 </div>
               );
@@ -251,7 +251,7 @@ export default function PlansManagementPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">
+            <DialogTitle className="text-lg text-foreground">
               {editingPlan ? `Edit ${editingPlan.name}` : "Create Plan"}
             </DialogTitle>
           </DialogHeader>
@@ -290,7 +290,7 @@ export default function PlansManagementPage() {
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                className="h-5 w-5 rounded border-gray-300 text-[#4F46E5] focus:ring-[#4F46E5]"
+                className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
               />
             </div>
 
@@ -306,8 +306,8 @@ export default function PlansManagementPage() {
                     onClick={() => toggleFeature(f.key)}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm text-left transition-all ${
                       form.features.includes(f.key)
-                        ? "border-[#4F46E5] bg-[#4F46E5]/5 text-[#4F46E5]"
-                        : "border-[#E2E8F0] text-[#64748B] hover:border-[#4F46E5]/30"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/30"
                     }`}
                   >
                     {form.features.includes(f.key) ? (
@@ -324,7 +324,7 @@ export default function PlansManagementPage() {
 
           <div className="pt-3 border-t border-gray-200 flex gap-3">
             <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6] text-white border-0">
+            <Button onClick={handleSave} disabled={saving} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-primary to-accent text-white border-0">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               {editingPlan ? "Update Plan" : "Create Plan"}
             </Button>

@@ -15,8 +15,8 @@ export default function Home() {
   }, [loading, isAuthenticated, router]);
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-[#F8FAFC]">
-      <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+    <div className="flex flex-1 items-center justify-center bg-muted/50">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
     </div>
   );
 }

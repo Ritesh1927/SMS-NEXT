@@ -47,7 +47,7 @@ export function ParentDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[#64748B]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
       </div>
     );
@@ -67,18 +67,18 @@ export function ParentDashboard() {
       />
 
       {children.length === 0 ? (
-        <div className="rounded-[18px] bg-white p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <p className="text-sm text-[#64748B]">Contact your school admin if this seems wrong.</p>
+        <div className="rounded-[18px] bg-card p-8 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+          <p className="text-sm text-muted-foreground">Contact your school admin if this seems wrong.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {children.map((child) => (
             <div
               key={child._id}
-              className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]"
+              className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)]"
             >
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-[#4F46E5] to-[#8B5CF6] flex items-center justify-center overflow-hidden">
+                <div className="h-12 w-12 shrink-0 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
                   {child.photo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={child.photo} alt={child.name} className="h-full w-full object-cover" />
@@ -87,8 +87,8 @@ export function ParentDashboard() {
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#172554]">{child.name}</p>
-                  <p className="text-xs text-[#64748B] flex items-center gap-1 mt-0.5">
+                  <p className="text-sm font-semibold text-foreground">{child.name}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Hash className="h-3 w-3" /> {child.studentId}
                   </p>
                 </div>
@@ -98,13 +98,13 @@ export function ParentDashboard() {
                   </span>
                 )}
               </div>
-              <div className="mt-4 flex items-center gap-2 text-xs text-[#475569] border-t border-[#F1F5F9] pt-3">
-                <GraduationCap className="h-3.5 w-3.5 text-[#4F46E5]" />
+              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground border-t border-border pt-3">
+                <GraduationCap className="h-3.5 w-3.5 text-primary" />
                 Class {child.class}
                 {child.section ? `-${child.section}` : ""} · Roll {child.rollNumber || "—"}
               </div>
               {child.admissionNo && (
-                <p className="mt-1 text-xs text-[#94A3B8]">Admission No: {child.admissionNo}</p>
+                <p className="mt-1 text-xs text-muted-foreground/70">Admission No: {child.admissionNo}</p>
               )}
               <ChildAttendance studentId={child._id} />
               <ChildResults studentId={child._id} />
@@ -151,7 +151,7 @@ function ChildAttendance({ studentId }: { studentId: string }) {
     <div className="mt-2 flex items-center gap-1.5 text-xs">
       <CalendarCheck className={`h-3.5 w-3.5 ${color}`} />
       <span className={`font-semibold ${color}`}>{percentage}% attendance</span>
-      <span className="text-[#94A3B8]">this month</span>
+      <span className="text-muted-foreground/70">this month</span>
     </div>
   );
 }
@@ -188,11 +188,11 @@ function ChildResults({ studentId }: { studentId: string }) {
       <div className="flex items-center gap-1.5 text-xs">
         <Award className={`h-3.5 w-3.5 ${color}`} />
         <span className={`font-semibold ${color}`}>{data.averagePercentage}% average</span>
-        <span className="text-[#94A3B8]">across {data.results.length} result{data.results.length === 1 ? "" : "s"}</span>
+        <span className="text-muted-foreground/70">across {data.results.length} result{data.results.length === 1 ? "" : "s"}</span>
       </div>
       <div className="mt-1.5 space-y-0.5">
         {data.results.slice(0, 3).map((r, i) => (
-          <p key={i} className="text-[11px] text-[#64748B]">
+          <p key={i} className="text-[11px] text-muted-foreground">
             {r.exam?.subject || r.exam?.title || "Exam"}: {r.marksObtained}/{r.totalMarks} ({r.grade})
           </p>
         ))}
@@ -239,12 +239,12 @@ function ChildUpcomingExams({ studentClass, studentSection }: { studentClass: st
   return (
     <div className="mt-2">
       <div className="flex items-center gap-1.5 text-xs">
-        <ClipboardList className="h-3.5 w-3.5 text-[#4F46E5]" />
-        <span className="font-semibold text-[#4F46E5]">{exams.length} upcoming exam{exams.length === 1 ? "" : "s"}</span>
+        <ClipboardList className="h-3.5 w-3.5 text-primary" />
+        <span className="font-semibold text-primary">{exams.length} upcoming exam{exams.length === 1 ? "" : "s"}</span>
       </div>
       <div className="mt-1.5 space-y-0.5">
         {exams.map((e) => (
-          <p key={e._id} className="text-[11px] text-[#64748B]">
+          <p key={e._id} className="text-[11px] text-muted-foreground">
             {e.subject}: {e.title} — {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </p>
         ))}
@@ -390,20 +390,20 @@ function ChildFees({ studentId, childName }: { studentId: string; childName: str
         <span className={`font-semibold ${color}`}>
           {pending === 0 ? "Fully paid" : `₹${pending.toLocaleString()} pending`}
         </span>
-        <span className="text-[#94A3B8]">of ₹{total.toLocaleString()}</span>
+        <span className="text-muted-foreground/70">of ₹{total.toLocaleString()}</span>
       </div>
       {pendingLines.length > 0 && (
         <div className="mt-2 space-y-1.5">
           {pendingLines.map((l) => (
             <div key={l.key} className="flex items-center justify-between gap-2">
-              <span className="text-[11px] text-[#64748B]">
+              <span className="text-[11px] text-muted-foreground">
                 {l.title} — ₹{l.amount.toLocaleString()}
               </span>
               <Button
                 size="xs"
                 onClick={() => handlePay(l)}
                 disabled={payingKey === l.key}
-                className="gap-1 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6"
+                className="gap-1 bg-primary hover:bg-primary/90 text-[10px] h-6"
               >
                 {payingKey === l.key ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
                 Pay
@@ -479,14 +479,14 @@ function ChildHomework({ studentId }: { studentId: string }) {
         <div className="mt-1.5 space-y-1.5">
           {pending.slice(0, 3).map((hw) => (
             <div key={hw._id} className="flex items-center justify-between gap-2">
-              <span className="text-[11px] text-[#64748B] truncate">
+              <span className="text-[11px] text-muted-foreground truncate">
                 {hw.subject}: {hw.title} — due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </span>
               <Button
                 size="xs"
                 onClick={() => handleSubmit(hw)}
                 disabled={submittingId === hw._id}
-                className="gap-1 bg-[#4F46E5] hover:bg-[#4338CA] text-[10px] h-6 shrink-0"
+                className="gap-1 bg-primary hover:bg-primary/90 text-[10px] h-6 shrink-0"
               >
                 {submittingId === hw._id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Mark Done"}
               </Button>

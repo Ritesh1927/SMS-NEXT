@@ -261,8 +261,8 @@ export default function SubjectsPage() {
         <TabsContent value="subjects" className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#172554]">Subjects</h2>
-              <p className="text-sm text-[#64748B]">{subjectsLoading ? "Loading…" : `${subjects.length} subject(s)`}</p>
+              <h2 className="text-lg font-semibold text-foreground">Subjects</h2>
+              <p className="text-sm text-muted-foreground">{subjectsLoading ? "Loading…" : `${subjects.length} subject(s)`}</p>
             </div>
             <Button onClick={openCreateSubject} className="gap-2" disabled={subjectsLoading}>
               <Plus className="h-4 w-4" /> Add Subject
@@ -271,16 +271,16 @@ export default function SubjectsPage() {
 
           {subjectsLoading ? (
             <Card>
-              <CardContent className="flex items-center justify-center gap-2 py-16 text-sm text-[#64748B]">
+              <CardContent className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading subjects…
               </CardContent>
             </Card>
           ) : subjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <BookOpen className="h-12 w-12 text-[#94A3B8]/40 mb-3" />
-                <p className="font-medium text-sm text-[#172554]">No subjects yet</p>
-                <p className="text-xs text-[#64748B] mt-1">Create your first subject to get started.</p>
+                <BookOpen className="h-12 w-12 text-muted-foreground/70/40 mb-3" />
+                <p className="font-medium text-sm text-foreground">No subjects yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create your first subject to get started.</p>
               </CardContent>
             </Card>
           ) : (
@@ -297,11 +297,11 @@ export default function SubjectsPage() {
                 <TableBody>
                   {subjects.map((s) => (
                     <TableRow key={s._id}>
-                      <TableCell className="font-medium text-[#172554]">{s.name}</TableCell>
+                      <TableCell className="font-medium text-foreground">{s.name}</TableCell>
                       <TableCell>
-                        <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155]">{s.code}</span>
+                        <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-muted text-foreground/90">{s.code}</span>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-[#64748B] text-sm max-w-xs truncate">{s.description || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-xs truncate">{s.description || "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon-sm" onClick={() => openEditSubject(s)}>
@@ -324,17 +324,17 @@ export default function SubjectsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <School className="h-5 w-5 text-[#4F46E5]" /> Single Assignment
+                <School className="h-5 w-5 text-primary" /> Single Assignment
               </CardTitle>
               <CardDescription>Select one class and assign subjects to it.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                 </div>
               ) : classes.length === 0 || subjects.length === 0 ? (
-                <p className="text-sm text-[#64748B]">{classes.length === 0 ? "No classes found. Create classes from the Classes page first." : "Please create at least one subject first."}</p>
+                <p className="text-sm text-muted-foreground">{classes.length === 0 ? "No classes found. Create classes from the Classes page first." : "Please create at least one subject first."}</p>
               ) : (
                 <>
                   <div className="space-y-2">
@@ -369,15 +369,15 @@ export default function SubjectsPage() {
                           <label
                             key={s._id}
                             className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors ${
-                              assigned ? "opacity-50 cursor-not-allowed bg-[#F8FAFC] border-[#E2E8F0]" : singleSubjectIds.has(s._id) ? "border-[#4F46E5] bg-[#4F46E5]/5 cursor-pointer" : "border-[#E2E8F0] hover:bg-[#F8FAFC] cursor-pointer"
+                              assigned ? "opacity-50 cursor-not-allowed bg-muted/50 border-border" : singleSubjectIds.has(s._id) ? "border-primary bg-primary/5 cursor-pointer" : "border-border hover:bg-muted/50 cursor-pointer"
                             }`}
                           >
                             <input type="checkbox" className="h-4 w-4" checked={singleSubjectIds.has(s._id)} disabled={assigned} onChange={(e) => toggleSingleSubject(s._id, e.target.checked)} />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate text-[#172554]">{s.name}</p>
-                              <p className="text-xs text-[#64748B] font-mono">{s.code}</p>
+                              <p className="text-sm font-medium truncate text-foreground">{s.name}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{s.code}</p>
                             </div>
-                            {assigned && <span className="ml-auto text-[10px] shrink-0 px-1.5 py-0.5 rounded-full border border-[#E2E8F0] text-[#64748B]">assigned</span>}
+                            {assigned && <span className="ml-auto text-[10px] shrink-0 px-1.5 py-0.5 rounded-full border border-border text-muted-foreground">assigned</span>}
                           </label>
                         );
                       })}
@@ -390,13 +390,13 @@ export default function SubjectsPage() {
                   </Button>
 
                   {singleClassId && getAssignedSubjects(singleClassId).length > 0 && (
-                    <div className="pt-4 border-t border-[#E2E8F0] space-y-2">
-                      <p className="text-sm font-medium text-[#172554]">
-                        Currently assigned to <span className="text-[#4F46E5]">{getClassById(singleClassId)?.name}</span>:
+                    <div className="pt-4 border-t border-border space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Currently assigned to <span className="text-primary">{getClassById(singleClassId)?.name}</span>:
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {getAssignedSubjects(singleClassId).map((subj) => (
-                          <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-[#F1F5F9] text-[#334155] text-xs font-medium">
+                          <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-muted text-foreground/90 text-xs font-medium">
                             <BookOpen className="h-3 w-3 shrink-0" />
                             {subj.name}
                             <button onClick={() => removeSubjectFromClass(singleClassId, subj._id)} className="ml-1 rounded-full hover:bg-red-100 p-0.5" aria-label={`Remove ${subj.name}`}>
@@ -415,28 +415,28 @@ export default function SubjectsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Copy className="h-5 w-5 text-[#4F46E5]" /> Bulk Assignment
+                <Copy className="h-5 w-5 text-primary" /> Bulk Assignment
               </CardTitle>
               <CardDescription>Select multiple classes and subjects, then assign them all at once.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-[#64748B]">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                 </div>
               ) : classes.length === 0 || subjects.length === 0 ? (
-                <p className="text-sm text-[#64748B]">{classes.length === 0 ? "No classes found." : "Please create at least one subject first."}</p>
+                <p className="text-sm text-muted-foreground">{classes.length === 0 ? "No classes found." : "Please create at least one subject first."}</p>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label>Select Classes</Label>
-                        <span className="text-xs text-[#64748B]">{bulkClassIds.size} selected</span>
+                        <span className="text-xs text-muted-foreground">{bulkClassIds.size} selected</span>
                       </div>
-                      <div className="border border-[#E2E8F0] rounded-lg divide-y divide-[#E2E8F0] max-h-56 overflow-y-auto">
+                      <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
                         {classes.map((c) => (
-                          <label key={c._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkClassIds.has(c._id) ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"}`}>
+                          <label key={c._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkClassIds.has(c._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}>
                             <input
                               type="checkbox"
                               className="h-4 w-4"
@@ -450,7 +450,7 @@ export default function SubjectsPage() {
                                 });
                               }}
                             />
-                            <p className="text-sm font-medium text-[#172554]">
+                            <p className="text-sm font-medium text-foreground">
                               {c.name}
                               {c.section ? ` — ${c.section}` : ""}
                             </p>
@@ -462,11 +462,11 @@ export default function SubjectsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label>Select Subjects</Label>
-                        <span className="text-xs text-[#64748B]">{bulkSubjectIds.size} selected</span>
+                        <span className="text-xs text-muted-foreground">{bulkSubjectIds.size} selected</span>
                       </div>
-                      <div className="border border-[#E2E8F0] rounded-lg divide-y divide-[#E2E8F0] max-h-56 overflow-y-auto">
+                      <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
                         {subjects.map((s) => (
-                          <label key={s._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkSubjectIds.has(s._id) ? "bg-[#4F46E5]/5" : "hover:bg-[#F8FAFC]"}`}>
+                          <label key={s._id} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkSubjectIds.has(s._id) ? "bg-primary/5" : "hover:bg-muted/50"}`}>
                             <input
                               type="checkbox"
                               className="h-4 w-4"
@@ -481,8 +481,8 @@ export default function SubjectsPage() {
                               }}
                             />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate text-[#172554]">{s.name}</p>
-                              <p className="text-xs text-[#64748B] font-mono">{s.code}</p>
+                              <p className="text-sm font-medium truncate text-foreground">{s.name}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{s.code}</p>
                             </div>
                           </label>
                         ))}
@@ -503,46 +503,46 @@ export default function SubjectsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-5 w-5 text-[#4F46E5]" /> Per-Class Assignment Overview
+                  <Users className="h-5 w-5 text-primary" /> Per-Class Assignment Overview
                 </CardTitle>
                 <CardDescription>Expand a class to view or remove its assigned subjects.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {assignmentsLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-[#64748B]">
+                  <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading assignments…
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#E2E8F0]">
+                  <div className="divide-y divide-border">
                     {classes.map((c) => {
                       const assignedSubjects = getAssignedSubjects(c._id);
                       const isExpanded = expandedClasses.has(c._id);
                       return (
                         <div key={c._id}>
-                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-[#F8FAFC] text-left" onClick={() => toggleExpanded(c._id)}>
+                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/50 text-left" onClick={() => toggleExpanded(c._id)}>
                             <div className="flex items-center gap-3 min-w-0">
-                              <School className="h-4 w-4 text-[#64748B] shrink-0" />
-                              <span className="font-medium text-sm text-[#172554] truncate">
+                              <School className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="font-medium text-sm text-foreground truncate">
                                 {c.name}
                                 {c.section ? ` — ${c.section}` : ""}
                               </span>
-                              <span className="text-xs shrink-0 px-2 py-0.5 rounded-full border border-[#E2E8F0] text-[#64748B]">
+                              <span className="text-xs shrink-0 px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                                 {assignedSubjects.length} subject{assignedSubjects.length !== 1 ? "s" : ""}
                               </span>
                             </div>
-                            {isExpanded ? <ChevronDown className="h-4 w-4 text-[#64748B] shrink-0" /> : <ChevronRight className="h-4 w-4 text-[#64748B] shrink-0" />}
+                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
                           </button>
                           {isExpanded && (
-                            <div className="px-6 py-4 bg-[#F8FAFC] border-t border-[#E2E8F0]">
+                            <div className="px-6 py-4 bg-muted/50 border-t border-border">
                               {assignedSubjects.length === 0 ? (
-                                <p className="text-sm text-[#64748B]">No subjects assigned yet.</p>
+                                <p className="text-sm text-muted-foreground">No subjects assigned yet.</p>
                               ) : (
                                 <div className="flex flex-wrap gap-2">
                                   {assignedSubjects.map((subj) => (
-                                    <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-white border border-[#E2E8F0] text-[#334155] text-xs font-medium">
+                                    <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-card border border-border text-foreground/90 text-xs font-medium">
                                       <BookOpen className="h-3 w-3 shrink-0" />
                                       {subj.name}
-                                      <span className="text-[#94A3B8] font-mono text-[10px]">{subj.code}</span>
+                                      <span className="text-muted-foreground/70 font-mono text-[10px]">{subj.code}</span>
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -572,16 +572,16 @@ export default function SubjectsPage() {
         <TabsContent value="summary">
           {isLoading || assignmentsLoading ? (
             <Card>
-              <CardContent className="flex items-center justify-center py-16 gap-2 text-[#64748B] text-sm">
+              <CardContent className="flex items-center justify-center py-16 gap-2 text-muted-foreground text-sm">
                 <Loader2 className="h-5 w-5 animate-spin" /> Loading…
               </CardContent>
             </Card>
           ) : classes.length === 0 || subjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <LayoutGrid className="h-12 w-12 text-[#94A3B8]/40 mb-3" />
-                <p className="font-medium text-sm text-[#172554]">Nothing to show yet</p>
-                <p className="text-xs text-[#64748B] mt-1">{classes.length === 0 ? "No classes found." : "Create at least one subject to see the assignment matrix."}</p>
+                <LayoutGrid className="h-12 w-12 text-muted-foreground/70/40 mb-3" />
+                <p className="font-medium text-sm text-foreground">Nothing to show yet</p>
+                <p className="text-xs text-muted-foreground mt-1">{classes.length === 0 ? "No classes found." : "Create at least one subject to see the assignment matrix."}</p>
               </CardContent>
             </Card>
           ) : (
@@ -595,12 +595,12 @@ export default function SubjectsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="sticky left-0 bg-white z-10 min-w-[160px] border-r border-[#E2E8F0]">Class</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-10 min-w-[160px] border-r border-border">Class</TableHead>
                         {subjects.map((s) => (
                           <TableHead key={s._id} className="text-center min-w-[110px]">
                             <div className="flex flex-col items-center gap-1">
                               <span className="text-xs font-medium">{s.name}</span>
-                              <span className="text-[10px] font-mono px-1 py-0 rounded border border-[#E2E8F0] text-[#64748B]">{s.code}</span>
+                              <span className="text-[10px] font-mono px-1 py-0 rounded border border-border text-muted-foreground">{s.code}</span>
                             </div>
                           </TableHead>
                         ))}
@@ -612,23 +612,23 @@ export default function SubjectsPage() {
                         const assignedSet = new Set(getAssignedIds(c._id));
                         return (
                           <TableRow key={c._id}>
-                            <TableCell className="sticky left-0 bg-white border-r border-[#E2E8F0]">
-                              <p className="text-sm font-medium text-[#172554]">{c.name}</p>
-                              <p className="text-xs text-[#64748B]">{c.section ? `Sec. ${c.section}` : ""}</p>
+                            <TableCell className="sticky left-0 bg-card border-r border-border">
+                              <p className="text-sm font-medium text-foreground">{c.name}</p>
+                              <p className="text-xs text-muted-foreground">{c.section ? `Sec. ${c.section}` : ""}</p>
                             </TableCell>
                             {subjects.map((s) => (
                               <TableCell key={s._id} className="text-center">
                                 {assignedSet.has(s._id) ? (
-                                  <div className="h-6 w-6 rounded-full bg-[#4F46E5]/10 flex items-center justify-center mx-auto">
-                                    <Check className="h-3.5 w-3.5 text-[#4F46E5]" />
+                                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                                    <Check className="h-3.5 w-3.5 text-primary" />
                                   </div>
                                 ) : (
-                                  <span className="text-[#94A3B8]/40 text-lg leading-none">—</span>
+                                  <span className="text-muted-foreground/70/40 text-lg leading-none">—</span>
                                 )}
                               </TableCell>
                             ))}
                             <TableCell className="text-center">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${assignedSet.size === subjects.length ? "bg-[#4F46E5] text-white" : "bg-[#F1F5F9] text-[#334155]"}`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${assignedSet.size === subjects.length ? "bg-primary text-white" : "bg-muted text-foreground/90"}`}>
                                 {assignedSet.size}/{subjects.length}
                               </span>
                             </TableCell>
@@ -660,15 +660,15 @@ export default function SubjectsPage() {
             {editSubject ? (
               <div className="space-y-1.5">
                 <Label>Subject Code</Label>
-                <Input value={editSubject.code} disabled className="bg-[#F8FAFC] font-mono text-sm" />
-                <p className="text-[11px] text-[#64748B]">Auto-generated code</p>
+                <Input value={editSubject.code} disabled className="bg-muted/50 font-mono text-sm" />
+                <p className="text-[11px] text-muted-foreground">Auto-generated code</p>
               </div>
             ) : (
               subjectForm.name.trim() && (
                 <div className="space-y-1.5">
                   <Label>Subject Code (auto)</Label>
-                  <Input value={autoCode(subjectForm.name)} disabled className="bg-[#F8FAFC] font-mono text-sm" />
-                  <p className="text-[11px] text-[#64748B]">Auto-generated from name</p>
+                  <Input value={autoCode(subjectForm.name)} disabled className="bg-muted/50 font-mono text-sm" />
+                  <p className="text-[11px] text-muted-foreground">Auto-generated from name</p>
                 </div>
               )
             )}
@@ -693,7 +693,7 @@ export default function SubjectsPage() {
           <DialogHeader>
             <DialogTitle>Delete Subject</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-[#64748B] py-2">Are you sure? This subject will be removed from all class assignments and cannot be undone.</p>
+          <p className="text-sm text-muted-foreground py-2">Are you sure? This subject will be removed from all class assignments and cannot be undone.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteSubjectId(null)} disabled={deletingSubject}>
               Cancel

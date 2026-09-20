@@ -245,7 +245,7 @@ export default function ChatPage() {
       <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden flex h-[70vh]">
       <div className="w-72 shrink-0 border-r border-border flex flex-col">
         {isAdmin && (
-          <div className="px-3 py-2.5 border-b border-[#F1F5F9] space-y-2">
+          <div className="px-3 py-2.5 border-b border-border space-y-2">
             <div className="flex gap-1.5">
               <button
                 onClick={() => {
@@ -286,7 +286,7 @@ export default function ChatPage() {
             )}
             {filterType && (
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -296,7 +296,7 @@ export default function ChatPage() {
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -307,9 +307,9 @@ export default function ChatPage() {
         )}
 
         {isTeacher && (
-          <div className="px-3 py-2.5 border-b border-[#F1F5F9]">
+          <div className="px-3 py-2.5 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -319,7 +319,7 @@ export default function ChatPage() {
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -331,13 +331,13 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           {error && <p className="text-xs text-red-600 px-4 py-2">{error}</p>}
           {error ? null : !visibleContacts ? (
-            <div className="flex items-center gap-2 text-xs text-[#64748B] px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-3">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading...
             </div>
           ) : isAdmin && filterType === "student" && !classFilter ? (
-            <p className="text-xs text-[#64748B] px-4 py-3">Pick a class above to search students.</p>
+            <p className="text-xs text-muted-foreground px-4 py-3">Pick a class above to search students.</p>
           ) : visibleContacts.length === 0 ? (
-            <p className="text-xs text-[#64748B] px-4 py-3">
+            <p className="text-xs text-muted-foreground px-4 py-3">
               {isAdmin && filterType ? "No matches." : "No contacts yet."}
             </p>
           ) : (

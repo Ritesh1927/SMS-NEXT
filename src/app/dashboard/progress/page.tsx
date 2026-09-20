@@ -106,12 +106,12 @@ export default function ProgressPage() {
             ].map((s) => (
               <Card key={s.title}>
                 <CardContent className="p-5 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-lg bg-[#4F46E5]/10 flex items-center justify-center shrink-0">
-                    <s.icon className="h-5 w-5 text-[#4F46E5]" />
+                  <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <s.icon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-[#64748B]">{s.title}</p>
-                    <p className="text-xl font-bold text-[#172554]">{s.value}</p>
+                    <p className="text-xs text-muted-foreground">{s.title}</p>
+                    <p className="text-xl font-bold text-foreground">{s.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -145,12 +145,12 @@ export default function ProgressPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-[#4F46E5]" /> Attendance Trend
+                        <TrendingUp className="h-4 w-4 text-primary" /> Attendance Trend
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {performanceTrend.length === 0 ? (
-                        <div className="flex items-center justify-center h-[280px] text-[#64748B] text-sm">No attendance data available.</div>
+                        <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No attendance data available.</div>
                       ) : (
                         <ResponsiveContainer width="100%" height={280}>
                           <LineChart data={performanceTrend}>
@@ -168,12 +168,12 @@ export default function ProgressPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Student vs Class Average
+                        <BarChart3 className="h-4 w-4 text-primary" /> Student vs Class Average
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {radarData.length === 0 ? (
-                        <div className="flex items-center justify-center h-[280px] text-[#64748B] text-sm">No subject data available.</div>
+                        <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">No subject data available.</div>
                       ) : (
                         <ResponsiveContainer width="100%" height={280}>
                           <RadarChart data={radarData}>
@@ -198,7 +198,7 @@ export default function ProgressPage() {
                   </CardHeader>
                   <CardContent>
                     {subjectData.length === 0 ? (
-                      <div className="flex items-center justify-center h-[300px] text-[#64748B] text-sm">No subject data available.</div>
+                      <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">No subject data available.</div>
                     ) : (
                       <>
                         <ResponsiveContainer width="100%" height={300}>
@@ -213,10 +213,10 @@ export default function ProgressPage() {
                         </ResponsiveContainer>
                         <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                           {subjectData.map((s) => (
-                            <div key={s.subject} className="p-3 rounded-xl bg-[#F8FAFC] text-center">
-                              <p className="text-xs text-[#64748B]">{s.subject}</p>
-                              <p className="text-lg font-bold text-[#172554] mt-1">{s.score}%</p>
-                              <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full bg-[#E2E8F0] text-[#334155] font-medium">{s.grade}</span>
+                            <div key={s.subject} className="p-3 rounded-xl bg-muted/50 text-center">
+                              <p className="text-xs text-muted-foreground">{s.subject}</p>
+                              <p className="text-lg font-bold text-foreground mt-1">{s.score}%</p>
+                              <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full bg-border text-foreground/90 font-medium">{s.grade}</span>
                             </div>
                           ))}
                         </div>
@@ -243,11 +243,11 @@ export default function ProgressPage() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-semibold text-[#172554]">{r.teacher}</span>
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155] font-medium">{r.subject}</span>
+                              <span className="text-sm font-semibold text-foreground">{r.teacher}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-foreground/90 font-medium">{r.subject}</span>
                             </div>
-                            <p className="text-sm text-[#64748B]">{r.remark}</p>
-                            <p className="text-xs text-[#64748B] mt-2">{r.date}</p>
+                            <p className="text-sm text-muted-foreground">{r.remark}</p>
+                            <p className="text-xs text-muted-foreground mt-2">{r.date}</p>
                           </div>
                         </CardContent>
                       </Card>

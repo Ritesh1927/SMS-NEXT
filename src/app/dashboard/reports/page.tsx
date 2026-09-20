@@ -164,20 +164,20 @@ export default function ReportsPage() {
   }, [tab]);
 
   if (user && user.role !== "schooladmin" && user.role !== "teacher") {
-    return <p className="text-sm text-[#64748B]">Reports are not available for your role.</p>;
+    return <p className="text-sm text-muted-foreground">Reports are not available for your role.</p>;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader icon={BarChart3} title="Reports" subtitle="Live data across attendance, exams and finances." accent="fuchsia" />
 
-      <div className="flex gap-0 border-b border-[#E2E8F0] overflow-x-auto">
+      <div className="flex gap-0 border-b border-border overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-              tab === t.id ? "border-[#4F46E5] text-[#4F46E5]" : "border-transparent text-[#64748B] hover:text-[#172554]"
+              tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <t.icon className="h-4 w-4" />
@@ -201,7 +201,7 @@ export default function ReportsPage() {
             <>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "Total Students", value: stats?.totalStudents ?? "—", icon: Users, bg: "bg-[#4F46E5]" },
+                  { label: "Total Students", value: stats?.totalStudents ?? "—", icon: Users, bg: "bg-primary" },
                   { label: "Total Teachers", value: stats?.totalTeachers ?? "—", icon: BookOpen, bg: "bg-blue-500" },
                   { label: "Total Collected", value: feeSummary ? `₹${(feeSummary.totalCollected / 1000).toFixed(1)}k` : "—", icon: DollarSign, bg: "bg-green-500" },
                   { label: "Fee Pending", value: feeSummary ? `₹${(feeSummary.totalPending / 1000).toFixed(1)}k` : "—", icon: AlertCircle, bg: "bg-amber-500" },
@@ -211,8 +211,8 @@ export default function ReportsPage() {
                       <div className={`h-10 w-10 rounded-lg ${s.bg} flex items-center justify-center mb-3`}>
                         <s.icon className="h-5 w-5 text-white" />
                       </div>
-                      <p className="text-2xl font-bold text-[#172554]">{s.value}</p>
-                      <p className="text-xs text-[#64748B] mt-1">{s.label}</p>
+                      <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -223,7 +223,7 @@ export default function ReportsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-[#4F46E5]" /> Monthly Fee Overview
+                        <DollarSign className="h-4 w-4 text-primary" /> Monthly Fee Overview
                       </CardTitle>
                       <Button
                         size="sm"
@@ -255,13 +255,13 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-[#4F46E5]" /> Classes ({classes.length})
+                      <FileText className="h-4 w-4 text-primary" /> Classes ({classes.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {classes.map((c) => (
-                        <span key={c._id} className="text-sm px-3 py-1 rounded-full bg-[#F1F5F9] text-[#334155]">
+                        <span key={c._id} className="text-sm px-3 py-1 rounded-full bg-muted text-foreground/90">
                           {c.name}-{c.section}
                         </span>
                       ))}
@@ -278,7 +278,7 @@ export default function ReportsPage() {
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[#64748B]">Month</p>
+              <p className="text-xs font-medium text-muted-foreground">Month</p>
               <Select
                 items={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
                 value={String(attMonth)}
@@ -297,7 +297,7 @@ export default function ReportsPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[#64748B]">Year</p>
+              <p className="text-xs font-medium text-muted-foreground">Year</p>
               <Select value={String(attYear)} onValueChange={(v) => setAttYear(Number(v))}>
                 <SelectTrigger className="w-28">
                   <SelectValue />
@@ -312,7 +312,7 @@ export default function ReportsPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-[#64748B]">Class</p>
+              <p className="text-xs font-medium text-muted-foreground">Class</p>
               <Select
                 items={[{ value: "all", label: "All Classes" }, ...classes.map((c) => ({ value: c._id, label: `${c.name}-${c.section}` }))]}
                 value={attClassId}
@@ -363,7 +363,7 @@ export default function ReportsPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Attendance by Class — {MONTHS[attMonth - 1]} {attYear}
+                    <BarChart3 className="h-4 w-4 text-primary" /> Attendance by Class — {MONTHS[attMonth - 1]} {attYear}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -384,12 +384,12 @@ export default function ReportsPage() {
                   <CardTitle className="text-sm">Class-wise Summary</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="divide-y divide-[#E2E8F0]">
+                  <div className="divide-y divide-border">
                     {attData.map((d) => (
                       <div key={d.class} className="flex items-center justify-between px-5 py-3">
                         <div>
-                          <p className="text-sm font-medium text-[#172554]">{d.class}</p>
-                          <p className="text-xs text-[#64748B]">
+                          <p className="text-sm font-medium text-foreground">{d.class}</p>
+                          <p className="text-xs text-muted-foreground">
                             {d.present} present out of {d.total} total
                           </p>
                         </div>
@@ -410,7 +410,7 @@ export default function ReportsPage() {
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[240px] space-y-1">
-              <p className="text-xs font-medium text-[#64748B]">Select Exam</p>
+              <p className="text-xs font-medium text-muted-foreground">Select Exam</p>
               <Select value={selectedExam} onValueChange={(v) => setSelectedExam(v || "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose an exam to view results" />
@@ -466,12 +466,12 @@ export default function ReportsPage() {
                   { label: "Total Students", value: examResults.summary.total, color: "" },
                   { label: "Passed", value: examResults.summary.passed, color: "text-green-600" },
                   { label: "Failed", value: examResults.summary.failed, color: "text-red-600" },
-                  { label: "Average Score", value: `${examResults.summary.avgPercentage}%`, color: "text-[#4F46E5]" },
+                  { label: "Average Score", value: `${examResults.summary.avgPercentage}%`, color: "text-primary" },
                 ].map((s) => (
                   <Card key={s.label}>
                     <CardContent className="p-4 text-center">
-                      <p className={`text-2xl font-bold ${s.color || "text-[#172554]"}`}>{s.value}</p>
-                      <p className="text-xs text-[#64748B] mt-1">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color || "text-foreground"}`}>{s.value}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -489,7 +489,7 @@ export default function ReportsPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Grade Distribution
+                        <BarChart3 className="h-4 w-4 text-primary" /> Grade Distribution
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -515,24 +515,24 @@ export default function ReportsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                        <tr className="border-b border-border bg-muted/50">
                           {["#", "Student", "Roll No", "Marks", "Percentage", "Grade", "Status"].map((h) => (
-                            <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-[#64748B]">
+                            <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">
                               {h}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#E2E8F0]">
+                      <tbody className="divide-y divide-border">
                         {examResults.results.map((r, i) => (
-                          <tr key={i} className="hover:bg-[#F8FAFC]">
-                            <td className="px-4 py-2.5 text-[#64748B]">{i + 1}</td>
-                            <td className="px-4 py-2.5 font-medium text-[#172554]">{r.student?.name || "—"}</td>
-                            <td className="px-4 py-2.5 text-[#64748B]">{r.student?.rollNumber || "—"}</td>
-                            <td className="px-4 py-2.5 text-[#172554]">{r.marksObtained}</td>
-                            <td className="px-4 py-2.5 font-medium text-[#172554]">{r.percentage}%</td>
+                          <tr key={i} className="hover:bg-muted/50">
+                            <td className="px-4 py-2.5 text-muted-foreground">{i + 1}</td>
+                            <td className="px-4 py-2.5 font-medium text-foreground">{r.student?.name || "—"}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{r.student?.rollNumber || "—"}</td>
+                            <td className="px-4 py-2.5 text-foreground">{r.marksObtained}</td>
+                            <td className="px-4 py-2.5 font-medium text-foreground">{r.percentage}%</td>
                             <td className="px-4 py-2.5">
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155]">{r.grade}</span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
                             </td>
                             <td className="px-4 py-2.5">
                               <span className={statusPillClass(r.isPassed ? "success" : "destructive")}>{r.isPassed ? "Pass" : "Fail"}</span>
@@ -558,8 +558,8 @@ export default function ReportsPage() {
                 <div className="h-10 w-10 rounded-lg bg-green-500 flex items-center justify-center mb-3">
                   <DollarSign className="h-5 w-5 text-white" />
                 </div>
-                <p className="text-2xl font-bold text-[#172554]">{feeSummary ? `₹${feeSummary.totalCollected.toLocaleString()}` : "—"}</p>
-                <p className="text-xs text-[#64748B] mt-1">Total Collected (This Year)</p>
+                <p className="text-2xl font-bold text-foreground">{feeSummary ? `₹${feeSummary.totalCollected.toLocaleString()}` : "—"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Total Collected (This Year)</p>
               </CardContent>
             </Card>
             <Card>
@@ -567,8 +567,8 @@ export default function ReportsPage() {
                 <div className="h-10 w-10 rounded-lg bg-amber-500 flex items-center justify-center mb-3">
                   <AlertCircle className="h-5 w-5 text-white" />
                 </div>
-                <p className="text-2xl font-bold text-[#172554]">{feeSummary ? `₹${feeSummary.totalPending.toLocaleString()}` : "—"}</p>
-                <p className="text-xs text-[#64748B] mt-1">Total Pending</p>
+                <p className="text-2xl font-bold text-foreground">{feeSummary ? `₹${feeSummary.totalPending.toLocaleString()}` : "—"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Total Pending</p>
               </CardContent>
             </Card>
             <Card className="col-span-2 lg:col-span-1">
@@ -576,10 +576,10 @@ export default function ReportsPage() {
                 <div className="h-10 w-10 rounded-lg bg-blue-500 flex items-center justify-center mb-3">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
-                <p className="text-2xl font-bold text-[#172554]">
+                <p className="text-2xl font-bold text-foreground">
                   {feeSummary && feeSummary.totalCollected + feeSummary.totalPending > 0 ? `${Math.round((feeSummary.totalCollected / (feeSummary.totalCollected + feeSummary.totalPending)) * 100)}%` : "—"}
                 </p>
-                <p className="text-xs text-[#64748B] mt-1">Collection Rate</p>
+                <p className="text-xs text-muted-foreground mt-1">Collection Rate</p>
               </CardContent>
             </Card>
           </div>
@@ -589,7 +589,7 @@ export default function ReportsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-[#4F46E5]" /> Monthly Collection vs Pending
+                    <BarChart3 className="h-4 w-4 text-primary" /> Monthly Collection vs Pending
                   </CardTitle>
                   <Button
                     size="sm"
@@ -652,24 +652,24 @@ export default function ReportsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                      <tr className="border-b border-border bg-muted/50">
                         {["Student", "Class", "Fee Title", "Total", "Paid", "Balance", "Due Date", "Status"].map((h) => (
-                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-[#64748B]">
+                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">
                             {h}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#E2E8F0]">
+                    <tbody className="divide-y divide-border">
                       {pendingFees.slice(0, 25).map((f, i) => (
-                        <tr key={i} className="hover:bg-[#F8FAFC]">
-                          <td className="px-4 py-2.5 font-medium text-[#172554]">{f.student?.name || "—"}</td>
-                          <td className="px-4 py-2.5 text-[#64748B]">{f.student?.class || "—"}</td>
-                          <td className="px-4 py-2.5 text-[#64748B]">{f.title}</td>
-                          <td className="px-4 py-2.5 text-[#172554]">₹{f.amount?.toLocaleString()}</td>
+                        <tr key={i} className="hover:bg-muted/50">
+                          <td className="px-4 py-2.5 font-medium text-foreground">{f.student?.name || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.student?.class || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.title}</td>
+                          <td className="px-4 py-2.5 text-foreground">₹{f.amount?.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-green-700">₹{f.paidAmount?.toLocaleString()}</td>
                           <td className="px-4 py-2.5 text-red-600 font-medium">₹{(f.amount - f.paidAmount)?.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-[#64748B]">{f.dueDate?.slice(0, 10) || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.dueDate?.slice(0, 10) || "—"}</td>
                           <td className="px-4 py-2.5">
                             <span className={`${statusPillClass(f.status === "overdue" ? "destructive" : "warning")} capitalize`}>{f.status}</span>
                           </td>
@@ -677,7 +677,7 @@ export default function ReportsPage() {
                       ))}
                     </tbody>
                   </table>
-                  {pendingFees.length > 25 && <p className="text-xs text-center text-[#64748B] py-3 border-t border-[#E2E8F0]">Showing 25 of {pendingFees.length} records. Export CSV for the full list.</p>}
+                  {pendingFees.length > 25 && <p className="text-xs text-center text-muted-foreground py-3 border-t border-border">Showing 25 of {pendingFees.length} records. Export CSV for the full list.</p>}
                 </div>
               )}
             </CardContent>

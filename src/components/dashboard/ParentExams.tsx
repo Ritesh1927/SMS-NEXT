@@ -147,8 +147,8 @@ export function ParentExams() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#172554]">Exams</h1>
-          <p className="text-sm text-[#64748B] mt-1">Upcoming exams and published results.</p>
+          <h1 className="text-2xl font-bold text-foreground">Exams</h1>
+          <p className="text-sm text-muted-foreground mt-1">Upcoming exams and published results.</p>
         </div>
         {children.length > 1 && (
           <Select value={selectedChildId} onValueChange={(v) => setSelectedChildId(v || "")}>
@@ -202,33 +202,33 @@ export function ParentExams() {
                           className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            {isTerm && (open ? <ChevronDown className="h-4 w-4 text-[#64748B] shrink-0" /> : <ChevronRight className="h-4 w-4 text-[#64748B] shrink-0" />)}
+                            {isTerm && (open ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />)}
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-[#172554] truncate">{item.title}</p>
-                              <p className="text-xs text-[#64748B] mt-0.5">
+                              <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
                                 {isTerm ? `${item.subjects.length} subject${item.subjects.length === 1 ? "" : "s"}` : item.subject} ·{" "}
                                 {new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                 {isTerm && item.endDate ? ` – ${new Date(item.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}
                               </p>
                             </div>
                           </div>
-                          <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#EEF2FF] text-[#4F46E5]">
+                          <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
                             {formatCountdown(item.date)}
                           </span>
                         </button>
                         {isTerm && open && (
                           <div className="px-5 pb-4">
-                            <div className="rounded-xl border border-[#F1F5F9] overflow-hidden">
+                            <div className="rounded-xl border border-border overflow-hidden">
                               {item.subjects.map((s) => (
-                                <div key={s._id} className="flex items-center justify-between px-4 py-2.5 border-b border-[#F1F5F9] last:border-0">
+                                <div key={s._id} className="flex items-center justify-between px-4 py-2.5 border-b border-border last:border-0">
                                   <div>
-                                    <p className="text-xs font-semibold text-[#172554]">{s.subject}</p>
-                                    <p className="text-[11px] text-[#64748B]">
+                                    <p className="text-xs font-semibold text-foreground">{s.subject}</p>
+                                    <p className="text-[11px] text-muted-foreground">
                                       {new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                                       {s.duration ? ` · ${s.duration} min` : ""}
                                     </p>
                                   </div>
-                                  <span className="text-xs text-[#64748B]">{s.totalMarks} marks</span>
+                                  <span className="text-xs text-muted-foreground">{s.totalMarks} marks</span>
                                 </div>
                               ))}
                             </div>
@@ -258,13 +258,13 @@ export function ParentExams() {
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="rounded-[16px] bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center shrink-0">
+                  <div className="rounded-[16px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <Award className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-[#172554] leading-none">{results.averagePercentage}%</p>
-                      <p className="text-xs text-[#64748B] mt-1">Average score</p>
+                      <p className="text-lg font-bold text-foreground leading-none">{results.averagePercentage}%</p>
+                      <p className="text-xs text-muted-foreground mt-1">Average score</p>
                     </div>
                   </div>
                   <Button variant="outline" onClick={exportResultCard} disabled={exporting} className="gap-1.5">
@@ -273,18 +273,18 @@ export function ParentExams() {
                   </Button>
                 </div>
 
-                <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+                <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
                   {results.results.map((r) => (
-                    <div key={r._id} className="flex items-center justify-between px-5 py-4 border-b border-[#F1F5F9] last:border-0 gap-4">
+                    <div key={r._id} className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 gap-4">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#172554] truncate">{r.exam?.title || "—"}</p>
-                        <p className="text-xs text-[#64748B] mt-0.5">
+                        <p className="text-sm font-semibold text-foreground truncate">{r.exam?.title || "—"}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {r.exam?.subject} · {r.exam?.date ? new Date(r.exam.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-medium text-[#172554]">{r.marksObtained}/{r.totalMarks}</span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#334155]">{r.grade}</span>
+                        <span className="text-sm font-medium text-foreground">{r.marksObtained}/{r.totalMarks}</span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground/90">{r.grade}</span>
                         {r.isPassed ? (
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         ) : (

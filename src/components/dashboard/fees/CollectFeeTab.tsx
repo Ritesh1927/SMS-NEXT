@@ -368,7 +368,7 @@ export default function CollectFeeTab() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-[#4F46E5]" /> Collect Fee
+            <CreditCard className="h-4 w-4 text-primary" /> Collect Fee
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -422,12 +422,12 @@ export default function CollectFeeTab() {
           <TabsContent value="collect" className="space-y-6">
             {loading && (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-[#4F46E5]" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             )}
 
             {!loading && feeHeads.length === 0 && (
-              <Card><CardContent className="py-12 text-center text-[#64748B]">No fee structures defined for this student&apos;s class.</CardContent></Card>
+              <Card><CardContent className="py-12 text-center text-muted-foreground">No fee structures defined for this student&apos;s class.</CardContent></Card>
             )}
 
             {!loading && feeHeads.map((fh) => {
@@ -505,8 +505,8 @@ export default function CollectFeeTab() {
                                     : locked
                                       ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
                                       : selectedMonths[fh._id]?.[m.month]
-                                        ? "bg-[#4F46E5]/10 border-[#4F46E5] text-[#4F46E5] font-semibold"
-                                        : "border-border hover:border-[#4F46E5]/50 text-muted-foreground"
+                                        ? "bg-primary/10 border-primary text-primary font-semibold"
+                                        : "border-border hover:border-primary/50 text-muted-foreground"
                                 }`}
                               >
                                 <p className="font-medium">{getMonthLabel(m.month)}</p>
@@ -523,7 +523,7 @@ export default function CollectFeeTab() {
             })}
 
             {summary.itemCount > 0 && (
-              <Card className="border-[#4F46E5]/20">
+              <Card className="border-primary/20">
                 <CardContent className="p-5">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -576,7 +576,7 @@ export default function CollectFeeTab() {
                         </Select>
                         <Input placeholder="Remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-40" />
                       </div>
-                      <Button className="bg-[#4F46E5] hover:bg-[#4338CA] gap-2" onClick={handlePay} disabled={paying || summary.itemCount === 0}>
+                      <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={handlePay} disabled={paying || summary.itemCount === 0}>
                         {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <IndianRupee className="h-4 w-4" />}
                         {paying ? "Processing..." : `Pay ₹${summary.total.toLocaleString("en-IN")}`}
                       </Button>
@@ -606,7 +606,7 @@ export default function CollectFeeTab() {
                     <div className="flex items-start justify-between flex-wrap gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-[#4F46E5]" />
+                          <Calendar className="h-4 w-4 text-primary" />
                           <span className="font-semibold text-foreground">
                             {group.paymentDate ? new Date(group.paymentDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                           </span>
@@ -628,7 +628,7 @@ export default function CollectFeeTab() {
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => { const r = await buildGroupReceipt(group); if (r) setReceiptPreview(previewReceipt(r)); }}>
                           <Eye className="h-3.5 w-3.5" /> Preview
                         </Button>
-                        <Button size="sm" className="bg-[#4F46E5] hover:bg-[#4338CA] gap-1.5" onClick={async () => { const r = await buildGroupReceipt(group); if (r) downloadReceipt(r); }}>
+                        <Button size="sm" className="bg-primary hover:bg-primary/90 gap-1.5" onClick={async () => { const r = await buildGroupReceipt(group); if (r) downloadReceipt(r); }}>
                           <Download className="h-3.5 w-3.5" /> Download
                         </Button>
                       </div>
@@ -675,7 +675,7 @@ export default function CollectFeeTab() {
             <Button variant="outline" className="gap-2" onClick={() => { if (receiptData) setReceiptPreview(previewReceipt(receiptData)); }}>
               <Eye className="h-4 w-4" /> Preview
             </Button>
-            <Button className="bg-[#4F46E5] hover:bg-[#4338CA] gap-2" onClick={() => { if (receiptData) downloadReceipt(receiptData); }}>
+            <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={() => { if (receiptData) downloadReceipt(receiptData); }}>
               <Download className="h-4 w-4" /> Download Receipt
             </Button>
           </DialogFooter>

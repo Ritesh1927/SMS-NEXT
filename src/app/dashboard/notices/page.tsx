@@ -190,18 +190,18 @@ export default function NoticesPage() {
           ))}
         </div>
       ) : notices.length === 0 ? (
-        <div className="rounded-[18px] bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <EmptyState icon={Megaphone} message="No notices yet." />
         </div>
       ) : (
         <div className="space-y-3">
           {notices.map((n) => (
-            <div key={n._id} className="rounded-[18px] bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+            <div key={n._id} className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {n.isPinned && <Pin className="h-3.5 w-3.5 text-[#4F46E5]" />}
+                  {n.isPinned && <Pin className="h-3.5 w-3.5 text-primary" />}
                   {n.isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-red-600" />}
-                  <p className="text-sm font-semibold text-[#172554]">{n.title}</p>
+                  <p className="text-sm font-semibold text-foreground">{n.title}</p>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${CATEGORY_STYLES[n.category]}`}>
                     {n.category}
                   </span>
@@ -224,8 +224,8 @@ export default function NoticesPage() {
                   </div>
                 )}
               </div>
-              <p className="text-sm text-[#475569] mt-2 whitespace-pre-wrap">{n.content}</p>
-              <p className="text-xs text-[#94A3B8] mt-3">
+              <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{n.content}</p>
+              <p className="text-xs text-muted-foreground/70 mt-3">
                 {n.postedBy?.name ? `${n.postedBy.name} · ` : ""}
                 {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
@@ -237,7 +237,7 @@ export default function NoticesPage() {
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditingId(null); }}>
         <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg text-[#172554]">{editingId ? "Edit Notice" : "New Notice"}</DialogTitle>
+            <DialogTitle className="text-lg text-foreground">{editingId ? "Edit Notice" : "New Notice"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3 mt-2">
             <Field label="Title" required>
@@ -272,8 +272,8 @@ export default function NoticesPage() {
                       onClick={() => toggleRole(r.value)}
                       className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                         active
-                          ? "bg-[#4F46E5] text-white border-[#4F46E5]"
-                          : "bg-transparent text-[#64748B] border-[#E2E8F0] hover:border-[#4F46E5]"
+                          ? "bg-primary text-white border-primary"
+                          : "bg-transparent text-muted-foreground border-border hover:border-primary"
                       }`}
                     >
                       {r.label}
@@ -283,7 +283,7 @@ export default function NoticesPage() {
               </div>
             </Field>
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <input
                   type="checkbox"
                   checked={form.isUrgent}
@@ -291,7 +291,7 @@ export default function NoticesPage() {
                 />
                 Urgent
               </label>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-[#172554]">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <input
                   type="checkbox"
                   checked={form.isPinned}
@@ -300,7 +300,7 @@ export default function NoticesPage() {
                 Pin to top
               </label>
             </div>
-            <Button type="submit" className="w-full bg-[#4F46E5] hover:bg-[#4338CA]" disabled={submitting}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? "Save Changes" : "Post Notice"}
             </Button>
           </form>
@@ -323,7 +323,7 @@ export default function NoticesPage() {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-[#172554]">
+      <label className="text-xs font-semibold text-foreground">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>

@@ -116,7 +116,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
   if (!data) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[#64748B]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard...
       </div>
     );
@@ -221,7 +221,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
       {/* Analytics Overview */}
       <div>
-        <h2 className="text-lg font-semibold text-[#0F172A] mb-4">Analytics Overview</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Analytics Overview</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
             <DashboardSectionHeader
@@ -241,9 +241,9 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                 </HeaderActionPill>
               }
             />
-            <div className="bg-white p-6">
+            <div className="bg-card p-6">
               {attendanceTrend.every((d) => d.present === 0 && d.absent === 0) ? (
-                <p className="text-sm text-[#64748B] py-16 text-center">No attendance marked in the last 7 days.</p>
+                <p className="text-sm text-muted-foreground py-16 text-center">No attendance marked in the last 7 days.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
                   <AreaChart data={attendanceTrend} margin={{ left: -16 }}>
@@ -282,9 +282,9 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                 </HeaderActionPill>
               }
             />
-            <div className="bg-white p-6">
+            <div className="bg-card p-6">
               {feeMonthly.every((m) => m.collected === 0 && m.pending === 0) ? (
-                <p className="text-sm text-[#64748B] py-16 text-center">No fee records yet.</p>
+                <p className="text-sm text-muted-foreground py-16 text-center">No fee records yet.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={feeMonthly} margin={{ left: -16 }}>
@@ -310,10 +310,10 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
       {/* More Insights */}
       <div>
-        <h2 className="text-lg font-semibold text-[#0F172A] mb-4">More Insights</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">More Insights</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 glass-panel">
-            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Class Performance</h3>
+            <h3 className="text-base font-semibold text-foreground mb-4">Class Performance</h3>
             {hasClassPerformance ? (
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={classPerformance}>
@@ -335,25 +335,25 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
           <div className="glass-panel">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-[#0F172A]">Pending Fees</h3>
+              <h3 className="text-base font-semibold text-foreground">Pending Fees</h3>
               <span className={statusPillClass("warning")}>{pendingFeeStudents.length} pending</span>
             </div>
             {pendingFeeStudents.length === 0 ? (
-              <p className="text-sm text-[#64748B] text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
             ) : (
               <div className="space-y-2">
                 {pendingFeeStudents.map((f) => (
-                  <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[#F1F5F9] transition-colors">
+                  <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-[#EEF2FF] text-[#4F46E5] border border-[#E2E8F0]">
+                      <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-primary/10 text-primary border border-border">
                         {(f.student?.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#172554] truncate">{f.student?.name || "Unknown student"}</p>
-                        <p className="text-xs text-[#64748B] truncate">{f.title}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{f.student?.name || "Unknown student"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{f.title}</p>
                       </div>
                     </div>
-                    <span className="text-sm font-semibold text-[#DC2626] shrink-0">₹{(f.amount - f.paidAmount).toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-destructive shrink-0">₹{(f.amount - f.paidAmount).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -363,23 +363,23 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
           <div className="glass-panel">
-            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Upcoming Exams</h3>
+            <h3 className="text-base font-semibold text-foreground mb-4">Upcoming Exams</h3>
             {upcomingExams.length === 0 ? (
-              <p className="text-sm text-[#64748B] text-center py-4">No upcoming exams scheduled.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No upcoming exams scheduled.</p>
             ) : (
               <div className="space-y-2.5">
                 {upcomingExams.map((e, i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F1F5F9] hover:bg-[#E2E8F0] transition-colors">
+                  <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted hover:bg-border transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#4F46E5]">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#172554] truncate">{e.title}</p>
-                        <p className="text-xs text-[#64748B]">{e.class}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{e.title}</p>
+                        <p className="text-xs text-muted-foreground">{e.class}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-[#4F46E5] shrink-0">
+                    <span className="text-xs font-semibold text-primary shrink-0">
                       {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                   </div>
@@ -395,17 +395,17 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
         {studentsByClass.length > 0 && (
           <div className="glass-panel mt-4">
-            <h3 className="text-base font-semibold text-[#0F172A] mb-4">Students by Class</h3>
+            <h3 className="text-base font-semibold text-foreground mb-4">Students by Class</h3>
             <div className="space-y-3">
               {studentsByClass.map((c) => {
                 const max = Math.max(1, ...studentsByClass.map((x) => x.count));
                 return (
                   <div key={c.name} className="flex items-center gap-3">
-                    <span className="w-24 shrink-0 text-xs font-medium text-[#475569]">{c.name}</span>
-                    <div className="flex-1 h-2 rounded-full bg-[#F1F5F9] overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#4F46E5] to-[#8B5CF6]" style={{ width: `${(c.count / max) * 100}%` }} />
+                    <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">{c.name}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${(c.count / max) * 100}%` }} />
                     </div>
-                    <span className="w-6 shrink-0 text-right text-xs font-semibold text-[#172554]">{c.count}</span>
+                    <span className="w-6 shrink-0 text-right text-xs font-semibold text-foreground">{c.count}</span>
                   </div>
                 );
               })}
@@ -428,12 +428,12 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
 
 function EmptyPanel({ icon: Icon, title, subtitle }: { icon: typeof BarChart3; title: string; subtitle: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center" style={{ height: 280 }}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
-        <Icon className="h-5 w-5 text-[#64748B]" />
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center" style={{ height: 280 }}>
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+        <Icon className="h-5 w-5 text-muted-foreground" />
       </div>
-      <p className="text-sm font-semibold text-[#475569]">{title}</p>
-      <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">{subtitle}</p>
+      <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">{subtitle}</p>
     </div>
   );
 }
@@ -484,7 +484,7 @@ function AdminStatCard({
 }) {
   return (
     <div
-      className="group relative grid h-full grid-rows-[48px_auto_auto_1fr_auto] gap-4 overflow-hidden rounded-[18px] bg-white p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1"
+      className="group relative grid h-full grid-rows-[48px_auto_auto_1fr_auto] gap-4 overflow-hidden rounded-[18px] bg-card p-6 shadow-[0_0_0_1px_rgba(15,23,42,0.07),0_1px_2px_rgba(15,23,42,0.04),0_12px_24px_-16px_rgba(15,23,42,0.12)] transition-all duration-300 hover:-translate-y-1"
       style={{ "--accent": color } as React.CSSProperties}
     >
       <div className="flex items-center justify-between">
@@ -495,29 +495,29 @@ function AdminStatCard({
         <button
           type="button"
           onClick={onNavigate}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F1F5F9] text-[#64748B] transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-[var(--accent)] group-hover:text-white cursor-pointer"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-[var(--accent)] group-hover:text-white cursor-pointer"
         >
           <ArrowUpRight className="h-4 w-4" />
         </button>
       </div>
 
       <div>
-        <p className="text-sm font-medium text-[#475569]">{title}</p>
-        <p className="mt-1 text-[32px] font-bold leading-none text-[#0F172A]">{value}</p>
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="mt-1 text-[32px] font-bold leading-none text-foreground">{value}</p>
       </div>
 
       <div className="flex items-center gap-1.5">
         {trend ? (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#22C55E]">{trend}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-success">{trend}</span>
         ) : (
-          <span className="text-[13px] text-[#64748B]">No data yet</span>
+          <span className="text-[13px] text-muted-foreground">No data yet</span>
         )}
       </div>
 
       <div className="flex items-center">{decoration}</div>
 
-      <div className="flex items-center justify-between border-t border-[#F1F5F9] pt-3">
-        <span className="flex items-center gap-1.5 text-xs text-[#64748B]">
+      <div className="flex items-center justify-between border-t border-border pt-3">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <FooterIcon className="h-3.5 w-3.5" />
           {footerLabel}
         </span>
@@ -568,29 +568,29 @@ function RecentActivities({ items }: { items: ActivityItem[] }) {
           </HeaderActionPill>
         }
       />
-      <div className="flex flex-1 flex-col bg-white p-6 sm:p-7">
+      <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
-              <Inbox className="h-5 w-5 text-[#64748B]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted mb-3">
+              <Inbox className="h-5 w-5 text-muted-foreground" />
             </div>
-            <p className="text-sm text-[#64748B]">No recent activity yet.</p>
+            <p className="text-sm text-muted-foreground">No recent activity yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#F1F5F9]">
+          <div className="divide-y divide-border">
             {items.map((item, i) => {
               const { icon: Icon, from, to, label } = ACTIVITY_CONFIG[item.type] ?? ACTIVITY_CONFIG.notice;
               return (
-                <div key={i} className="group/item flex items-center gap-4 rounded-xl px-2 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#F8FAFC]">
+                <div key={i} className="group/item flex items-center gap-4 rounded-xl px-2 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/50">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 4px 14px -2px ${from}59` }}>
                     <Icon className="h-[18px] w-[18px] text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-medium text-[#0F172A] leading-snug truncate">{item.text}</p>
-                    <p className="text-[13px] text-[#64748B] mt-0.5">{label}</p>
+                    <p className="text-[15px] font-medium text-foreground leading-snug truncate">{item.text}</p>
+                    <p className="text-[13px] text-muted-foreground mt-0.5">{label}</p>
                   </div>
-                  <span className="shrink-0 whitespace-nowrap rounded-full bg-[#F8FAFC] px-2.5 py-1 text-xs font-medium text-[#64748B]">{timeAgo(item.time)}</span>
-                  <button type="button" tabIndex={-1} aria-hidden="true" className="hidden sm:flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#CBD5E1] opacity-0 transition-opacity duration-200 group-hover/item:opacity-100">
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">{timeAgo(item.time)}</span>
+                  <button type="button" tabIndex={-1} aria-hidden="true" className="hidden sm:flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 opacity-0 transition-opacity duration-200 group-hover/item:opacity-100">
                     <MoreVertical className="h-4 w-4" />
                   </button>
                 </div>
@@ -627,13 +627,13 @@ function UpcomingEvents() {
           </HeaderActionPill>
         }
       />
-      <div className="flex flex-1 flex-col bg-white p-6 sm:p-7">
-        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-[#E2E8F0] py-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F1F5F9] mb-3">
-            <CalendarDays className="h-5 w-5 text-[#64748B]" />
+      <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
+        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+            <CalendarDays className="h-5 w-5 text-muted-foreground" />
           </div>
-          <p className="text-sm font-semibold text-[#475569]">No Upcoming Events</p>
-          <p className="text-xs text-[#64748B] mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
+          <p className="text-sm font-semibold text-muted-foreground">No Upcoming Events</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
         </div>
       </div>
     </div>
@@ -668,23 +668,23 @@ function SchoolCalendar() {
   return (
     <div className="glass-panel">
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-8 w-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
-          <CalendarDays className="h-4 w-4 text-[#4F46E5]" />
+        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <CalendarDays className="h-4 w-4 text-primary" />
         </div>
-        <h3 className="text-base font-semibold text-[#0F172A]">School Calendar</h3>
+        <h3 className="text-base font-semibold text-foreground">School Calendar</h3>
       </div>
       <div className="flex items-center justify-between mb-3">
-        <button type="button" onClick={() => changeMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-[#64748B] hover:bg-[#F1F5F9]" aria-label="Previous month">
+        <button type="button" onClick={() => changeMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Previous month">
           ‹
         </button>
-        <p className="text-sm font-semibold text-[#172554]">{MONTH_NAMES[month]} {year}</p>
-        <button type="button" onClick={() => changeMonth(1)} className="h-7 w-7 flex items-center justify-center rounded-full text-[#64748B] hover:bg-[#F1F5F9]" aria-label="Next month">
+        <p className="text-sm font-semibold text-foreground">{MONTH_NAMES[month]} {year}</p>
+        <button type="button" onClick={() => changeMonth(1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Next month">
           ›
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAYS.map((d) => (
-          <p key={d} className="text-center text-[11px] font-medium text-[#94A3B8]">{d}</p>
+          <p key={d} className="text-center text-[11px] font-medium text-muted-foreground/70">{d}</p>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 mb-4">
@@ -692,14 +692,14 @@ function SchoolCalendar() {
           <div
             key={i}
             className={`h-9 rounded-lg flex items-center justify-center text-sm ${
-              day ? (isToday(day) ? "bg-[#4F46E5] text-white font-semibold" : "text-[#172554] hover:bg-[#F1F5F9]") : ""
+              day ? (isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
             }`}
           >
             {day}
           </div>
         ))}
       </div>
-      <p className="text-sm text-[#64748B] text-center py-2">No upcoming events.</p>
+      <p className="text-sm text-muted-foreground text-center py-2">No upcoming events.</p>
     </div>
   );
 }

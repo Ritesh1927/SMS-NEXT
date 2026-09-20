@@ -79,21 +79,21 @@ export function DashboardSectionHeader({
         <div className="relative flex min-w-0 flex-1 shrink-0 flex-col justify-center self-stretch">
           {decoration}
           <div className="relative z-10 flex items-center gap-1.5">
-            <h3 className={cn("text-[16px] font-semibold leading-tight truncate font-heading", isDark ? "text-white" : "text-[#0F172A]")}>{title}</h3>
+            <h3 className={cn("text-[16px] font-semibold leading-tight truncate font-heading", isDark ? "text-white" : "text-foreground")}>{title}</h3>
             {badge &&
               (isDark ? (
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[10px] font-semibold text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)" }}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#4ADE80]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" />
                   {badge}
                 </span>
               ) : (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-[3px] text-[10px] font-semibold text-[#16A34A]">
-                  <span className="h-1 w-1 rounded-full bg-[#22C55E]" />
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-[3px] text-[10px] font-semibold text-success">
+                  <span className="h-1 w-1 rounded-full bg-success" />
                   {badge}
                 </span>
               ))}
           </div>
-          {subtitle && <p className={cn("relative z-10 text-[12px] truncate mt-0.5 leading-tight", isDark ? "text-white/70" : "text-[#64748B]")}>{subtitle}</p>}
+          {subtitle && <p className={cn("relative z-10 text-[12px] truncate mt-0.5 leading-tight", isDark ? "text-white/70" : "text-muted-foreground")}>{subtitle}</p>}
         </div>
 
         {(rightAction || showMoreMenu) && (
@@ -106,7 +106,7 @@ export function DashboardSectionHeader({
                 aria-hidden="true"
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300",
-                  isDark ? "text-white/80" : "border border-[#E2E8F0] bg-white text-[#64748B]",
+                  isDark ? "text-white/80" : "border border-border bg-card text-muted-foreground",
                 )}
                 style={isDark ? { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" } : undefined}
               >
@@ -130,7 +130,7 @@ export function HeaderActionPill({ children, variant = "light" }: { children: Re
     );
   }
   return (
-    <div className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-full border border-[#E2E8F0] bg-white px-3 text-[13px] font-medium text-[#475569] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-3 text-[13px] font-medium text-muted-foreground shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       {children}
     </div>
   );
