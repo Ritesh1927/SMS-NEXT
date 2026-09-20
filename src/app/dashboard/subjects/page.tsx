@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface SubjectRow {
   _id: string;
@@ -65,6 +66,7 @@ export default function SubjectsPage() {
   const [bulkSubjectIds, setBulkSubjectIds] = useState<Set<string>>(new Set());
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [assigning, setAssigning] = useState(false);
+  const [activeTab, setActiveTab] = useState("subjects");
 
   const fetchSubjects = () => {
     const token = getToken();
@@ -240,12 +242,45 @@ export default function SubjectsPage() {
   };
 
   const isLoading = classesLoading || subjectsLoading;
+  const classesNeedingSubjects = subjects.length > 0 ? classes.filter((c) => getAssignedIds(c._id).length < subjects.length).length : 0;
 
   return (
     <div className="space-y-6">
       <PageHeader icon={BookOpen} title="Subject & Class Assignment" subtitle="Manage subjects and assign them to existing classes." accent="violet" />
 
-      <Tabs defaultValue="subjects" className="space-y-4">
+      {!isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatFilterCard
+            icon={BookOpen}
+            color="#4F46E5"
+            colorDark="#4338CA"
+            value={subjects.length}
+            label="Total Subjects"
+            active={activeTab === "subjects"}
+            onClick={() => setActiveTab("subjects")}
+          />
+          <StatFilterCard
+            icon={School}
+            color="#0EA5E9"
+            colorDark="#0284C7"
+            value={classes.length}
+            label="Total Classes"
+            onClick={() => setActiveTab("assign")}
+          />
+          <StatFilterCard
+            icon={Link2}
+            color="#DC2626"
+            colorDark="#B91C1C"
+            value={classesNeedingSubjects}
+            label="Classes Needing Subjects"
+            sublabel={classesNeedingSubjects === 0 ? "All classes fully covered" : "Missing at least one subject"}
+            active={activeTab === "assign"}
+            onClick={() => setActiveTab("assign")}
+          />
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="subjects" className="gap-1.5">
             <BookOpen className="h-4 w-4" /> Subjects
@@ -278,7 +313,7 @@ export default function SubjectsPage() {
           ) : subjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <BookOpen className="h-12 w-12 text-muted-foreground/70/40 mb-3" />
+                <BookOpen className="h-12 w-12 text-muted-foreground/40 mb-3" />
                 <p className="font-medium text-sm text-foreground">No subjects yet</p>
                 <p className="text-xs text-muted-foreground mt-1">Create your first subject to get started.</p>
               </CardContent>
@@ -579,7 +614,7 @@ export default function SubjectsPage() {
           ) : classes.length === 0 || subjects.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <LayoutGrid className="h-12 w-12 text-muted-foreground/70/40 mb-3" />
+                <LayoutGrid className="h-12 w-12 text-muted-foreground/40 mb-3" />
                 <p className="font-medium text-sm text-foreground">Nothing to show yet</p>
                 <p className="text-xs text-muted-foreground mt-1">{classes.length === 0 ? "No classes found." : "Create at least one subject to see the assignment matrix."}</p>
               </CardContent>
@@ -623,7 +658,7 @@ export default function SubjectsPage() {
                                     <Check className="h-3.5 w-3.5 text-primary" />
                                   </div>
                                 ) : (
-                                  <span className="text-muted-foreground/70/40 text-lg leading-none">—</span>
+                                  <span className="text-muted-foreground/40 text-lg leading-none">—</span>
                                 )}
                               </TableCell>
                             ))}
