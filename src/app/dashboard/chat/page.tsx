@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 
+const ROLE_PALETTE: Record<Contact["role"], { color: string; colorDark: string }> = {
+  schooladmin: { color: "#4F46E5", colorDark: "#4338CA" },
+  teacher: { color: "#8B5CF6", colorDark: "#7C3AED" },
+  parent: { color: "#0EA5E9", colorDark: "#0284C7" },
+};
+
 interface Contact {
   id: string;
   name: string;
@@ -246,14 +252,16 @@ export default function ChatPage() {
       <div className="w-72 shrink-0 border-r border-border flex flex-col">
         {isAdmin && (
           <div className="px-3 py-2.5 border-b border-border space-y-2">
-            <div className="flex gap-1.5">
+            <div className="inline-flex w-full items-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
               <button
                 onClick={() => {
                   setFilterType((t) => (t === "teacher" ? null : "teacher"));
                   setSearch("");
                 }}
-                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
-                  filterType === "teacher" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
+                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-semibold rounded-full px-2 py-1.5 transition-all duration-300 ${
+                  filterType === "teacher"
+                    ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_10px_-2px_rgba(79,70,229,0.45)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                 }`}
               >
                 <GraduationCap className="h-3 w-3" /> Teachers
@@ -263,8 +271,10 @@ export default function ChatPage() {
                   setFilterType((t) => (t === "student" ? null : "student"));
                   setSearch("");
                 }}
-                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-medium rounded-lg px-2 py-1.5 transition-colors ${
-                  filterType === "student" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-secondary"
+                className={`flex-1 flex items-center justify-center gap-1 text-[11px] font-semibold rounded-full px-2 py-1.5 transition-all duration-300 ${
+                  filterType === "student"
+                    ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_10px_-2px_rgba(79,70,229,0.45)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                 }`}
               >
                 <Users className="h-3 w-3" /> Students
@@ -349,7 +359,10 @@ export default function ChatPage() {
                   active?.targetUserId === c.targetUserId && active?.childId === c.childId ? "bg-primary/5" : "hover:bg-muted/50"
                 }`}
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white text-xs font-bold"
+                  style={{ background: `linear-gradient(135deg, ${ROLE_PALETTE[c.role].color}, ${ROLE_PALETTE[c.role].colorDark})` }}
+                >
                   {c.name.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -380,7 +393,10 @@ export default function ChatPage() {
         ) : (
           <>
             <div className="flex items-center gap-2.5 px-5 py-3 border-b border-border">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white text-xs font-bold"
+                style={{ background: `linear-gradient(135deg, ${ROLE_PALETTE[active.role].color}, ${ROLE_PALETTE[active.role].colorDark})` }}
+              >
                 {active.name.slice(0, 1).toUpperCase()}
               </div>
               <div className="min-w-0">
