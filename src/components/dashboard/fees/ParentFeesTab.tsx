@@ -372,7 +372,7 @@ export default function ParentFeesTab() {
 
       {!child ? (
         <div className="rounded-[18px] bg-card py-16 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <Wallet className="h-12 w-12 text-muted-foreground/70/50 mx-auto mb-3" />
+          <Wallet className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-muted-foreground">No children linked to your account yet.</p>
         </div>
       ) : (
@@ -385,7 +385,7 @@ export default function ParentFeesTab() {
           <TabsContent value="fees" className="space-y-6">
             {child.feeHeads.length === 0 ? (
               <div className="rounded-[18px] bg-card py-16 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-                <Wallet className="h-12 w-12 text-muted-foreground/70/50 mx-auto mb-3" />
+                <Wallet className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-muted-foreground">No fee structures found for your child&apos;s class.</p>
               </div>
             ) : (
@@ -536,7 +536,7 @@ export default function ParentFeesTab() {
               </div>
             ) : paymentHistory.length === 0 ? (
               <div className="rounded-[18px] bg-card py-16 text-center shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-                <Receipt className="h-12 w-12 text-muted-foreground/70/50 mx-auto mb-3" />
+                <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-muted-foreground">No payments found.</p>
               </div>
             ) : (
