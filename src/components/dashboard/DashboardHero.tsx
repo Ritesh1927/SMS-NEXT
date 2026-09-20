@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Quote } from "lucide-react";
 
 const QUOTES: { text: string; author: string }[] = [
   { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
@@ -41,14 +41,17 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
 
       <div className="relative z-10 flex min-h-[230px] sm:min-h-[250px] flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7">
         <div className="max-w-xl">
-          <h1 className="text-2xl sm:text-[26px] font-extrabold text-foreground">
+          <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-foreground">
             {getGreeting()}, <span className="text-primary">{name}</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">{subtitle}</p>
-          <p className="text-sm text-foreground/90 mt-4 italic border-l-2 border-accent/40 pl-3">
-            &ldquo;{quote.text}&rdquo;
-            <span className="block not-italic text-xs text-muted-foreground mt-1">— {quote.author}</span>
-          </p>
+          <p className="text-sm sm:text-[15px] font-medium text-muted-foreground mt-1.5">{subtitle}</p>
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-card/60 border border-border/60 px-4 py-3 backdrop-blur-sm max-w-md">
+            <Quote className="h-4 w-4 text-primary shrink-0 mt-0.5 fill-primary/15" />
+            <p className="text-sm font-medium text-foreground/90 leading-snug">
+              {quote.text}
+              <span className="block text-xs font-normal text-muted-foreground mt-1.5">— {quote.author}</span>
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 rounded-2xl bg-white/20 backdrop-blur-md px-4 py-2.5 border border-white/50 shadow-[0_4px_20px_rgba(79,70,229,0.12)] shrink-0 self-start">
           <CalendarDays className="h-4 w-4 text-primary" />
