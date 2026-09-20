@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Flame, Medal } from "lucide-react";
+import { Trophy, Flame, Medal, Users, Star, Zap } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { StatFilterCard } from "@/components/StatFilterCard";
 
 interface Row {
   rank: number;
@@ -31,6 +32,12 @@ const RANK_STYLE: Record<number, string> = {
   1: "text-yellow-500",
   2: "text-slate-400",
   3: "text-amber-700",
+};
+
+const RANK_BADGE: Record<number, { color: string; colorDark: string }> = {
+  1: { color: "#EAB308", colorDark: "#CA8A04" },
+  2: { color: "#94A3B8", colorDark: "#64748B" },
+  3: { color: "#B45309", colorDark: "#92400E" },
 };
 
 export default function LeaderboardPage() {
@@ -68,6 +75,14 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <>
+      {rows.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatFilterCard icon={Users} color="#4F46E5" colorDark="#4338CA" value={rows.length} label="Ranked Students" />
+          <StatFilterCard icon={Star} color="#EAB308" colorDark="#CA8A04" value={rows[0]?.points ?? 0} label="Top Score" sublabel={rows[0] ? rows[0].name : undefined} />
+          <StatFilterCard icon={Zap} color="#F59E0B" colorDark="#D97706" value={Math.max(0, ...rows.map((r) => r.streakDays))} label="Longest Streak (days)" />
+        </div>
+      )}
+
       {star && (
         <Card className="border-warning/30 bg-gradient-to-br from-warning/10 to-white">
           <CardContent className="flex items-center gap-4 py-5">
@@ -94,10 +109,24 @@ export default function LeaderboardPage() {
             <EmptyState icon={Trophy} message="No points earned yet." />
           ) : (
             <div className="divide-y divide-border">
-              {rows.map((r) => (
-                <div key={r._id} className="flex items-center gap-4 px-6 py-3">
-                  <div className={`w-6 text-center font-bold ${RANK_STYLE[r.rank] || "text-muted-foreground"}`}>
-                    {r.rank <= 3 ? <Medal className="h-5 w-5 mx-auto" /> : r.rank}
+              {rows.map((r) => {
+                const badge = RANK_BADGE[r.rank];
+                return (
+                <div key={r._id} className="flex items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/40">
+                  <div className="w-8 shrink-0 flex items-center justify-center">
+                    {badge ? (
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-white shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${badge.color}, ${badge.colorDark})` }}
+                      >
+                        <Medal className="h-4 w-4" />
+                      </div>
+                    ) : (
+                      <span className="text-sm font-bold text-muted-foreground">{r.rank}</span>
+                    )}
+                  </div>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    {r.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
@@ -112,7 +141,8 @@ export default function LeaderboardPage() {
                   )}
                   <div className="text-sm font-bold text-primary w-16 text-right">{r.points} pts</div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
