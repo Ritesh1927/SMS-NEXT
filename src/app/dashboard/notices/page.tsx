@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Loader2, Pin, AlertTriangle, Pencil, Trash2, Megaphone, X } from "lucide-react";
+import { Plus, Loader2, Pin, AlertTriangle, Pencil, Trash2, Megaphone, X, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -21,6 +21,21 @@ type Category = "general" | "exam" | "fee" | "holiday" | "event" | "urgent" | "o
 type TargetRole = "all" | "teacher" | "student" | "parent";
 type ClassScope = "" | "primary" | "middle" | "high" | "custom";
 
+interface ExamScheduleRow {
+  subject: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+interface ExamSchedule {
+  examName: string;
+  startDate: string;
+  endDate: string;
+  guidelines: string[];
+  rows: ExamScheduleRow[];
+}
+
 interface NoticeRow {
   _id: string;
   title: string;
@@ -29,6 +44,7 @@ interface NoticeRow {
   targetRoles: TargetRole[];
   classScope: ClassScope;
   targetClasses: string[];
+  examSchedule: ExamSchedule | null;
   isUrgent: boolean;
   isPinned: boolean;
   createdAt: string;
@@ -136,6 +152,7 @@ export default function NoticesPage() {
   const [pendingDelete, setPendingDelete] = useState<NoticeRow | null>(null);
   const [filter, setFilter] = useState<"" | "pinned" | "urgent">("");
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const permissions = user?.permissions as { canPostNotice?: boolean } | undefined;
   const canPost = user?.role === "schooladmin" || permissions?.canPostNotice === true;
@@ -247,6 +264,77 @@ export default function NoticesPage() {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const downloadSchedule = async (notice: NoticeRow) => {
+    if (!notice.examSchedule) return;
+    setDownloadingId(notice._id);
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+      const { examName, startDate, endDate, guidelines, rows } = notice.examSchedule;
+      const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const fmtTime = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        const period = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+      };
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text(user?.schoolName || "School", pageWidth / 2, 20, { align: "center" });
+
+      doc.setFontSize(13);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Exam Schedule — ${examName}`, pageWidth / 2, 29, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setTextColor(90);
+      const durationLabel = startDate === endDate ? `Date: ${fmtDate(startDate)}` : `Duration: ${fmtDate(startDate)} to ${fmtDate(endDate)}`;
+      doc.text(durationLabel, pageWidth / 2, 36, { align: "center" });
+      doc.setTextColor(0);
+
+      let y = 46;
+      if (guidelines.length > 0) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Guidelines", 14, y);
+        y += 6;
+        doc.setFontSize(9.5);
+        doc.setFont("helvetica", "normal");
+        for (const g of guidelines) {
+          doc.text(`•  ${g}`, 16, y);
+          y += 5.5;
+        }
+        y += 4;
+      }
+
+      const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      autoTable(doc, {
+        startY: y,
+        head: [["Subject", "Date", "Day", "Time"]],
+        body: sorted.map((r) => [
+          r.subject,
+          fmtDate(r.date),
+          new Date(r.date).toLocaleDateString("en-US", { weekday: "long" }),
+          `${fmtTime(r.startTime)} to ${fmtTime(r.endTime)}`,
+        ]),
+        headStyles: { fillColor: [79, 70, 229] },
+      });
+
+      doc.setFontSize(8);
+      doc.setTextColor(140);
+      doc.text(`Generated on ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`, 14, doc.internal.pageSize.getHeight() - 10);
+
+      doc.save(`${examName.replace(/\s+/g, "_")}_Schedule.pdf`);
+    } catch {
+      toast.error("Failed to generate the schedule PDF.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -388,6 +476,17 @@ export default function NoticesPage() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{n.content}</p>
+                    {n.examSchedule && (
+                      <button
+                        type="button"
+                        onClick={() => downloadSchedule(n)}
+                        disabled={downloadingId === n._id}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-60"
+                      >
+                        {downloadingId === n._id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                        Download Schedule (PDF)
+                      </button>
+                    )}
                     <p className="text-xs text-muted-foreground/70 mt-3">
                       {n.postedBy?.name ? `${n.postedBy.name} · ` : ""}
                       {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at{" "}

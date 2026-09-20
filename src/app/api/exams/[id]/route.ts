@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
+import { calcDurationMinutes } from "@/lib/examTime";
 
 function requireAdminOrTeacher(req: Request) {
   const auth = getAuthUser(req);
@@ -61,6 +62,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     for (const key of allowedFields) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
+    // Duration always derives from the times, never entered directly.
+    if (body.startTime && body.endTime) updates.duration = calcDurationMinutes(body.startTime, body.endTime);
 
     const exam = await Exam.findOneAndUpdate({ _id: id, school: auth.schoolId }, updates, { returnDocument: "after" });
     return NextResponse.json({ success: true, message: "Exam updated.", data: exam });

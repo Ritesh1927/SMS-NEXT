@@ -7,6 +7,7 @@ import { Result } from "@/models/Result";
 import "@/models/Admin";
 import "@/models/Teacher";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
+import { calcDurationMinutes } from "@/lib/examTime";
 
 // Teachers can freely edit/delete a term up to 2 hours before it starts;
 // past that they must go through the ExamChangeRequest workflow. Matches
@@ -43,7 +44,8 @@ interface SubjectInput {
   subject: string;
   date: string;
   totalMarks: number;
-  duration: number;
+  startTime: string;
+  endTime: string;
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -115,9 +117,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           section: term.section,
           subject: s.subject,
           date: s.date,
+          startTime: s.startTime || "",
+          endTime: s.endTime || "",
           totalMarks: s.totalMarks,
           passingMarks: Math.round(s.totalMarks * 0.33),
-          duration: s.duration,
+          duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
           examType: mappedType,
           createdBy: auth.id,
           createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",

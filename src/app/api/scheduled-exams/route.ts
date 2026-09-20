@@ -6,6 +6,8 @@ import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
+import { calcDurationMinutes } from "@/lib/examTime";
+import { postExamScheduleNotice } from "@/lib/examNotice";
 
 const EXAM_TYPE_MAP: Record<string, string> = {
   midterm: "mid-term",
@@ -18,7 +20,8 @@ interface SubjectInput {
   subject: string;
   date: string;
   totalMarks: number;
-  duration: number;
+  startTime: string;
+  endTime: string;
 }
 
 // GET /api/scheduled-exams — multi-subject exam terms. Teachers only see
@@ -116,9 +119,11 @@ export async function POST(req: Request) {
         section: section || "",
         subject: s.subject,
         date: s.date,
+        startTime: s.startTime || "",
+        endTime: s.endTime || "",
         totalMarks: s.totalMarks,
         passingMarks: Math.round(s.totalMarks * 0.33),
-        duration: s.duration,
+        duration: s.startTime && s.endTime ? calcDurationMinutes(s.startTime, s.endTime) : null,
         examType: examType_,
         createdBy: auth.id,
         createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
@@ -126,6 +131,17 @@ export async function POST(req: Request) {
         scheduledExamId: term._id,
       })),
     );
+
+    if ((subjects as SubjectInput[]).every((s) => s.startTime && s.endTime)) {
+      await postExamScheduleNotice({
+        schoolId: auth.schoolId,
+        cls,
+        examName: title,
+        rows: (subjects as SubjectInput[]).map((s) => ({ subject: s.subject, date: s.date, startTime: s.startTime, endTime: s.endTime })),
+        postedBy: auth.id,
+        postedByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+      });
+    }
 
     const populated = await ScheduledExam.findById(term._id).populate("createdBy", "name teacherId");
     return NextResponse.json(

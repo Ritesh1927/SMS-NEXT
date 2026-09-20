@@ -51,6 +51,8 @@ interface ExamRow {
   totalMarks: number;
   passingMarks: number;
   duration: number | null;
+  startTime?: string;
+  endTime?: string;
   examType: ExamType;
   status: ExamStatus;
   scheduledExamId: string | null;
@@ -116,17 +118,26 @@ interface ApiMessageResponse {
   message?: string;
 }
 
+interface SubjectSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
 const EMPTY_FORM = {
   title: "",
   class: "",
   section: "",
   subject: "",
   subjects: [] as string[],
-  // One date per selected subject when creating (they may not all fall on
-  // the same day) -- keyed by subject name. `date` alone still drives the
-  // single shared field when editing an existing (single-subject) test.
-  subjectDates: {} as Record<string, string>,
+  // One date + time window per selected subject when creating (they may not
+  // all fall on the same day, or the same hours) -- keyed by subject name.
+  // `date` alone still drives the single shared field when editing an
+  // existing (single-subject) test.
+  subjectSlots: {} as Record<string, SubjectSlot>,
   date: "",
+  startTime: "",
+  endTime: "",
   totalMarks: "100",
   passingMarks: "33",
   examType: "unit-test" as ExamType,
@@ -136,7 +147,42 @@ interface TermSubjectDraft {
   subject: string;
   date: string;
   totalMarks: string;
-  duration: string;
+  startTime: string;
+  endTime: string;
+}
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function calcDurationMinutes(start: string, end: string): number {
+  return timeToMinutes(end) - timeToMinutes(start);
+}
+
+function timeRangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return timeToMinutes(aStart) < timeToMinutes(bEnd) && timeToMinutes(bStart) < timeToMinutes(aEnd);
+}
+
+// Validates a set of {date, startTime, endTime} slots that may share a
+// class/exam batch: every slot needs both times, end must be after start,
+// and two slots landing on the same date can't overlap in time-of-day.
+// Returns an error message for the given label, or null if all clear.
+function findScheduleConflict(slots: { label: string; date: string; startTime: string; endTime: string }[]): string | null {
+  for (const s of slots) {
+    if (!s.date || !s.startTime || !s.endTime) return `Pick a date and time for ${s.label}.`;
+    if (calcDurationMinutes(s.startTime, s.endTime) <= 0) return `${s.label}'s end time must be after its start time.`;
+  }
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      const a = slots[i];
+      const b = slots[j];
+      if (a.date === b.date && timeRangesOverlap(a.startTime, a.endTime, b.startTime, b.endTime)) {
+        return `${a.label} and ${b.label} are both on ${a.date} and their times overlap.`;
+      }
+    }
+  }
+  return null;
 }
 
 const EMPTY_TERM_FORM = {
@@ -201,7 +247,7 @@ export function AdminTeacherExams() {
   const [termOpen, setTermOpen] = useState(false);
   const [editingTermId, setEditingTermId] = useState<string | null>(null);
   const [termForm, setTermForm] = useState(EMPTY_TERM_FORM);
-  const [termSubjects, setTermSubjects] = useState<TermSubjectDraft[]>([{ subject: "", date: "", totalMarks: "100", duration: "60" }]);
+  const [termSubjects, setTermSubjects] = useState<TermSubjectDraft[]>([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]);
   const [termSubjectOptions, setTermSubjectOptions] = useState<SubjectOption[]>([]);
   const [termSubmitting, setTermSubmitting] = useState(false);
 
@@ -298,8 +344,10 @@ export function AdminTeacherExams() {
       section: exam.section || "",
       subject: exam.subject,
       subjects: [],
-      subjectDates: {},
+      subjectSlots: {},
       date: exam.date.slice(0, 10),
+      startTime: exam.startTime || "",
+      endTime: exam.endTime || "",
       totalMarks: String(exam.totalMarks),
       passingMarks: String(exam.passingMarks),
       examType: exam.examType,
@@ -319,9 +367,15 @@ export function AdminTeacherExams() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const today = new Date(new Date().toDateString());
-    if (editingExamId && form.date && new Date(form.date) < today) {
-      toast.error("Test date cannot be a past date.");
-      return;
+    if (editingExamId) {
+      if (form.date && new Date(form.date) < today) {
+        toast.error("Test date cannot be a past date.");
+        return;
+      }
+      if (form.startTime && form.endTime && calcDurationMinutes(form.startTime, form.endTime) <= 0) {
+        toast.error("End time must be after start time.");
+        return;
+      }
     }
     if (!editingExamId) {
       if (form.subjects.length === 0) {
@@ -329,15 +383,17 @@ export function AdminTeacherExams() {
         return;
       }
       for (const name of form.subjects) {
-        const d = form.subjectDates[name];
-        if (!d) {
-          toast.error(`Pick a date for ${name}.`);
-          return;
-        }
-        if (new Date(d) < today) {
+        if (new Date(form.subjectSlots[name]?.date || "") < today) {
           toast.error(`${name}'s date cannot be in the past.`);
           return;
         }
+      }
+      const conflict = findScheduleConflict(
+        form.subjects.map((name) => ({ label: name, ...form.subjectSlots[name] })),
+      );
+      if (conflict) {
+        toast.error(conflict);
+        return;
       }
     }
     const token = getToken();
@@ -348,7 +404,7 @@ export function AdminTeacherExams() {
         ? { ...form, totalMarks: Number(form.totalMarks), passingMarks: Number(form.passingMarks) }
         : {
             ...form,
-            subjects: form.subjects.map((name) => ({ name, date: form.subjectDates[name] })),
+            subjects: form.subjects.map((name) => ({ name, ...form.subjectSlots[name] })),
             totalMarks: Number(form.totalMarks),
             passingMarks: Number(form.passingMarks),
           };
@@ -393,7 +449,7 @@ export function AdminTeacherExams() {
   const openAddTerm = () => {
     setEditingTermId(null);
     setTermForm(EMPTY_TERM_FORM);
-    setTermSubjects([{ subject: "", date: "", totalMarks: "100", duration: "60" }]);
+    setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]);
     setTermOpen(true);
   };
 
@@ -420,16 +476,16 @@ export function AdminTeacherExams() {
       const subs = res.data.subjects || [];
       setTermSubjects(
         subs.length > 0
-          ? subs.map((s) => ({ subject: s.subject, date: s.date.slice(0, 10), totalMarks: String(s.totalMarks), duration: String(s.duration ?? 60) }))
-          : [{ subject: "", date: "", totalMarks: "100", duration: "60" }],
+          ? subs.map((s) => ({ subject: s.subject, date: s.date.slice(0, 10), totalMarks: String(s.totalMarks), startTime: s.startTime || "09:00", endTime: s.endTime || "10:00" }))
+          : [{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }],
       );
     } catch {
-      setTermSubjects([{ subject: "", date: "", totalMarks: "100", duration: "60" }]);
+      setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]);
     }
     setTermOpen(true);
   };
 
-  const addTermSubjectRow = () => setTermSubjects((rows) => [...rows, { subject: "", date: "", totalMarks: "100", duration: "60" }]);
+  const addTermSubjectRow = () => setTermSubjects((rows) => [...rows, { subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]);
   const removeTermSubjectRow = (i: number) => setTermSubjects((rows) => rows.filter((_, idx) => idx !== i));
   const updateTermSubjectRow = (i: number, patch: Partial<TermSubjectDraft>) =>
     setTermSubjects((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -452,6 +508,11 @@ export function AdminTeacherExams() {
         return;
       }
     }
+    const conflict = findScheduleConflict(validSubjects.map((s) => ({ label: s.subject.trim(), date: s.date, startTime: s.startTime, endTime: s.endTime })));
+    if (conflict) {
+      toast.error(conflict);
+      return;
+    }
     const token = getToken();
     if (!token) return;
     setTermSubmitting(true);
@@ -462,7 +523,8 @@ export function AdminTeacherExams() {
           subject: s.subject.trim(),
           date: s.date,
           totalMarks: Number(s.totalMarks),
-          duration: Number(s.duration) || 60,
+          startTime: s.startTime,
+          endTime: s.endTime,
         })),
       };
       const res = await fetch(editingTermId ? `/api/scheduled-exams/${editingTermId}` : "/api/scheduled-exams", {
@@ -1058,8 +1120,8 @@ export function AdminTeacherExams() {
                                 <div className="min-w-0">
                                   <p className="text-xs font-semibold text-foreground">{sub.subject}</p>
                                   <p className="text-[11px] text-muted-foreground">
-                                    {new Date(sub.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {sub.totalMarks} marks
-                                    {sub.duration ? ` · ${sub.duration} min` : ""}
+                                    {new Date(sub.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                    {sub.startTime && sub.endTime ? ` · ${sub.startTime}–${sub.endTime}` : ""} · {sub.totalMarks} marks
                                   </p>
                                 </div>
                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sub.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>{sub.status}</span>
@@ -1371,7 +1433,7 @@ export function AdminTeacherExams() {
                   value={form.class && form.section ? `${form.class}::${form.section}` : ""}
                   onValueChange={(v) => {
                     const cls = classes.find((c) => `${c.name}::${c.section}` === v);
-                    if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [], subjectDates: {} }));
+                    if (cls) setForm((f) => ({ ...f, class: cls.name, section: cls.section, subject: "", subjects: [], subjectSlots: {} }));
                   }}
                 >
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
@@ -1401,50 +1463,41 @@ export function AdminTeacherExams() {
                 )}
               </Field>
             ) : (
-              <Field label="Subjects & Dates" required>
+              <Field label="Subjects, Dates & Times" required>
                 {subjectOptions.length > 0 ? (
-                  <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
+                  <div className="border border-border rounded-lg divide-y divide-border max-h-72 overflow-y-auto">
                     {subjectOptions.map((s) => {
                       const checked = form.subjects.includes(s.name);
+                      const slot = form.subjectSlots[s.name];
+                      const toggle = (next: boolean) =>
+                        setForm((f) => {
+                          if (next) {
+                            return { ...f, subjects: [...f.subjects, s.name], subjectSlots: { ...f.subjectSlots, [s.name]: { date: "", startTime: "09:00", endTime: "10:00" } } };
+                          }
+                          const { [s.name]: _removed, ...rest } = f.subjectSlots;
+                          void _removed;
+                          return { ...f, subjects: f.subjects.filter((x) => x !== s.name), subjectSlots: rest };
+                        });
+                      const updateSlot = (patch: Partial<SubjectSlot>) =>
+                        setForm((f) => ({ ...f, subjectSlots: { ...f.subjectSlots, [s.name]: { ...f.subjectSlots[s.name], ...patch } } }));
+                      const validDuration = slot && slot.startTime && slot.endTime && calcDurationMinutes(slot.startTime, slot.endTime) > 0;
                       return (
-                        <div key={s._id} className={`flex items-center gap-2.5 px-3 py-2 ${checked ? "bg-primary/5" : ""}`}>
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 shrink-0 cursor-pointer"
-                            checked={checked}
-                            onChange={(e) =>
-                              setForm((f) => {
-                                if (e.target.checked) {
-                                  return { ...f, subjects: [...f.subjects, s.name], subjectDates: { ...f.subjectDates, [s.name]: f.subjectDates[s.name] || "" } };
-                                }
-                                const { [s.name]: _removed, ...rest } = f.subjectDates;
-                                void _removed;
-                                return { ...f, subjects: f.subjects.filter((x) => x !== s.name), subjectDates: rest };
-                              })
-                            }
-                          />
-                          <span
-                            className="flex-1 min-w-0 text-sm text-foreground cursor-pointer"
-                            onClick={() =>
-                              setForm((f) => {
-                                if (!checked) return { ...f, subjects: [...f.subjects, s.name], subjectDates: { ...f.subjectDates, [s.name]: f.subjectDates[s.name] || "" } };
-                                const { [s.name]: _removed, ...rest } = f.subjectDates;
-                                void _removed;
-                                return { ...f, subjects: f.subjects.filter((x) => x !== s.name), subjectDates: rest };
-                              })
-                            }
-                          >
-                            {s.name} <span className="text-xs text-muted-foreground font-mono">({s.code})</span>
-                          </span>
-                          {checked && (
-                            <Input
-                              type="date"
-                              className="w-[9.5rem] h-8 text-xs shrink-0"
-                              min={todayISO()}
-                              value={form.subjectDates[s.name] || ""}
-                              onChange={(e) => setForm((f) => ({ ...f, subjectDates: { ...f.subjectDates, [s.name]: e.target.value } }))}
-                              required
-                            />
+                        <div key={s._id} className={`px-3 py-2 ${checked ? "bg-primary/5" : ""}`}>
+                          <div className="flex items-center gap-2.5">
+                            <input type="checkbox" className="h-4 w-4 shrink-0 cursor-pointer" checked={checked} onChange={(e) => toggle(e.target.checked)} />
+                            <span className="flex-1 min-w-0 text-sm text-foreground cursor-pointer" onClick={() => toggle(!checked)}>
+                              {s.name} <span className="text-xs text-muted-foreground font-mono">({s.code})</span>
+                            </span>
+                          </div>
+                          {checked && slot && (
+                            <div className="mt-2 grid grid-cols-3 gap-2 pl-6">
+                              <Input type="date" className="h-8 text-xs" min={todayISO()} value={slot.date} onChange={(e) => updateSlot({ date: e.target.value })} required />
+                              <Input type="time" className="h-8 text-xs" value={slot.startTime} onChange={(e) => updateSlot({ startTime: e.target.value })} required />
+                              <Input type="time" className="h-8 text-xs" value={slot.endTime} onChange={(e) => updateSlot({ endTime: e.target.value })} required />
+                              <p className="col-span-3 text-[11px] text-muted-foreground -mt-1">
+                                {validDuration ? `${calcDurationMinutes(slot.startTime, slot.endTime)} minutes` : "End time must be after start time."}
+                              </p>
+                            </div>
                           )}
                         </div>
                       );
@@ -1456,27 +1509,42 @@ export function AdminTeacherExams() {
                 {form.subjects.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">
                     {form.subjects.length} subject{form.subjects.length > 1 ? "s" : ""} selected
-                    {form.subjects.length > 1 ? " — a separate test will be created for each, on its own date." : "."}
+                    {form.subjects.length > 1 ? " — a separate test will be created for each, on its own date and time." : "."}
                   </p>
                 )}
               </Field>
             )}
             {editingExamId ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Date" required>
-                  <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
-                </Field>
-                <Field label="Type">
-                  <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Date" required>
+                    <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required />
+                  </Field>
+                  <Field label="Type">
+                    <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="From" required>
+                    <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} required />
+                  </Field>
+                  <Field label="To" required>
+                    <Input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} required />
+                  </Field>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  {form.startTime && form.endTime && calcDurationMinutes(form.startTime, form.endTime) > 0
+                    ? `Duration: ${calcDurationMinutes(form.startTime, form.endTime)} minutes`
+                    : "End time must be after start time."}
+                </p>
+              </>
             ) : (
               <Field label="Type">
                 <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
@@ -1531,9 +1599,9 @@ export function AdminTeacherExams() {
                           apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
                             .then((res) => {
                               setTermSubjectOptions(res.data);
-                              setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", duration: "60" })));
+                              setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
                             })
-                            .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", duration: "60" }]); });
+                            .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
                         }
                       }
                     }}
@@ -1589,43 +1657,54 @@ export function AdminTeacherExams() {
                 <label className="text-sm font-medium text-foreground">Subjects</label>
                 <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {termSubjects.map((s, i) => {
                   const selectedSubjects = new Set(termSubjects.filter((row, idx) => idx !== i && row.subject).map((row) => row.subject));
+                  const validDuration = s.startTime && s.endTime && calcDurationMinutes(s.startTime, s.endTime) > 0;
                   return (
-                  <div key={i} className="grid grid-cols-[1.4fr_1fr_0.8fr_0.8fr_auto] gap-2 items-end">
-                    <Field label={i === 0 ? "Subject" : undefined}>
-                      {termSubjectOptions.length > 0 ? (
-                        <Select value={s.subject} onValueChange={(v) => updateTermSubjectRow(i, { subject: v || "" })}>
-                          <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
-                          <SelectContent>
-                            {termSubjectOptions.filter((sub) => !selectedSubjects.has(sub.name) || sub.name === s.subject).map((sub) => (
-                              <SelectItem key={sub._id} value={sub.name}>{sub.name} ({sub.code})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input placeholder="Mathematics" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
-                      )}
-                    </Field>
-                    <Field label={i === 0 ? "Date" : undefined}>
-                      <Input
-                        type="date"
-                        value={s.date}
-                        onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })}
-                        min={termForm.startDate || (editingTermId ? undefined : todayISO())}
-                        max={termForm.endDate || undefined}
-                      />
-                    </Field>
-                    <Field label={i === 0 ? "Marks" : undefined}>
-                      <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} />
-                    </Field>
-                    <Field label={i === 0 ? "Mins" : undefined}>
-                      <Input type="number" min={1} value={s.duration} onChange={(e) => updateTermSubjectRow(i, { duration: e.target.value })} />
-                    </Field>
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeTermSubjectRow(i)} disabled={termSubjects.length === 1} className="mb-0.5">
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                  <div key={i} className="rounded-lg border border-border p-2.5 space-y-2">
+                    <div className="grid grid-cols-[1.4fr_1fr_0.7fr_auto] gap-2 items-end">
+                      <Field label="Subject">
+                        {termSubjectOptions.length > 0 ? (
+                          <Select value={s.subject} onValueChange={(v) => updateTermSubjectRow(i, { subject: v || "" })}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
+                            <SelectContent>
+                              {termSubjectOptions.filter((sub) => !selectedSubjects.has(sub.name) || sub.name === s.subject).map((sub) => (
+                                <SelectItem key={sub._id} value={sub.name}>{sub.name} ({sub.code})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input placeholder="Mathematics" value={s.subject} onChange={(e) => updateTermSubjectRow(i, { subject: e.target.value })} />
+                        )}
+                      </Field>
+                      <Field label="Date">
+                        <Input
+                          type="date"
+                          value={s.date}
+                          onChange={(e) => updateTermSubjectRow(i, { date: e.target.value })}
+                          min={termForm.startDate || (editingTermId ? undefined : todayISO())}
+                          max={termForm.endDate || undefined}
+                        />
+                      </Field>
+                      <Field label="Marks">
+                        <Input type="number" min={1} value={s.totalMarks} onChange={(e) => updateTermSubjectRow(i, { totalMarks: e.target.value })} />
+                      </Field>
+                      <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeTermSubjectRow(i)} disabled={termSubjects.length === 1} className="mb-0.5">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 items-end">
+                      <Field label="From">
+                        <Input type="time" value={s.startTime} onChange={(e) => updateTermSubjectRow(i, { startTime: e.target.value })} />
+                      </Field>
+                      <Field label="To">
+                        <Input type="time" value={s.endTime} onChange={(e) => updateTermSubjectRow(i, { endTime: e.target.value })} />
+                      </Field>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {validDuration ? `Duration: ${calcDurationMinutes(s.startTime, s.endTime)} minutes` : "End time must be after start time."}
+                    </p>
                   </div>
                   );
                 })}
