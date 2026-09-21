@@ -95,6 +95,14 @@ export default function ChatPage() {
   const [search, setSearch] = useState("");
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classFilter, setClassFilter] = useState("");
+  // The background poll below (12s interval, keyed only on filterType/
+  // classFilter) would otherwise close over whatever `search` was at the
+  // moment that interval was created and keep re-fetching with that stale
+  // value forever — which is exactly why the list used to snap back to
+  // "everyone" a few seconds after typing a search term. Reading the latest
+  // value through a ref instead of the closed-over state keeps every call
+  // to loadContacts (debounced or polled) using the current search text.
+  const searchRef = useRef(search);
 
   const loadContacts = () => {
     const token = getToken();
@@ -102,7 +110,7 @@ export default function ChatPage() {
     let path = "/chat/contacts";
     if (user?.role === "schooladmin" && filterType) {
       const params = new URLSearchParams({ type: filterType });
-      if (search.trim()) params.set("search", search.trim());
+      if (searchRef.current.trim()) params.set("search", searchRef.current.trim());
       if (filterType === "student") {
         if (!classFilter) {
           setContacts([]);
@@ -118,6 +126,10 @@ export default function ChatPage() {
       .then((res) => setContacts(res.contacts))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load contacts."));
   };
+
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
 
   useEffect(() => {
     if (user?.role === "schooladmin" && filterType === "student" && classes.length === 0) {
