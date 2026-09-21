@@ -87,6 +87,7 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
   const [data, setData] = useState<OutstandingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [outstandingStudent, setOutstandingStudent] = useState("");
+  const [studentQuery, setStudentQuery] = useState("");
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
   useEffect(() => {
@@ -114,8 +115,17 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
   };
 
   const filtered = outstandingStudent ? data.filter((inv) => inv.student?._id === outstandingStudent) : data;
-  const filteredStudentList = students.filter((s) => classFilter === "all" || `${s.class}-${s.section}` === classFilter);
-  const selectedStudentObj = filteredStudentList.find((s) => s._id === outstandingStudent) || null;
+  const classFilteredList = students.filter((s) => classFilter === "all" || `${s.class}-${s.section}` === classFilter);
+  const selectedStudentObj = classFilteredList.find((s) => s._id === outstandingStudent) || null;
+  const getStudentLabel = (s: StudentOption) => `${s.name} — Class ${s.class}-${s.section}`;
+  const isRestingSelectedLabel = !!selectedStudentObj && studentQuery === getStudentLabel(selectedStudentObj);
+  // See CollectFeeTab's matching comment — without this, the items actually
+  // rendered below never narrowed to match what was typed.
+  const filteredStudentList = classFilteredList.filter((s) => {
+    if (!studentQuery || isRestingSelectedLabel) return true;
+    const q = studentQuery.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+  });
 
   if (loading) return <Spinner />;
   return (
@@ -134,8 +144,10 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
             items={filteredStudentList}
             value={selectedStudentObj}
             onValueChange={(v) => setOutstandingStudent(v?._id || "")}
-            itemToStringLabel={(s) => (s ? `${s.name} — Class ${s.class}-${s.section}` : "All Students")}
+            itemToStringLabel={(s) => (s ? getStudentLabel(s) : "All Students")}
             isItemEqualToValue={(a, b) => a?._id === b?._id}
+            inputValue={studentQuery}
+            onInputValueChange={(v) => setStudentQuery(v)}
           >
             <ComboboxInputGroup className="w-64">
               <ComboboxInput placeholder="All Students" />
@@ -339,9 +351,19 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
   const [rptTab, setRptTab] = useState("collection");
   const [rptClass, setRptClass] = useState("all");
   const [rptStudent, setRptStudent] = useState("");
+  const [ledgerStudentQuery, setLedgerStudentQuery] = useState("");
 
-  const filteredStudentList = students.filter((s) => rptClass === "all" || `${s.class}-${s.section}` === rptClass);
-  const selectedLedgerStudent = filteredStudentList.find((s) => s._id === rptStudent) || null;
+  const classFilteredLedgerList = students.filter((s) => rptClass === "all" || `${s.class}-${s.section}` === rptClass);
+  const selectedLedgerStudent = classFilteredLedgerList.find((s) => s._id === rptStudent) || null;
+  const getLedgerStudentLabel = (s: StudentOption) => `${s.name} — Class ${s.class}-${s.section}`;
+  const isRestingLedgerLabel = !!selectedLedgerStudent && ledgerStudentQuery === getLedgerStudentLabel(selectedLedgerStudent);
+  // See CollectFeeTab's matching comment — without this, the items actually
+  // rendered below never narrowed to match what was typed.
+  const filteredStudentList = classFilteredLedgerList.filter((s) => {
+    if (!ledgerStudentQuery || isRestingLedgerLabel) return true;
+    const q = ledgerStudentQuery.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-4">
@@ -369,7 +391,7 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <div className="p-4 border-b border-border flex items-center gap-3 flex-wrap">
             <h3 className="text-base font-semibold text-foreground">Student Ledger</h3>
-            <Select value={rptClass} onValueChange={(v) => { setRptClass(v || "all"); setRptStudent(""); }}>
+            <Select value={rptClass} onValueChange={(v) => { setRptClass(v || "all"); setRptStudent(""); setLedgerStudentQuery(""); }}>
               <SelectTrigger className="w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
@@ -380,8 +402,10 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
               items={filteredStudentList}
               value={selectedLedgerStudent}
               onValueChange={(v) => setRptStudent(v?._id || "")}
-              itemToStringLabel={(s) => (s ? `${s.name} — Class ${s.class}-${s.section}` : "")}
+              itemToStringLabel={(s) => (s ? getLedgerStudentLabel(s) : "")}
               isItemEqualToValue={(a, b) => a?._id === b?._id}
+              inputValue={ledgerStudentQuery}
+              onInputValueChange={(v) => setLedgerStudentQuery(v)}
             >
               <ComboboxInputGroup className="w-64">
                 <ComboboxInput placeholder="Select student..." />

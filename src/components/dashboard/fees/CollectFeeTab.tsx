@@ -360,9 +360,24 @@ export default function CollectFeeTab() {
     }
   };
 
-  const filteredStudents = students.filter((s) => classFilter === "all" || `${s.class}-${s.section}` === classFilter);
   const selectedStudentData = students.find((s) => s._id === selectedStudent);
   const getStudentLabel = (s: StudentOption) => `${s.name} — Class ${s.class}-${s.section}`;
+  // After a selection, the Combobox's input keeps showing the picked
+  // student's label rather than clearing — that resting value shouldn't be
+  // treated as a fresh search. The Combobox's own "no results" state tracks
+  // typed text internally, but the items actually rendered below come from
+  // this filter, so it needs the same text match or a real search term
+  // (e.g. "naman") left every student listed under a "No student found"
+  // message instead of narrowing the list.
+  const isRestingSelectedLabel = !!selectedStudentData && studentQuery === getStudentLabel(selectedStudentData);
+  const filteredStudents = students.filter((s) => {
+    if (classFilter !== "all" && `${s.class}-${s.section}` !== classFilter) return false;
+    if (studentQuery && !isRestingSelectedLabel) {
+      const q = studentQuery.toLowerCase();
+      if (!s.name.toLowerCase().includes(q) && !s.studentId.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
