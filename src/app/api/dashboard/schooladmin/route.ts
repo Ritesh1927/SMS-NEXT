@@ -4,7 +4,6 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
-import { Parent } from "@/models/Parent";
 import { AttendanceRecord } from "@/models/AttendanceRecord";
 import { FeePayment } from "@/models/FeePayment";
 import { Result } from "@/models/Result";
@@ -26,13 +25,13 @@ export async function GET(req: Request) {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [totalStudents, totalTeachers, totalParents, newStudentsThisMonth, newTeachersThisMonth, classCounts] =
+    const [totalStudents, totalTeachers, totalNonTeachingStaff, newStudentsThisMonth, newTeachersThisMonth, classCounts] =
       await Promise.all([
         Student.countDocuments({ school: schoolId, isActive: true }),
-        Teacher.countDocuments({ school: schoolId, isActive: true }),
-        Parent.countDocuments({ school: schoolId, isActive: true }),
+        Teacher.countDocuments({ school: schoolId, isActive: true, staffType: "teaching" }),
+        Teacher.countDocuments({ school: schoolId, isActive: true, staffType: "non-teaching" }),
         Student.countDocuments({ school: schoolId, isActive: true, admissionDate: { $gte: monthStart } }),
-        Teacher.countDocuments({ school: schoolId, isActive: true, joiningDate: { $gte: monthStart } }),
+        Teacher.countDocuments({ school: schoolId, isActive: true, staffType: "teaching", joiningDate: { $gte: monthStart } }),
         Student.aggregate([
           // Aggregate pipelines skip Mongoose's automatic string->ObjectId
           // casting, unlike find(), so schoolId has to be cast explicitly
@@ -162,7 +161,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        stats: { totalStudents, totalTeachers, totalParents, newStudentsThisMonth, newTeachersThisMonth, feeCollectedThisMonth },
+        stats: { totalStudents, totalTeachers, totalNonTeachingStaff, newStudentsThisMonth, newTeachersThisMonth, feeCollectedThisMonth },
         studentsByClass,
         todayAttendance,
         attendanceTrend,

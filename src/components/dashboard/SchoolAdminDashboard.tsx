@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users, GraduationCap, UserRound, CalendarCheck, IndianRupee,
+  Users, GraduationCap, Briefcase, CalendarCheck, IndianRupee,
   CalendarDays, FileText, Bell, CreditCard,
   UserPlus, Inbox, ArrowRight, ArrowUpRight,
   BarChart3,
@@ -21,7 +21,7 @@ import { PageLoader } from "@/components/PageLoader";
 interface DashboardStats {
   totalStudents: number;
   totalTeachers: number;
-  totalParents: number;
+  totalNonTeachingStaff: number;
   newStudentsThisMonth: number;
   newTeachersThisMonth: number;
   feeCollectedThisMonth: number;
@@ -163,14 +163,14 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       decoration: <MiniBars color="#8B5CF6" />,
     },
     {
-      title: "Total Parents",
-      value: String(stats.totalParents),
+      title: "Total Non-Teaching Staff",
+      value: String(stats.totalNonTeachingStaff),
       color: "#0EA5E9",
       colorDark: "#0284C7",
-      icon: UserRound,
-      footerIcon: UserRound,
-      footerLabel: "Linked Accounts",
-      link: "/dashboard/parents",
+      icon: Briefcase,
+      footerIcon: Briefcase,
+      footerLabel: "Support Staff",
+      link: "/dashboard/teachers",
       decoration: <MiniBars color="#0EA5E9" />,
     },
     {
