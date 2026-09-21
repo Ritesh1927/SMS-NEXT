@@ -132,10 +132,32 @@ export async function GET(req: Request) {
         .limit(5)
     ).map((e) => ({ title: e.title, date: e.date, class: formatClassName(e.class, e.section) }));
 
-    const pendingFeeStudents = await FeePayment.find({ school: schoolId, status: { $in: ["pending", "partial", "overdue"] } })
-      .populate("student", "name class section")
-      .sort({ dueDate: 1 })
-      .limit(5);
+    // Grouped by student rather than one row per fee record, so a student
+    // with both an Admission Fee and a Tuition Fee outstanding shows once
+    // with their combined pending amount instead of twice.
+    const pendingFeeStudents = (
+      await FeePayment.aggregate([
+        { $match: { school: schoolObjectId, status: { $in: ["pending", "partial", "overdue"] } } },
+        {
+          $group: {
+            _id: "$student",
+            pendingAmount: { $sum: { $subtract: ["$amount", "$paidAmount"] } },
+            count: { $sum: 1 },
+            dueDate: { $min: "$dueDate" },
+          },
+        },
+        { $sort: { dueDate: 1 } },
+        { $limit: 5 },
+        { $lookup: { from: "students", localField: "_id", foreignField: "_id", as: "student" } },
+        { $unwind: { path: "$student", preserveNullAndEmptyArrays: true } },
+      ])
+    ).map((f) => ({
+      _id: String(f._id),
+      pendingAmount: f.pendingAmount,
+      count: f.count,
+      dueDate: f.dueDate,
+      student: f.student ? { name: f.student.name, class: f.student.class, section: f.student.section } : null,
+    }));
 
     const [recentPayments, recentStudents, recentNotices] = await Promise.all([
       FeePayment.find({ school: schoolId, status: "paid" }).populate("student", "name").sort({ paidDate: -1 }).limit(4),

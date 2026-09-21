@@ -59,9 +59,8 @@ interface UpcomingExam {
 
 interface PendingFeeStudent {
   _id: string;
-  title: string;
-  amount: number;
-  paidAmount: number;
+  pendingAmount: number;
+  count: number;
   dueDate: string | null;
   student: { name: string; class: string; section: string } | null;
 }
@@ -343,10 +342,10 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{f.student?.name || "Unknown student"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{f.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{f.count > 1 ? `${f.count} fees pending` : "1 fee pending"}</p>
                       </div>
                     </div>
-                    <span className="text-sm font-semibold text-destructive shrink-0">₹{(f.amount - f.paidAmount).toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-destructive shrink-0">₹{f.pendingAmount.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
