@@ -15,7 +15,6 @@ import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 import { DashboardHero } from "./DashboardHero";
-import { statusPillClass } from "@/lib/statusStyles";
 import { PageLoader } from "@/components/PageLoader";
 
 interface DashboardStats {
@@ -303,81 +302,117 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
       {/* More Insights */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-4">More Insights</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 glass-panel">
-            <h3 className="text-base font-semibold text-foreground mb-4">Class Performance</h3>
-            {hasClassPerformance ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={classPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis domain={[0, 100]} stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Avg Score"]} />
-                  <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
-                    {classPerformance.map((_, i) => (
-                      <Cell key={i} fill={["#7C3AED", "#33C6E7", "#4A7DFF", "#A78BFA", "#34D399"][i % 5]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyPanel icon={BarChart3} title="No Performance Data Yet" subtitle="Class averages will appear here once exam results are recorded." />
-            )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="lg:col-span-2 overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={BarChart3}
+              title="Class Performance"
+              subtitle="Average score by class, from published results"
+              accent="purple"
+              variant="dark"
+              decoration={<HeaderBarsGlyph />}
+            />
+            <div className="bg-card p-6">
+              {hasClassPerformance ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={classPerformance}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="name" stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis domain={[0, 100]} stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`${v}%`, "Avg Score"]} />
+                    <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
+                      {classPerformance.map((_, i) => (
+                        <Cell key={i} fill={["#7C3AED", "#33C6E7", "#4A7DFF", "#A78BFA", "#34D399"][i % 5]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyPanel icon={BarChart3} title="No Performance Data Yet" subtitle="Class averages will appear here once exam results are recorded." />
+              )}
+            </div>
           </div>
 
-          <div className="glass-panel">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-foreground">Pending Fees</h3>
-              <span className={statusPillClass("warning")}>{pendingFeeStudents.length} pending</span>
-            </div>
-            {pendingFeeStudents.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
-            ) : (
-              <div className="space-y-2">
-                {pendingFeeStudents.map((f) => (
-                  <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-primary/10 text-primary border border-border">
-                        {(f.student?.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+          <div className="flex flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={IndianRupee}
+              title="Pending Fees"
+              subtitle="Outstanding balances"
+              accent="orange"
+              variant="dark"
+              decoration={<HeaderPulseGlyph />}
+              rightAction={
+                <HeaderActionPill variant="dark">
+                  <IndianRupee className="h-3.5 w-3.5 text-white/80" />
+                  {pendingFeeStudents.length} pending
+                </HeaderActionPill>
+              }
+            />
+            <div className="flex-1 bg-card p-6">
+              {pendingFeeStudents.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
+              ) : (
+                <div className="space-y-2">
+                  {pendingFeeStudents.map((f) => (
+                    <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-primary/10 text-primary border border-border">
+                          {(f.student?.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{f.student?.name || "Unknown student"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{f.count > 1 ? `${f.count} fees pending` : "1 fee pending"}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{f.student?.name || "Unknown student"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{f.count > 1 ? `${f.count} fees pending` : "1 fee pending"}</p>
-                      </div>
+                      <span className="text-sm font-semibold text-destructive shrink-0">₹{f.pendingAmount.toLocaleString()}</span>
                     </div>
-                    <span className="text-sm font-semibold text-destructive shrink-0">₹{f.pendingAmount.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-          <div className="glass-panel">
-            <h3 className="text-base font-semibold text-foreground mb-4">Upcoming Exams</h3>
-            {upcomingExams.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No upcoming exams scheduled.</p>
-            ) : (
-              <div className="space-y-2.5">
-                {upcomingExams.map((e, i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted hover:bg-border transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <FileText className="h-4 w-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 items-stretch">
+          <div className="flex flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={FileText}
+              title="Upcoming Exams"
+              subtitle="Next scheduled tests"
+              accent="blue"
+              variant="dark"
+              decoration={<HeaderDotGridGlyph />}
+              rightAction={
+                <HeaderActionPill variant="dark">
+                  <FileText className="h-3.5 w-3.5 text-white/80" />
+                  {upcomingExams.length}
+                </HeaderActionPill>
+              }
+            />
+            <div className="flex-1 bg-card p-6">
+              {upcomingExams.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming exams scheduled.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {upcomingExams.map((e, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted hover:bg-border transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{e.title}</p>
+                          <p className="text-xs text-muted-foreground">{e.class}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{e.title}</p>
-                        <p className="text-xs text-muted-foreground">{e.class}</p>
-                      </div>
+                      <span className="text-xs font-semibold text-primary shrink-0">
+                        {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
                     </div>
-                    <span className="text-xs font-semibold text-primary shrink-0">
-                      {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="lg:col-span-2">
@@ -386,9 +421,16 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
         </div>
 
         {studentsByClass.length > 0 && (
-          <div className="glass-panel mt-4">
-            <h3 className="text-base font-semibold text-foreground mb-4">Students by Class</h3>
-            <div className="space-y-3">
+          <div className="overflow-hidden rounded-[20px] mt-4" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+            <DashboardSectionHeader
+              icon={GraduationCap}
+              title="Students by Class"
+              subtitle="Enrollment distribution across classes"
+              accent="blue"
+              variant="dark"
+              decoration={<HeaderBarsGlyph />}
+            />
+            <div className="bg-card p-6 space-y-3">
               {studentsByClass.map((c) => {
                 const max = Math.max(1, ...studentsByClass.map((x) => x.count));
                 return (
@@ -405,15 +447,6 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .glass-panel {
-          background: white;
-          border-radius: 18px;
-          padding: 24px;
-          box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.09), 0 2px 4px rgba(15, 23, 42, 0.06), 0 16px 32px -14px rgba(79, 70, 229, 0.15);
-        }
-      `}</style>
     </div>
   );
 }
@@ -637,13 +670,16 @@ function SchoolCalendar() {
   const isToday = (d: number) => year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
 
   return (
-    <div className="glass-panel">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <CalendarDays className="h-4 w-4 text-primary" />
-        </div>
-        <h3 className="text-base font-semibold text-foreground">School Calendar</h3>
-      </div>
+    <div className="overflow-hidden rounded-[20px] h-full" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+      <DashboardSectionHeader
+        icon={CalendarDays}
+        title="School Calendar"
+        subtitle="Track important dates and events"
+        accent="green"
+        variant="dark"
+        decoration={<HeaderWaveGlyph />}
+      />
+      <div className="bg-card p-6">
       <div className="flex items-center justify-between mb-3">
         <button type="button" onClick={() => changeMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Previous month">
           ‹
@@ -671,6 +707,7 @@ function SchoolCalendar() {
         ))}
       </div>
       <p className="text-sm text-muted-foreground text-center py-2">No upcoming events.</p>
+      </div>
     </div>
   );
 }
