@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Building2, GraduationCap, Briefcase, Users, Search, X, Upload } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Building2, GraduationCap, Briefcase, Users, Search, X, Upload, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -323,7 +323,7 @@ export default function TeachersPage() {
             <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
             <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
-            <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
+            <p className="w-[168px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
             <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
@@ -368,7 +368,10 @@ export default function TeachersPage() {
                 <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
               </div>
 
-              <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
+              <div className="flex items-center justify-end gap-1 w-[168px] shrink-0 ml-auto">
+                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}`)} aria-label="View" title="View this staff member's full details">
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
                 <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit" title="Edit this staff member's details">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX, Search, TrendingUp, X, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX, Search, TrendingUp, X, Upload, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -293,7 +293,7 @@ export default function StudentsPage() {
             <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
             <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
-            <p className="w-[104px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredStudents.map((s) => (
             <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
@@ -342,9 +342,12 @@ export default function StudentsPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-1 w-[104px] shrink-0 ml-auto">
+              <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
                 {!isTeacher && (
                   <>
+                    <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit" title="Edit this student's details">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
