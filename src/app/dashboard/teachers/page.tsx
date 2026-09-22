@@ -369,10 +369,10 @@ export default function TeachersPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
-                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit">
+                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit" title="Edit this staff member's details">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => openPermissions(t)} aria-label="Permissions">
+                <Button variant="ghost" size="icon-sm" onClick={() => openPermissions(t)} aria-label="Permissions" title="Manage what this staff member can access">
                   <ShieldCheck className="h-3.5 w-3.5" />
                 </Button>
                 <Button
@@ -381,6 +381,7 @@ export default function TeachersPage() {
                   onClick={() => toggleActive(t)}
                   disabled={busyId === t._id}
                   aria-label={t.isActive ? "Deactivate" : "Activate"}
+                  title={t.isActive ? "Deactivate this staff member's account" : "Reactivate this staff member's account"}
                 >
                   <Power className="h-3.5 w-3.5" />
                 </Button>
@@ -390,6 +391,7 @@ export default function TeachersPage() {
                   onClick={() => setPendingDelete(t)}
                   disabled={busyId === t._id}
                   aria-label="Delete"
+                  title="Delete this staff member permanently"
                   className="hover:text-red-600"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

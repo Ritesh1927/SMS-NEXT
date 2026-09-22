@@ -345,7 +345,7 @@ export default function StudentsPage() {
               <div className="flex items-center justify-end gap-1 w-[104px] shrink-0 ml-auto">
                 {!isTeacher && (
                   <>
-                    <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit">
+                    <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit" title="Edit this student's details">
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -354,6 +354,7 @@ export default function StudentsPage() {
                       onClick={() => toggleActive(s)}
                       disabled={busyId === s._id}
                       aria-label={s.isActive ? "Deactivate" : "Activate"}
+                      title={s.isActive ? "Deactivate this student's account" : "Reactivate this student's account"}
                     >
                       <Power className="h-3.5 w-3.5" />
                     </Button>
@@ -363,6 +364,7 @@ export default function StudentsPage() {
                       onClick={() => setPendingDelete(s)}
                       disabled={busyId === s._id}
                       aria-label="Delete"
+                      title="Delete this student permanently"
                       className="hover:text-red-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
