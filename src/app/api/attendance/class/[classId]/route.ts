@@ -30,9 +30,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ classId:
       );
     }
 
+    // rollNumber is a plain "1", "2", "3"... string, so sorting by it
+    // lexicographically would put "10" before "2" — sort by name instead,
+    // which is equivalent now that roll number always tracks name order.
     const students = await Student.find({ school: auth.schoolId, class: cls.name, section: cls.section, isActive: true })
       .select("name photo rollNumber")
-      .sort({ rollNumber: 1 });
+      .collation({ locale: "en" })
+      .sort({ name: 1 });
 
     let existingRecords: { studentId: mongoose.Types.ObjectId; status: string }[] = [];
     if (date) {

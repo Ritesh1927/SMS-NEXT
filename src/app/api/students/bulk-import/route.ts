@@ -8,6 +8,7 @@ import { generatePassword, hashPassword } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
 import { parseWorkbookRows } from "@/lib/excelImport";
 import { STUDENT_KEYS } from "@/lib/bulkImportFields";
+import { resequenceRollNumbers } from "@/lib/rollNumber";
 
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -66,9 +67,8 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    const [existingClasses, existingStudents, existingParents, studentCount] = await Promise.all([
+    const [existingClasses, existingParents, studentCount] = await Promise.all([
       Class.find({ school: auth.schoolId }).select("name section"),
-      Student.find({ school: auth.schoolId, isActive: true }).select("class section rollNumber"),
       Parent.find({ school: auth.schoolId }).select("email students"),
       Student.countDocuments({ school: auth.schoolId }),
     ]);
@@ -80,8 +80,8 @@ export async function POST(req: Request) {
       classesByName.set(c.name, [...(classesByName.get(c.name) || []), c.section]);
     }
 
-    const usedRollKeys = new Set(existingStudents.map((s) => `${s.class}::${s.section}::${s.rollNumber}`));
     const parentsByEmail = new Map<string, IParent>(existingParents.map((p) => [p.email.toLowerCase(), p]));
+    const touchedClassSections = new Map<string, { studentClass: string; section: string }>();
 
     let admissionSeq = studentCount;
     const year = new Date().getFullYear();
@@ -107,11 +107,6 @@ export async function POST(req: Request) {
         else { fail(`Class "${studentClass}" has multiple sections — specify one in the Section column.`); continue; }
       }
       if (!classKeySet.has(`${studentClass}::${section}`)) { fail(`Class "${studentClass}-${section}" was not found — create it first under Classes.`); continue; }
-
-      const rollNumber = (row[STUDENT_KEYS.rollNumber] || "").trim();
-      if (!rollNumber) { fail("Roll number is required."); continue; }
-      const rollKey = `${studentClass}::${section}::${rollNumber}`;
-      if (usedRollKeys.has(rollKey)) { fail(`Roll number "${rollNumber}" is already used in class ${studentClass}-${section}.`); continue; }
 
       const dobRaw = (row[STUDENT_KEYS.dateOfBirth] || "").trim();
       if (!dobRaw) { fail("Date of birth is required."); continue; }
@@ -161,10 +156,7 @@ export async function POST(req: Request) {
       const address = (row[STUDENT_KEYS.address] || "").trim();
       const bloodGroup = (row[STUDENT_KEYS.bloodGroup] || "").trim();
 
-      // Everything validated — this row is going in. Mark the roll number
-      // used immediately so a later duplicate row in the same file is
-      // caught too, not just duplicates against what was already in the DB.
-      usedRollKeys.add(rollKey);
+      // Everything validated — this row is going in.
       admissionSeq += 1;
       const admissionNo = `ADM-${year}-${String(admissionSeq).padStart(4, "0")}`;
 
@@ -174,7 +166,6 @@ export async function POST(req: Request) {
           phone,
           class: studentClass,
           section,
-          rollNumber,
           dateOfBirth,
           gender: gender as "male" | "female" | "other",
           address,
@@ -215,10 +206,18 @@ export async function POST(req: Request) {
         student.parent = parent._id;
         await student.save();
 
+        touchedClassSections.set(`${studentClass}::${section}`, { studentClass, section });
         results.push({ row: excelRow, name, status: "created", studentId: student.studentId });
       } catch (err) {
         results.push({ row: excelRow, name, status: "failed", message: err instanceof Error ? err.message : "Failed to create student." });
       }
+    }
+
+    // Roll numbers are assigned alphabetically within each class+section, so
+    // resequence every roster a row landed in once, after all of them exist,
+    // rather than re-sorting the whole class after each individual row.
+    for (const { studentClass, section } of touchedClassSections.values()) {
+      await resequenceRollNumbers(auth.schoolId, studentClass, section);
     }
 
     const created = results.filter((r) => r.status === "created");

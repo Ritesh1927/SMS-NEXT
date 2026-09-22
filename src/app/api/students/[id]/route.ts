@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
+import { resequenceRollNumbers } from "@/lib/rollNumber";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -10,8 +11,10 @@ function requireSchoolAdmin(req: Request) {
   return auth;
 }
 
+// rollNumber is deliberately not in this list — it's auto-assigned from
+// alphabetical order within a class+section, not something the admin sets.
 const ALLOWED_FIELDS = [
-  "name", "phone", "class", "section", "rollNumber", "dateOfBirth", "gender", "address", "bloodGroup",
+  "name", "phone", "class", "section", "dateOfBirth", "gender", "address", "bloodGroup",
   "isActive", "admissionDate", "admissionNo", "previousSchool", "aadhaarNumber",
   "emergencyContact", "emergencyPhone", "emergencyRelation", "religion", "category",
 ] as const;
@@ -68,20 +71,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    if (updates.rollNumber) {
-      const current = await Student.findOne({ _id: id, school: auth.schoolId }).select("class section");
-      const cls = updates.class ?? current?.class;
-      const sec = updates.section ?? current?.section;
-      const dupRoll = await Student.findOne({
-        school: auth.schoolId, class: cls, section: sec, rollNumber: updates.rollNumber, _id: { $ne: id }, isActive: true,
-      });
-      if (dupRoll) {
-        return NextResponse.json(
-          { success: false, message: `Roll number "${updates.rollNumber}" already exists in this class.` },
-          { status: 400 },
-        );
-      }
-    }
+    // Needed regardless of which fields changed, so the roster this student
+    // is leaving (if class/section moved) can be resequenced too, below.
+    const before = await Student.findOne({ _id: id, school: auth.schoolId }).select("class section");
+    if (!before) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 
     if (updates.aadhaarNumber) {
       const dupAadhaar = await Student.findOne({
@@ -112,7 +105,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       await Parent.findOneAndUpdate({ _id: student.parent, school: auth.schoolId }, parentUpdates);
     }
 
-    return NextResponse.json({ success: true, message: "Student updated.", data: student });
+    // Name, class, or section may have changed — resequence whatever
+    // roster(s) this student now belongs to (and the one it left, if moved).
+    await resequenceRollNumbers(auth.schoolId, student.class, student.section);
+    if (student.class !== before.class || student.section !== before.section) {
+      await resequenceRollNumbers(auth.schoolId, before.class, before.section);
+    }
+    const finalStudent = await Student.findOne({ _id: id, school: auth.schoolId }).select("-password");
+
+    return NextResponse.json({ success: true, message: "Student updated.", data: finalStudent || student });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to update student." },
@@ -144,6 +145,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     await Student.findOneAndDelete({ _id: id, school: auth.schoolId });
+    await resequenceRollNumbers(auth.schoolId, student.class, student.section);
     return NextResponse.json({ success: true, message: "Student deleted." });
   } catch (err) {
     return NextResponse.json(

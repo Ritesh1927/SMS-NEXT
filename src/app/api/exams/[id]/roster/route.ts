@@ -23,7 +23,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const studentQuery: Record<string, unknown> = { school: auth.schoolId, class: exam.class, isActive: true };
     if (exam.section) studentQuery.section = exam.section;
-    const students = await Student.find(studentQuery).select("name studentId rollNumber").sort({ rollNumber: 1, name: 1 });
+    // rollNumber is a plain "1", "2", "3"... string, so sorting by it
+    // lexicographically would put "10" before "2" — sort by name instead,
+    // which is equivalent now that roll number always tracks name order.
+    const students = await Student.find(studentQuery).select("name studentId rollNumber").collation({ locale: "en" }).sort({ name: 1 });
 
     const existingResults = await Result.find({ exam: id });
     const resultMap = new Map(existingResults.map((r) => [String(r.student), r]));

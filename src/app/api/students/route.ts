@@ -6,6 +6,7 @@ import { Parent } from "@/models/Parent";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
 import { withAttendancePercent } from "@/lib/studentAttendance";
+import { resequenceRollNumbers } from "@/lib/rollNumber";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -35,7 +36,11 @@ export async function GET(req: Request) {
     const students = await Student.find(query)
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone occupation motherOccupation")
-      .sort({ class: 1, rollNumber: 1 })
+      // rollNumber is a plain "1", "2", "3"... string, so sorting by it
+      // lexicographically would put "10" before "2" — sort by name instead,
+      // which is equivalent now that roll number always tracks name order.
+      .collation({ locale: "en" })
+      .sort({ class: 1, name: 1 })
       .lean();
 
     const data = await withAttendancePercent(auth.schoolId, students);
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      name, phone, studentClass, section, rollNumber, dateOfBirth, gender, address, bloodGroup,
+      name, phone, studentClass, section, dateOfBirth, gender, address, bloodGroup,
       parentName, motherName, motherPhone, parentEmail, parentPhone, parentRelation,
       fatherOccupation, motherOccupation,
       admissionDate, admissionNo, previousSchool, aadhaarNumber,
@@ -66,7 +71,6 @@ export async function POST(req: Request) {
 
     if (!name || !studentClass) return NextResponse.json({ success: false, message: "Name and class required." }, { status: 400 });
     if (!dateOfBirth) return NextResponse.json({ success: false, message: "Date of birth is required." }, { status: 400 });
-    if (!rollNumber) return NextResponse.json({ success: false, message: "Roll number is required." }, { status: 400 });
     if (!parentName) return NextResponse.json({ success: false, message: "Father's name is required." }, { status: 400 });
     if (!motherName) return NextResponse.json({ success: false, message: "Mother's name is required." }, { status: 400 });
     if (!parentPhone) return NextResponse.json({ success: false, message: "Parent phone is required." }, { status: 400 });
@@ -97,18 +101,6 @@ export async function POST(req: Request) {
     }
 
     await connectDB();
-
-    if (rollNumber) {
-      const dupRoll = await Student.findOne({
-        school: auth.schoolId, class: studentClass, section: section || "", rollNumber, isActive: true,
-      });
-      if (dupRoll) {
-        return NextResponse.json(
-          { success: false, message: `Roll number "${rollNumber}" already exists in this class.` },
-          { status: 400 },
-        );
-      }
-    }
 
     if (aadhaarNumber) {
       const dupAadhaar = await Student.findOne({ school: auth.schoolId, aadhaarNumber, isActive: true });
@@ -159,7 +151,6 @@ export async function POST(req: Request) {
       phone: phone || "",
       class: studentClass,
       section: section || "",
-      rollNumber: rollNumber || "",
       dateOfBirth: dateOfBirth || null,
       gender: gender || "male",
       address: address || "",
@@ -216,7 +207,10 @@ export async function POST(req: Request) {
       await student.save();
     }
 
-    const studentData = student.toObject() as unknown as Record<string, unknown>;
+    await resequenceRollNumbers(auth.schoolId, studentClass, section || "");
+    const finalStudent = await Student.findById(student._id).select("-password");
+
+    const studentData = (finalStudent || student).toObject() as unknown as Record<string, unknown>;
     delete studentData.password;
     let parentData: Record<string, unknown> | null = null;
     if (parent) {

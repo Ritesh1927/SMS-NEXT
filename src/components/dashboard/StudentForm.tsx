@@ -240,7 +240,6 @@ export function StudentForm({ studentId }: { studentId?: string }) {
     if (!form.name.trim()) return toast.error("Student name is required.");
     if (!form.dateOfBirth) return toast.error("Date of birth is required.");
     if (!form.studentClass) return toast.error("Please select a class.");
-    if (!form.rollNumber.trim()) return toast.error("Roll number is required.");
     if (!form.parentName.trim()) return toast.error("Father's name is required.");
     if (!form.motherName.trim()) return toast.error("Mother's name is required.");
     if (!form.parentPhone) return toast.error("Parent phone is required.");
@@ -411,8 +410,9 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                 </SelectContent>
               </Select>
             </div>
-            <Field label="Roll Number" required>
-              <Input value={form.rollNumber} onChange={(e) => update("rollNumber", e.target.value)} placeholder="Roll number" maxLength={20} required />
+            <Field label="Roll Number">
+              <Input value={isEdit ? form.rollNumber : ""} placeholder={isEdit ? "" : "Auto-assigned alphabetically on save"} disabled />
+              <p className="text-xs text-muted-foreground">Assigned automatically by alphabetical order within the class.</p>
             </Field>
             <Field label="Address">
               <Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Address" maxLength={200} />

@@ -35,7 +35,11 @@ export async function GET(req: Request) {
     })
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone occupation motherOccupation")
-      .sort({ class: 1, rollNumber: 1 })
+      // rollNumber is a plain "1", "2", "3"... string, so sorting by it
+      // lexicographically would put "10" before "2" — sort by name instead,
+      // which is equivalent now that roll number always tracks name order.
+      .collation({ locale: "en" })
+      .sort({ class: 1, name: 1 })
       .lean();
 
     const data = await withAttendancePercent(auth.schoolId, students);
