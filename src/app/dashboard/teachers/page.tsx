@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Building2, GraduationCap, Briefcase, Users, Search, X, Upload, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Building2, GraduationCap, Briefcase, Users, Search, X, Upload, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -24,60 +23,6 @@ interface ClassOption {
   name: string;
   section: string;
 }
-
-interface TeacherPermissions {
-  canCreateStudent: boolean;
-  canEditStudent: boolean;
-  canDeleteStudent: boolean;
-  canViewAllStudents: boolean;
-  canMarkAttendance: boolean;
-  canViewAttendance: boolean;
-  canManageFees: boolean;
-  canViewFees: boolean;
-  canCreateExam: boolean;
-  canEnterMarks: boolean;
-  canViewExams: boolean;
-  canPostNotice: boolean;
-  canViewNotices: boolean;
-  canAssignHomework: boolean;
-  canViewHomework: boolean;
-  canPostNoticeBoard: boolean;
-  canManageLibrary: boolean;
-  canDailyChallenge: boolean;
-  canAwardBadges: boolean;
-}
-
-const PERMISSION_GROUPS: { label: string; keys: (keyof TeacherPermissions)[] }[] = [
-  { label: "Students", keys: ["canCreateStudent", "canEditStudent", "canDeleteStudent", "canViewAllStudents"] },
-  { label: "Attendance", keys: ["canMarkAttendance", "canViewAttendance"] },
-  { label: "Fees", keys: ["canManageFees", "canViewFees"] },
-  { label: "Exams", keys: ["canCreateExam", "canEnterMarks", "canViewExams"] },
-  { label: "Notices", keys: ["canPostNotice", "canViewNotices", "canPostNoticeBoard"] },
-  { label: "Homework", keys: ["canAssignHomework", "canViewHomework"] },
-  { label: "Other", keys: ["canManageLibrary", "canDailyChallenge", "canAwardBadges"] },
-];
-
-const PERMISSION_LABELS: Record<keyof TeacherPermissions, string> = {
-  canCreateStudent: "Create students",
-  canEditStudent: "Edit students",
-  canDeleteStudent: "Delete students",
-  canViewAllStudents: "View all students",
-  canMarkAttendance: "Mark attendance",
-  canViewAttendance: "View attendance",
-  canManageFees: "Manage fees",
-  canViewFees: "View fees",
-  canCreateExam: "Create exams",
-  canEnterMarks: "Enter marks",
-  canViewExams: "View exams",
-  canPostNotice: "Post notices",
-  canViewNotices: "View notices",
-  canAssignHomework: "Assign homework",
-  canViewHomework: "View homework",
-  canPostNoticeBoard: "Post to notice board",
-  canManageLibrary: "Manage library",
-  canDailyChallenge: "Daily challenge",
-  canAwardBadges: "Award badges",
-};
 
 interface TeacherRow {
   _id: string;
@@ -95,7 +40,6 @@ interface TeacherRow {
   employmentType?: string;
   gender?: string;
   isActive: boolean;
-  permissions?: TeacherPermissions;
 }
 
 interface TeachersResponse {
@@ -116,10 +60,6 @@ export default function TeachersPage() {
   const [teachers, setTeachers] = useState<TeacherRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-
-  const [permTeacher, setPermTeacher] = useState<TeacherRow | null>(null);
-  const [permForm, setPermForm] = useState<TeacherPermissions | null>(null);
-  const [permSubmitting, setPermSubmitting] = useState(false);
 
   const [staffFilter, setStaffFilter] = useState<"" | "teaching" | "non-teaching">("");
   const [search, setSearch] = useState("");
@@ -156,35 +96,6 @@ export default function TeachersPage() {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
     } finally {
       setBusyId(null);
-    }
-  };
-
-  const openPermissions = (t: TeacherRow) => {
-    setPermTeacher(t);
-    setPermForm(t.permissions || null);
-  };
-
-  const handlePermSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!permTeacher || !permForm) return;
-    const token = getToken();
-    if (!token) return;
-    setPermSubmitting(true);
-    try {
-      const res = await fetch(`/api/teachers/${permTeacher._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ permissions: permForm }),
-      });
-      const json: ApiMessageResponse = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message || "Failed to update permissions.");
-      toast.success("Permissions updated");
-      setPermTeacher(null);
-      load();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
-    } finally {
-      setPermSubmitting(false);
     }
   };
 
@@ -323,7 +234,7 @@ export default function TeachersPage() {
             <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
             <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
-            <p className="w-[168px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
+            <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
             <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
@@ -368,15 +279,12 @@ export default function TeachersPage() {
                 <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
               </div>
 
-              <div className="flex items-center justify-end gap-1 w-[168px] shrink-0 ml-auto">
+              <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
                 <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}`)} aria-label="View" title="View this staff member's full details">
                   <Eye className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit" title="Edit this staff member's details">
                   <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => openPermissions(t)} aria-label="Permissions" title="Manage what this staff member can access">
-                  <ShieldCheck className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -425,40 +333,6 @@ export default function TeachersPage() {
         templateFilename="staff_bulk_upload_template.xlsx"
         onImported={load}
       />
-
-      <Dialog open={!!permTeacher} onOpenChange={(o) => { if (!o) setPermTeacher(null); }}>
-        <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-foreground">
-              Permissions {permTeacher ? `— ${permTeacher.name}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          {permForm && (
-            <form onSubmit={handlePermSubmit} className="space-y-4 mt-2">
-              {PERMISSION_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{group.label}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {group.keys.map((key) => (
-                      <label key={key} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                        <input
-                          type="checkbox"
-                          checked={permForm[key]}
-                          onChange={(e) => setPermForm((f) => (f ? { ...f, [key]: e.target.checked } : f))}
-                        />
-                        {PERMISSION_LABELS[key]}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={permSubmitting}>
-                {permSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Permissions"}
-              </Button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
