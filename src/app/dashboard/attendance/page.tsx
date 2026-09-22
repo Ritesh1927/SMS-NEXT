@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Loader2, Check, X, Clock, Save, ChevronLeft, ChevronRight, CalendarCheck,
-  ClipboardCheck, Users, Search, BarChart3, UserSearch, TrendingUp,
+  ClipboardCheck, Users, Search, BarChart3, UserSearch, TrendingUp, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,6 +68,11 @@ export default function AttendancePage() {
   const [classId, setClassId] = useState<string>("");
   const [date, setDate] = useState(today());
   const [roster, setRoster] = useState<RosterEntry[] | null>(null);
+  // Whether ANY student already had a saved record for this class+date,
+  // captured before the roster's null statuses get defaulted to "present"
+  // below — otherwise an untouched day and an already-saved-all-present day
+  // render identically, with no way to tell them apart.
+  const [alreadyMarked, setAlreadyMarked] = useState(false);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +101,10 @@ export default function AttendancePage() {
     setLoadingRoster(true);
     setRoster(null);
     apiGet<RosterResponse>(`/attendance/class/${classId}?date=${date}`, token)
-      .then((res) => setRoster(res.data.map((r) => ({ ...r, status: r.status || "present" }))))
+      .then((res) => {
+        setAlreadyMarked(res.data.some((r) => r.status !== null));
+        setRoster(res.data.map((r) => ({ ...r, status: r.status || "present" })));
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load roster."))
       .finally(() => setLoadingRoster(false));
   }, [classId, date]);
@@ -130,6 +138,7 @@ export default function AttendancePage() {
       });
       const json: ApiMessageResponse = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to save attendance.");
+      setAlreadyMarked(true);
       toast.success("Attendance saved", { description: json.message });
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -195,6 +204,16 @@ export default function AttendancePage() {
                 <label className="text-xs font-semibold text-foreground">Date</label>
                 <Input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className="w-40" />
               </div>
+              {!loadingRoster && roster && roster.length > 0 && (
+                <span
+                  className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold ${
+                    alreadyMarked ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                  }`}
+                >
+                  {alreadyMarked ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                  {alreadyMarked ? "Already marked for this date" : "Not marked yet"}
+                </span>
+              )}
               {roster && roster.length > 0 && (
                 <>
                   <Button variant="outline" onClick={() => markAll("present")} className="text-success border-success/30 hover:bg-success/10">
