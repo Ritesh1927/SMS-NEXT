@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX, Search, TrendingUp, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Users, UserCheck, UserX, Search, TrendingUp, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { BulkImportDialog } from "@/components/dashboard/BulkImportDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
@@ -66,6 +67,7 @@ export default function StudentsPage() {
   const [classFilter, setClassFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [pendingDelete, setPendingDelete] = useState<StudentRow | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   // Teachers get a read-only view scoped to their own classes — matches
   // SMS-BACKEND, where the student create/update/delete routes are
@@ -185,9 +187,14 @@ export default function StudentsPage() {
         accent="blue"
         actions={
           !isTeacher && (
-            <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add Student
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
+                <Upload className="h-4 w-4" /> Bulk Upload
+              </Button>
+              <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Student
+              </Button>
+            </>
           )
         }
         className="mb-6"
@@ -376,6 +383,17 @@ export default function StudentsPage() {
         confirmLabel="Delete"
         loading={busyId === pendingDelete?._id}
         onConfirm={confirmDelete}
+      />
+
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Bulk Upload Students"
+        entityLabel="student"
+        importPath="/students/bulk-import"
+        templatePath="/students/bulk-import/template"
+        templateFilename="student_bulk_upload_template.xlsx"
+        onImported={load}
       />
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Building2, GraduationCap, Briefcase, Users, Search, X } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Power, ShieldCheck, Building2, GraduationCap, Briefcase, Users, Search, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { BulkImportDialog } from "@/components/dashboard/BulkImportDialog";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
@@ -123,6 +124,7 @@ export default function TeachersPage() {
   const [staffFilter, setStaffFilter] = useState<"" | "teaching" | "non-teaching">("");
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<TeacherRow | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = () => {
     const token = getToken();
@@ -236,9 +238,14 @@ export default function TeachersPage() {
         subtitle={`${counts.total} staff member${counts.total === 1 ? "" : "s"} (${counts.teaching} teaching, ${counts.nonTeaching} non-teaching).`}
         accent="blue"
         actions={
-          <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Add Staff
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
+              <Upload className="h-4 w-4" /> Bulk Upload
+            </Button>
+            <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Add Staff
+            </Button>
+          </>
         }
         className="mb-6"
       />
@@ -401,6 +408,17 @@ export default function TeachersPage() {
         confirmLabel="Delete"
         loading={busyId === pendingDelete?._id}
         onConfirm={confirmDelete}
+      />
+
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Bulk Upload Staff"
+        entityLabel="staff member"
+        importPath="/teachers/bulk-import"
+        templatePath="/teachers/bulk-import/template"
+        templateFilename="staff_bulk_upload_template.xlsx"
+        onImported={load}
       />
 
       <Dialog open={!!permTeacher} onOpenChange={(o) => { if (!o) setPermTeacher(null); }}>
