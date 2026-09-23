@@ -305,7 +305,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           </div>
           Attendance
         </h3>
-        <StudentAttendanceCalendar studentId={studentId} />
+        <StudentAttendanceCalendar studentId={studentId} showDailyRecords={false} />
       </div>
     </div>
   );

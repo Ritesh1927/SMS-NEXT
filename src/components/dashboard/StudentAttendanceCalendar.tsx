@@ -37,11 +37,14 @@ const DOT_STYLES: Record<Status, string> = {
   late: "bg-amber-500",
 };
 
-// Shared month-calendar + summary cards + daily-records view for one
-// student's attendance history. Used by the parent's own Attendance page
-// and by the admin/teacher "Student Lookup" tab -- same data shape either
-// way (GET /api/attendance/student/[id]), just a different caller.
-export function StudentAttendanceCalendar({ studentId }: { studentId: string }) {
+// Shared month-calendar + summary cards + optional daily-records view for
+// one student's attendance history. Used by the parent's own Attendance
+// page, the admin/teacher "Student Lookup" tab, and the Student Details
+// page -- same data shape either way (GET /api/attendance/student/[id]),
+// just a different caller. Daily Records is redundant with the calendar's
+// own color-coded dots, so callers that already have a dense page (like
+// Student Details) can turn it off.
+export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }: { studentId: string; showDailyRecords?: boolean }) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -131,30 +134,32 @@ export function StudentAttendanceCalendar({ studentId }: { studentId: string }) 
         )}
       </div>
 
-      <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-          <CalendarCheck className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold text-foreground">Daily Records</p>
+      {showDailyRecords && (
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+            <CalendarCheck className="h-4 w-4 text-primary" />
+            <p className="text-sm font-semibold text-foreground">Daily Records</p>
+          </div>
+          {!data || data.records.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-5 py-6 text-center">No attendance records for this month.</p>
+          ) : (
+            data.records.map((r) => (
+              <div key={r._id} className="flex items-center justify-between px-5 py-3 border-b border-border last:border-0">
+                <p className="text-sm text-foreground">
+                  {new Date(r.date).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    r.status === "present" ? "bg-green-100 text-green-700" : r.status === "late" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {r.status[0].toUpperCase() + r.status.slice(1)}
+                </span>
+              </div>
+            ))
+          )}
         </div>
-        {!data || data.records.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-5 py-6 text-center">No attendance records for this month.</p>
-        ) : (
-          data.records.map((r) => (
-            <div key={r._id} className="flex items-center justify-between px-5 py-3 border-b border-border last:border-0">
-              <p className="text-sm text-foreground">
-                {new Date(r.date).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              </p>
-              <span
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                  r.status === "present" ? "bg-green-100 text-green-700" : r.status === "late" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                }`}
-              >
-                {r.status[0].toUpperCase() + r.status.slice(1)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+      )}
     </div>
   );
 }
