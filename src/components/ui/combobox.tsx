@@ -71,7 +71,12 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   return (
     <ComboboxPrimitive.Empty
       data-slot="combobox-empty"
-      className={cn("px-3 py-6 text-center text-sm text-muted-foreground", className)}
+      // base-ui keeps this element mounted at all times (required so screen
+      // readers get a consistent live-region to announce into) and only
+      // clears its *children* once there are matching results — so without
+      // collapsing the padding too, an invisible-but-still-24px-tall block
+      // sits above the result list whenever there's actually a match.
+      className={cn("px-3 py-6 text-center text-sm text-muted-foreground empty:p-0", className)}
       {...props}
     />
   )
