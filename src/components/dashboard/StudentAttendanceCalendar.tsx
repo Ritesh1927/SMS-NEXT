@@ -31,10 +31,12 @@ const MONTH_NAMES = [
 ];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const DOT_STYLES: Record<Status, string> = {
-  present: "bg-green-500",
-  absent: "bg-red-500",
-  late: "bg-amber-500",
+// Full-cell tint + border instead of a small dot — much easier to scan a
+// month at a glance than hunting for a 6px dot under each day number.
+const CELL_STYLES: Record<Status, string> = {
+  present: "bg-green-100 border-2 border-green-400 text-green-800",
+  absent: "bg-red-100 border-2 border-red-400 text-red-800",
+  late: "bg-amber-100 border-2 border-amber-400 text-amber-800",
 };
 
 // Shared month-calendar + summary cards + optional daily-records view for
@@ -113,14 +115,11 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
                 return (
                   <div
                     key={i}
-                    className={`h-14 rounded-lg flex flex-col items-center justify-center text-sm ${day ? "bg-muted/50 text-foreground" : ""}`}
+                    className={`h-14 rounded-lg flex items-center justify-center text-sm font-semibold transition-colors ${
+                      day ? (status ? CELL_STYLES[status] : "bg-muted/50 text-foreground") : ""
+                    }`}
                   >
-                    {day && (
-                      <>
-                        <span>{day}</span>
-                        {status && <span className={`h-1.5 w-1.5 rounded-full mt-1 ${DOT_STYLES[status]}`} />}
-                      </>
-                    )}
+                    {day}
                   </div>
                 );
               })}
