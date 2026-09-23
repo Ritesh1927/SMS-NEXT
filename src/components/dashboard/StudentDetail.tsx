@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -53,8 +53,147 @@ interface StudentResponse {
   data: StudentDetailData;
 }
 
+interface FeeHeadMonth {
+  paid: boolean;
+  amount: number;
+  paidAmount: number;
+  concession: number;
+}
+
+interface FeeHead {
+  _id: string;
+  months: FeeHeadMonth[];
+}
+
+interface FeeStatusResponse {
+  success: boolean;
+  data: { feeHeads: FeeHead[] };
+}
+
+interface FeeHistoryItem {
+  title: string;
+  month: string | null;
+}
+
+interface FeeHistoryGroup {
+  paymentDate: string | null;
+  paymentMode: string;
+  totalAmount: number;
+  items: FeeHistoryItem[];
+}
+
+interface FeeHistoryResponse {
+  success: boolean;
+  data: { history: FeeHistoryGroup[] };
+}
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function getMonthLabel(month: string | null) {
+  if (!month) return "";
+  if (month === "one-time") return "One-Time";
+  if (!/^\d{4}-\d{2}$/.test(month)) return month;
+  const [y, m] = month.split("-");
+  return `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}`;
+}
+
 function fmtDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : undefined;
+}
+
+// Mirrors the summary math CollectFeeTab uses when building its Payment
+// Summary for selected months, just aggregated across every month instead
+// of only the ones checked — an unpaid month's "amount" already bakes in
+// any projected late fee, so subtracting its concession gives the true
+// amount still owed for that month.
+function summarizeFeeHeads(feeHeads: FeeHead[]) {
+  let totalPaid = 0;
+  let totalPending = 0;
+  for (const fh of feeHeads) {
+    for (const m of fh.months) {
+      if (m.paid) totalPaid += m.paidAmount;
+      else totalPending += Math.max(0, m.amount - m.concession);
+    }
+  }
+  return { totalFees: totalPaid + totalPending, totalPaid, totalPending };
+}
+
+function StudentFeeUpdates({ studentId }: { studentId: string }) {
+  const router = useRouter();
+  const [summary, setSummary] = useState<{ totalFees: number; totalPaid: number; totalPending: number } | null>(null);
+  const [history, setHistory] = useState<FeeHistoryGroup[]>([]);
+  const [hasFeeStructure, setHasFeeStructure] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    Promise.all([
+      apiGet<FeeStatusResponse>(`/fees/student-status/${studentId}`, token),
+      apiGet<FeeHistoryResponse>(`/fees/history/${studentId}`, token),
+    ])
+      .then(([statusRes, historyRes]) => {
+        const feeHeads = statusRes.data.feeHeads || [];
+        setHasFeeStructure(feeHeads.length > 0);
+        setSummary(summarizeFeeHeads(feeHeads));
+        setHistory(historyRes.data.history || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [studentId]);
+
+  if (loading) return <PageLoader compact label="Loading fee details..." />;
+
+  if (!hasFeeStructure) {
+    return <p className="text-sm text-muted-foreground text-center py-4">No fee structure defined for this class yet.</p>;
+  }
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="rounded-xl bg-muted/50 p-4 text-center">
+          <p className="text-lg font-bold text-foreground">₹{(summary?.totalFees || 0).toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Total Fees</p>
+        </div>
+        <div className="rounded-xl bg-green-50 p-4 text-center">
+          <p className="text-lg font-bold text-green-700">₹{(summary?.totalPaid || 0).toLocaleString()}</p>
+          <p className="text-xs text-green-700/80 mt-0.5">Paid</p>
+        </div>
+        <div className={`rounded-xl p-4 text-center ${(summary?.totalPending || 0) > 0 ? "bg-red-50" : "bg-green-50"}`}>
+          <p className={`text-lg font-bold ${(summary?.totalPending || 0) > 0 ? "text-red-700" : "text-green-700"}`}>
+            ₹{(summary?.totalPending || 0).toLocaleString()}
+          </p>
+          <p className={`text-xs mt-0.5 ${(summary?.totalPending || 0) > 0 ? "text-red-700/80" : "text-green-700/80"}`}>Pending</p>
+        </div>
+      </div>
+
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent Payments</p>
+      {history.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">No payments recorded yet.</p>
+      ) : (
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {history.map((g, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/40">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  {g.paymentDate ? new Date(g.paymentDate).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                  <span className="text-xs text-muted-foreground font-normal ml-2 capitalize">{g.paymentMode}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {g.items.map((it) => `${it.title} (${getMonthLabel(it.month)})`).join(", ")}
+                </p>
+              </div>
+              <span className="text-sm font-semibold text-green-700 shrink-0">₹{g.totalAmount.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => router.push("/dashboard/fees")}>
+        Manage in Fees <ArrowRight className="h-3.5 w-3.5" />
+      </Button>
+    </>
+  );
 }
 
 export function StudentDetail({ studentId }: { studentId: string }) {
@@ -151,6 +290,16 @@ export function StudentDetail({ studentId }: { studentId: string }) {
         <DetailRow label="Religion" value={student.religion} />
         <DetailRow label="Category" value={student.category} />
       </DetailSection>
+
+      <div className="card-premium p-6">
+        <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
+          <div className="icon-chip h-8 w-8 bg-primary/10 text-primary">
+            <IndianRupee className="h-4 w-4" />
+          </div>
+          Fee Updates
+        </h3>
+        <StudentFeeUpdates studentId={studentId} />
+      </div>
 
       <div className="card-premium p-6">
         <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
