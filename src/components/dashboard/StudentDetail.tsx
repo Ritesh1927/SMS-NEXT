@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee } from "lucide-react";
+import { ArrowLeft, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -117,7 +117,6 @@ function summarizeLedger(feeHeads: LedgerFeeHead[]) {
 }
 
 function StudentFeeUpdates({ studentId }: { studentId: string }) {
-  const router = useRouter();
   const [summary, setSummary] = useState<{ totalFees: number; totalPaid: number; totalPending: number; totalUpcoming: number } | null>(null);
   const [history, setHistory] = useState<FeeHistoryGroup[]>([]);
   const [hasFeeStructure, setHasFeeStructure] = useState(true);
@@ -190,10 +189,6 @@ function StudentFeeUpdates({ studentId }: { studentId: string }) {
           ))}
         </div>
       )}
-
-      <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => router.push("/dashboard/fees")}>
-        Manage in Fees <ArrowRight className="h-3.5 w-3.5" />
-      </Button>
     </>
   );
 }
