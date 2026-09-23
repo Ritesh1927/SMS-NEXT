@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee } from "lucide-react";
+import { ArrowLeft, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -193,6 +193,110 @@ function StudentFeeUpdates({ studentId }: { studentId: string }) {
   );
 }
 
+interface ExamResultRow {
+  _id: string;
+  marksObtained: number;
+  totalMarks: number;
+  percentage: number;
+  grade: string;
+  isPassed: boolean;
+  isAbsent: boolean;
+  isPublished: boolean;
+  exam: { subject: string } | null;
+}
+
+interface ExamGroup {
+  groupId: string;
+  title: string;
+  date: string;
+  isTerm: boolean;
+  rows: ExamResultRow[];
+}
+
+interface ResultsResponse {
+  success: boolean;
+  data: { groups: ExamGroup[]; averagePercentage: number };
+}
+
+function StudentExamPerformance({ studentId }: { studentId: string }) {
+  const [groups, setGroups] = useState<ExamGroup[]>([]);
+  const [averagePercentage, setAveragePercentage] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<ResultsResponse>(`/results/student/${studentId}`, token)
+      .then((res) => {
+        setGroups(res.data.groups || []);
+        setAveragePercentage(res.data.averagePercentage || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [studentId]);
+
+  if (loading) return <PageLoader compact label="Loading exam results..." />;
+
+  if (groups.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-4">No exam results yet.</p>;
+  }
+
+  const allRows = groups.flatMap((g) => g.rows);
+  const attempted = allRows.filter((r) => !r.isAbsent);
+  const passCount = attempted.filter((r) => r.isPassed).length;
+  const passRate = attempted.length > 0 ? Math.round((passCount / attempted.length) * 100) : 0;
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="rounded-xl bg-muted/50 p-4 text-center">
+          <p className="text-lg font-bold text-foreground">{averagePercentage}%</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Average Score</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-4 text-center">
+          <p className="text-lg font-bold text-foreground">{groups.length}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Exams Taken</p>
+        </div>
+        <div className={`rounded-xl p-4 text-center ${passRate >= 50 ? "bg-green-50" : "bg-red-50"}`}>
+          <p className={`text-lg font-bold ${passRate >= 50 ? "text-green-700" : "text-red-700"}`}>{passRate}%</p>
+          <p className={`text-xs mt-0.5 ${passRate >= 50 ? "text-green-700/80" : "text-red-700/80"}`}>Pass Rate</p>
+        </div>
+      </div>
+
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Recent Exams</p>
+      <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+        {groups.map((g) => (
+          <div key={g.groupId} className="p-3 rounded-xl bg-muted/40">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-sm font-medium text-foreground truncate">{g.title}</p>
+              <span className="text-xs text-muted-foreground shrink-0">
+                {new Date(g.date).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {g.rows.map((r) => (
+                <span
+                  key={r._id}
+                  className={`text-[11px] font-medium px-2 py-1 rounded-full ${
+                    r.isAbsent
+                      ? "bg-muted text-muted-foreground"
+                      : r.isPassed
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {r.exam?.subject || "Subject"}: {r.isAbsent ? "Absent" : `${r.marksObtained}/${r.totalMarks} (${r.grade})`}
+                  {!r.isPublished && " · Draft"}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function StudentDetail({ studentId }: { studentId: string }) {
   const router = useRouter();
   const [student, setStudent] = useState<StudentDetailData | null>(null);
@@ -296,6 +400,16 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           Fee Updates
         </h3>
         <StudentFeeUpdates studentId={studentId} />
+      </div>
+
+      <div className="card-premium p-6">
+        <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2.5 pb-3.5 border-b border-border">
+          <div className="icon-chip h-8 w-8 bg-primary/10 text-primary">
+            <FileText className="h-4 w-4" />
+          </div>
+          Exam Performance
+        </h3>
+        <StudentExamPerformance studentId={studentId} />
       </div>
 
       <div className="card-premium p-6">
