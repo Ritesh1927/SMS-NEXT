@@ -53,21 +53,19 @@ interface StudentResponse {
   data: StudentDetailData;
 }
 
-interface FeeHeadMonth {
-  paid: boolean;
-  amount: number;
+interface LedgerMonth {
+  status: "paid" | "pending" | "upcoming";
   paidAmount: number;
-  concession: number;
+  balance: number;
 }
 
-interface FeeHead {
-  _id: string;
-  months: FeeHeadMonth[];
+interface LedgerFeeHead {
+  months: LedgerMonth[];
 }
 
-interface FeeStatusResponse {
+interface LedgerResponse {
   success: boolean;
-  data: { feeHeads: FeeHead[] };
+  data: LedgerFeeHead[];
 }
 
 interface FeeHistoryItem {
@@ -101,26 +99,26 @@ function fmtDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : undefined;
 }
 
-// Mirrors the summary math CollectFeeTab uses when building its Payment
-// Summary for selected months, just aggregated across every month instead
-// of only the ones checked — an unpaid month's "amount" already bakes in
-// any projected late fee, so subtracting its concession gives the true
-// amount still owed for that month.
-function summarizeFeeHeads(feeHeads: FeeHead[]) {
+// Same paid/pending/upcoming split the Student Ledger report uses — a month
+// is only "pending" once its due date has actually arrived (this month or
+// earlier); anything further out is "upcoming", not money owed yet.
+function summarizeLedger(feeHeads: LedgerFeeHead[]) {
   let totalPaid = 0;
   let totalPending = 0;
+  let totalUpcoming = 0;
   for (const fh of feeHeads) {
     for (const m of fh.months) {
-      if (m.paid) totalPaid += m.paidAmount;
-      else totalPending += Math.max(0, m.amount - m.concession);
+      if (m.status === "paid") totalPaid += m.paidAmount;
+      else if (m.status === "pending") totalPending += m.balance;
+      else totalUpcoming += m.balance;
     }
   }
-  return { totalFees: totalPaid + totalPending, totalPaid, totalPending };
+  return { totalFees: totalPaid + totalPending + totalUpcoming, totalPaid, totalPending, totalUpcoming };
 }
 
 function StudentFeeUpdates({ studentId }: { studentId: string }) {
   const router = useRouter();
-  const [summary, setSummary] = useState<{ totalFees: number; totalPaid: number; totalPending: number } | null>(null);
+  const [summary, setSummary] = useState<{ totalFees: number; totalPaid: number; totalPending: number; totalUpcoming: number } | null>(null);
   const [history, setHistory] = useState<FeeHistoryGroup[]>([]);
   const [hasFeeStructure, setHasFeeStructure] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -129,13 +127,13 @@ function StudentFeeUpdates({ studentId }: { studentId: string }) {
     const token = getToken();
     if (!token) return;
     Promise.all([
-      apiGet<FeeStatusResponse>(`/fees/student-status/${studentId}`, token),
+      apiGet<LedgerResponse>(`/fees/reports/student-ledger/${studentId}`, token),
       apiGet<FeeHistoryResponse>(`/fees/history/${studentId}`, token),
     ])
-      .then(([statusRes, historyRes]) => {
-        const feeHeads = statusRes.data.feeHeads || [];
+      .then(([ledgerRes, historyRes]) => {
+        const feeHeads = ledgerRes.data || [];
         setHasFeeStructure(feeHeads.length > 0);
-        setSummary(summarizeFeeHeads(feeHeads));
+        setSummary(summarizeLedger(feeHeads));
         setHistory(historyRes.data.history || []);
       })
       .catch(() => {})
@@ -150,7 +148,7 @@ function StudentFeeUpdates({ studentId }: { studentId: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
         <div className="rounded-xl bg-muted/50 p-4 text-center">
           <p className="text-lg font-bold text-foreground">₹{(summary?.totalFees || 0).toLocaleString()}</p>
           <p className="text-xs text-muted-foreground mt-0.5">Total Fees</p>
@@ -164,6 +162,10 @@ function StudentFeeUpdates({ studentId }: { studentId: string }) {
             ₹{(summary?.totalPending || 0).toLocaleString()}
           </p>
           <p className={`text-xs mt-0.5 ${(summary?.totalPending || 0) > 0 ? "text-red-700/80" : "text-green-700/80"}`}>Pending</p>
+        </div>
+        <div className="rounded-xl bg-amber-50 p-4 text-center">
+          <p className="text-lg font-bold text-amber-700">₹{(summary?.totalUpcoming || 0).toLocaleString()}</p>
+          <p className="text-xs text-amber-700/80 mt-0.5">Upcoming</p>
         </div>
       </div>
 
