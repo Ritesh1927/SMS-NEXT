@@ -22,7 +22,6 @@ interface TeacherDashboardData {
   stats: {
     classCount: number;
     totalStudents: number;
-    myStudentCount: number;
     todayAttendancePct: number | null;
     pendingHomework: number;
   };
@@ -97,7 +96,7 @@ export function TeacherDashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="My Classes" value={String(stats.classCount)} color="#4F46E5" colorDark="#4338CA" icon={Layers} />
-        <StatCard title="Total Students" value={String(stats.myStudentCount)} color="#8B5CF6" colorDark="#7C3AED" icon={Users} />
+        <StatCard title="Total Students" value={String(stats.totalStudents)} color="#8B5CF6" colorDark="#7C3AED" icon={Users} />
         <StatCard
           title="Today's Attendance"
           value={stats.todayAttendancePct != null ? `${stats.todayAttendancePct}%` : "—"}

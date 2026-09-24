@@ -62,24 +62,15 @@ export async function GET(req: Request) {
 
     const totalStudents = classBreakdown.reduce((sum, c) => sum + c.studentCount, 0);
 
-    // Classes this teacher is the *class teacher* of take priority for the
-    // attendance/performance widgets (matches the original's own
-    // preference) — only fall back to assignedClasses if they have none.
-    const classTeacherClasses = await Class.find({ classTeacher: teacher._id, school: teacher.school }).select("name section").lean();
-    let ownedClasses: { _id: Types.ObjectId; name: string; section: string }[] = classTeacherClasses;
-    if (ownedClasses.length === 0 && assigned.length > 0) {
-      ownedClasses = assigned.map((c) => ({ _id: c._id as Types.ObjectId, name: c.name, section: c.section }));
-    }
+    // Attendance/fees/performance widgets only cover classes this teacher is
+    // the *class teacher* of -- a subject teacher with no class-teacher
+    // assignment sees the empty state here instead of stats pulled in from
+    // classes they merely teach a subject in.
+    const ownedClasses: { _id: Types.ObjectId; name: string; section: string }[] = await Class.find({
+      classTeacher: teacher._id,
+      school: teacher.school,
+    }).select("name section").lean();
     const classIds = ownedClasses.map((c) => c._id);
-
-    const myStudentCount =
-      ownedClasses.length > 0
-        ? await Student.countDocuments({
-            school: teacher.school,
-            isActive: true,
-            $or: ownedClasses.map((c) => ({ class: c.name, section: c.section })),
-          })
-        : 0;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -151,7 +142,7 @@ export async function GET(req: Request) {
           subjects: teacher.subjects,
           staffType: teacher.staffType,
         },
-        stats: { classCount: ownedClasses.length, totalStudents, myStudentCount, todayAttendancePct, pendingHomework },
+        stats: { classCount: classBreakdown.length, totalStudents, todayAttendancePct, pendingHomework },
         classBreakdown,
         weeklyTrendMonth: `${monthName} ${now.getFullYear()}`,
         weeklyTrend,
