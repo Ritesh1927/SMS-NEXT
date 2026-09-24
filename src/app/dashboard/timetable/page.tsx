@@ -35,6 +35,14 @@ function timeToMins(t: string): number {
   return (h || 0) * 60 + (m || 0);
 }
 
+// "13:20" -> "1:20" -- 12-hour, no leading zero, matches how times are
+// entered/edited elsewhere on this page (24-hour) while reading naturally here.
+function formatTime(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const hour12 = (h || 0) % 12 || 12;
+  return `${hour12}:${String(m || 0).padStart(2, "0")}`;
+}
+
 interface SchoolPeriod {
   _id: string;
   label: string;
@@ -517,7 +525,7 @@ export default function TimetablePage() {
                     <td className="p-3 border-b border-border">
                       <div className="text-xs font-semibold text-foreground">{period.label}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        {period.startTime} – {period.endTime}
+                        {formatTime(period.startTime)} – {formatTime(period.endTime)}
                       </div>
                     </td>
                     {DAYS.map((day) => {
@@ -693,7 +701,7 @@ export default function TimetablePage() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{p.label}</p>
                         <p className="text-[11px] text-muted-foreground">
-                          {p.startTime} – {p.endTime}
+                          {formatTime(p.startTime)} – {formatTime(p.endTime)}
                           {p.isBreak && <span className="ml-2 text-amber-600 italic">break</span>}
                         </p>
                       </div>
