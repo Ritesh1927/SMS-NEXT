@@ -496,7 +496,7 @@ export default function TimetablePage() {
               {periodsLoading || loading ? (
                 <tr>
                   <td colSpan={7} className="p-0">
-                    <PageLoader compact label="Loading timetable..." />
+                    <PageLoader label="Loading timetable..." />
                   </td>
                 </tr>
               ) : periods.length === 0 ? (
