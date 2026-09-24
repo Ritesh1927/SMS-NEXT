@@ -178,6 +178,12 @@ export default function StudentsPage() {
     destructive: "text-destructive",
   };
 
+  // The Students list is scoped to every class a teacher touches (class
+  // teacher or subject teacher), but the View action is narrower -- only
+  // for the class they're the actual *class teacher* of, matching what
+  // /api/students/[id] itself allows a teacher to fetch.
+  const isMyClassTeacherClass = (s: StudentRow) => (user?.classTeacherOf || []).includes(`${s.class}-${s.section || ""}`);
+
   return (
     <div>
       <PageHeader
@@ -343,6 +349,11 @@ export default function StudentsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
+                {isTeacher && isMyClassTeacherClass(s) && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 {!isTeacher && (
                   <>
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">

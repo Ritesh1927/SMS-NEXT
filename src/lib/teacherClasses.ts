@@ -37,6 +37,16 @@ export async function isClassTeacherOf(teacherId: string, schoolId: string, clas
   return !!cls;
 }
 
+// Section-precise variant of isClassTeacherOf -- a school can have several
+// Class docs sharing one standard name ("7-A", "7-B", ...), each with its
+// own classTeacher, so a check that only matches on name would wrongly
+// grant a class teacher of one section access to every section of that
+// standard. Used to gate teacher access to an individual student's record.
+export async function isClassTeacherOfSection(teacherId: string, schoolId: string, className: string, section: string) {
+  const cls = await Class.findOne({ classTeacher: teacherId, school: schoolId, name: className, section }).select("_id").lean();
+  return !!cls;
+}
+
 // True when this teacher has at least one timetable period putting them in
 // front of this exact class+section for this exact subject -- lets a
 // subject teacher enter/publish marks for their own subject without needing

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, CalendarCheck, IndianRupee, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { getToken } from "@/contexts/AuthContext";
+import { getToken, useAuth } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -299,6 +299,7 @@ function StudentExamPerformance({ studentId }: { studentId: string }) {
 
 export function StudentDetail({ studentId }: { studentId: string }) {
   const router = useRouter();
+  const { user } = useAuth();
   const [student, setStudent] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -323,9 +324,11 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           </Button>
           <h1 className="text-2xl font-bold text-foreground">Student Details</h1>
         </div>
-        <Button onClick={() => router.push(`/dashboard/students/${studentId}/edit`)} className="gap-2 bg-primary hover:bg-primary/90">
-          <Pencil className="h-4 w-4" /> Edit
-        </Button>
+        {user?.role !== "teacher" && (
+          <Button onClick={() => router.push(`/dashboard/students/${studentId}/edit`)} className="gap-2 bg-primary hover:bg-primary/90">
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
+        )}
       </div>
 
       <div className="card-premium p-6 flex items-center gap-5">

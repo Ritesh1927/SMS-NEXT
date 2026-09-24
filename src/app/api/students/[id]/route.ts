@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { resequenceRollNumbers } from "@/lib/rollNumber";
+import { isClassTeacherOfSection } from "@/lib/teacherClasses";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -19,9 +20,15 @@ const ALLOWED_FIELDS = [
   "emergencyContact", "emergencyPhone", "emergencyRelation", "religion", "category",
 ] as const;
 
+// Read-only: schooladmins can view any student; teachers only the students
+// of a class they're the *class teacher* of (not merely a subject teacher
+// of) -- narrower than the student list at /api/teachers/my-students, which
+// also includes their subject-taught classes.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  const auth = getAuthUser(req);
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
@@ -31,6 +38,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone relation occupation motherOccupation");
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
+
+    if (auth.role === "teacher") {
+      const isClassTeacher = await isClassTeacherOfSection(auth.id, auth.schoolId, student.class, student.section);
+      if (!isClassTeacher) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
+    }
 
     return NextResponse.json({ success: true, data: student });
   } catch (err) {
