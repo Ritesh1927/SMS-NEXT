@@ -989,6 +989,11 @@ export function AdminTeacherExams() {
   // computed here from data already loaded so the button can just be
   // disabled instead of failing after the click.
   const testRowsComplete = !!rTestRows && rTestRows.length > 0 && rTestRows.every((r) => r.marksObtained !== null || r.isAbsent);
+  // Once every row is published there's nothing left to (re-)publish, and
+  // editing/saving is blocked until something's unpublished again — mirrors
+  // the server-side skip in POST /api/exams/[id]/marks.
+  const allTestRowsPublished = !!rTestRows && rTestRows.length > 0 && rTestRows.every((r) => r.isPublished);
+  const anyTestRowsPublished = !!rTestRows && rTestRows.some((r) => r.isPublished);
   // "Publish All Subjects" only publishes the currently selected section (a
   // term spanning several sections has one class teacher per section, each
   // publishing independently), so completeness is checked against that same
@@ -1000,6 +1005,15 @@ export function AdminTeacherExams() {
       const rows = rSubjectRows[s._id];
       return !!rows && rows.length > 0 && rows.every((r) => r.marksObtained !== null || r.isAbsent);
     });
+  const allTermRowsPublished =
+    activeSectionSubjects.length > 0 &&
+    activeSectionSubjects.every((s) => {
+      const rows = rSubjectRows[s._id];
+      return !!rows && rows.length > 0 && rows.every((r) => r.isPublished);
+    });
+  const anyTermRowsPublished = activeSectionSubjects.some((s) => (rSubjectRows[s._id] || []).some((r) => r.isPublished));
+  const activeSubjectRows = rSubjectRows[rActiveSubjectId] || [];
+  const activeSubjectPublished = activeSubjectRows.length > 0 && activeSubjectRows.every((r) => r.isPublished);
 
   return (
     <div>
@@ -1348,19 +1362,38 @@ export function AdminTeacherExams() {
                     <p className="text-xs text-muted-foreground">{rTestMeta?.subject} · Out of {rTestMeta?.totalMarks} · {rTestRows.length} students</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={handleSaveAllTest} disabled={rSaving || !currentCanEnterMarks} className="gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSaveAllTest}
+                      disabled={rSaving || !currentCanEnterMarks || allTestRowsPublished}
+                      title={allTestRowsPublished ? "Already published — unpublish first to edit marks" : undefined}
+                      className="gap-1.5"
+                    >
                       {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save All
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => handlePublishAllTest(true)}
-                      disabled={rPublishing || !currentCanEnterMarks || !testRowsComplete}
-                      title={currentCanEnterMarks && !testRowsComplete ? "Every student needs a mark or Absent checked before you can publish all" : undefined}
+                      disabled={rPublishing || !currentCanEnterMarks || !testRowsComplete || allTestRowsPublished}
+                      title={
+                        allTestRowsPublished
+                          ? "Already published"
+                          : currentCanEnterMarks && !testRowsComplete
+                            ? "Every student needs a mark or Absent checked before you can publish all"
+                            : undefined
+                      }
                       className="gap-1.5 bg-primary hover:bg-primary/90"
                     >
                       {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handlePublishAllTest(false)} disabled={rPublishing || !currentCanEnterMarks} className="text-red-600 hover:text-red-700">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePublishAllTest(false)}
+                      disabled={rPublishing || !currentCanEnterMarks || !anyTestRowsPublished}
+                      className="text-red-600 hover:text-red-700"
+                    >
                       Unpublish All
                     </Button>
                   </div>
@@ -1396,7 +1429,7 @@ export function AdminTeacherExams() {
                               type="number" min={0} max={rTestMeta?.totalMarks}
                               value={row.isAbsent ? "" : row.marksObtained ?? ""}
                               onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
-                              disabled={!currentCanEnterMarks || row.isAbsent}
+                              disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                               placeholder={row.isAbsent ? "Absent" : undefined}
                               className="w-20 h-8"
                             />
@@ -1405,7 +1438,7 @@ export function AdminTeacherExams() {
                                 type="checkbox"
                                 checked={row.isAbsent}
                                 onChange={(e) => updateTestRow(row.student._id, { isAbsent: e.target.checked, marksObtained: e.target.checked ? null : row.marksObtained })}
-                                disabled={!currentCanEnterMarks}
+                                disabled={!currentCanEnterMarks || row.isPublished}
                                 className="h-3 w-3 cursor-pointer accent-primary"
                               />
                               Absent
@@ -1413,7 +1446,12 @@ export function AdminTeacherExams() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Input value={row.remarks} onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })} disabled={!currentCanEnterMarks} className="w-32 h-8" />
+                          <Input
+                            value={row.remarks}
+                            onChange={(e) => updateTestRow(row.student._id, { remarks: e.target.value })}
+                            disabled={!currentCanEnterMarks || row.isPublished}
+                            className="w-32 h-8"
+                          />
                         </TableCell>
                         <TableCell className="text-center">
                           {row.isAbsent ? (
@@ -1505,26 +1543,42 @@ export function AdminTeacherExams() {
               <div className="rounded-[18px] bg-card p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] flex items-center justify-between flex-wrap gap-3">
                 <p className="text-xs text-muted-foreground">{sectionSubjects.length} subjects · {sectionSubjects.reduce((n, s) => n + (rSubjectRows[s._id] || []).length, 0)} total entries</p>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={handleSaveActiveSubject} disabled={rSaving || !currentCanEnterMarks} className="gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSaveActiveSubject}
+                    disabled={rSaving || !currentCanEnterMarks || activeSubjectPublished}
+                    title={activeSubjectPublished ? "Already published — unpublish first to edit marks" : undefined}
+                    className="gap-1.5"
+                  >
                     {rSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save {sectionSubjects.find((s) => s._id === rActiveSubjectId)?.subject || ""}
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => handlePublishAllSubjects(true)}
-                    disabled={rPublishing || !canPublishAllSubjects || !allTermRowsComplete}
+                    disabled={rPublishing || !canPublishAllSubjects || !allTermRowsComplete || allTermRowsPublished}
                     title={
-                      !canPublishAllSubjects
-                        ? "Only the class teacher or an admin can publish every subject of this exam at once"
-                        : !allTermRowsComplete
-                          ? "Every student needs a mark or Absent checked in every subject before you can publish all"
-                          : undefined
+                      allTermRowsPublished
+                        ? "Already published"
+                        : !canPublishAllSubjects
+                          ? "Only the class teacher or an admin can publish every subject of this exam at once"
+                          : !allTermRowsComplete
+                            ? "Every student needs a mark or Absent checked in every subject before you can publish all"
+                            : undefined
                     }
                     className="gap-1.5 bg-primary hover:bg-primary/90"
                   >
                     {rPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />} Publish All Subjects
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handlePublishAllSubjects(false)} disabled={rPublishing || !canPublishAllSubjects} title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can unpublish every subject of this exam at once"} className="text-red-600 hover:text-red-700">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handlePublishAllSubjects(false)}
+                    disabled={rPublishing || !canPublishAllSubjects || !anyTermRowsPublished}
+                    title={canPublishAllSubjects ? undefined : "Only the class teacher or an admin can unpublish every subject of this exam at once"}
+                    className="text-red-600 hover:text-red-700"
+                  >
                     Unpublish All
                   </Button>
                 </div>
@@ -1591,7 +1645,7 @@ export function AdminTeacherExams() {
                                 max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
                                 value={row.isAbsent ? "" : row.marksObtained ?? ""}
                                 onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
-                                disabled={!currentCanEnterMarks || row.isAbsent}
+                                disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                                 placeholder={row.isAbsent ? "Absent" : undefined}
                                 className="w-20 h-8"
                               />
@@ -1600,7 +1654,7 @@ export function AdminTeacherExams() {
                                   type="checkbox"
                                   checked={row.isAbsent}
                                   onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { isAbsent: e.target.checked, marksObtained: e.target.checked ? null : row.marksObtained })}
-                                  disabled={!currentCanEnterMarks}
+                                  disabled={!currentCanEnterMarks || row.isPublished}
                                   className="h-3 w-3 cursor-pointer accent-primary"
                                 />
                                 Absent
@@ -1611,7 +1665,7 @@ export function AdminTeacherExams() {
                             <Input
                               value={row.remarks}
                               onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { remarks: e.target.value })}
-                              disabled={!currentCanEnterMarks}
+                              disabled={!currentCanEnterMarks || row.isPublished}
                               className="w-32 h-8"
                             />
                           </TableCell>

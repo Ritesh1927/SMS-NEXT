@@ -42,6 +42,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let saved = 0;
     let outOfRange = 0;
+    let skippedPublished = 0;
     for (const r of results as { studentId: string; marksObtained: number | string | null; remarks?: string; isAbsent?: boolean }[]) {
       const isAbsent = !!r.isAbsent;
       let marksObtained = 0;
@@ -56,6 +57,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const existing = await Result.findOne({ exam: id, student: r.studentId });
+      // A published result is visible to the student/parent already — the
+      // UI disables editing once published, but that's cosmetic without
+      // this check too, since nothing stopped a stale tab or a direct API
+      // call from silently overwriting it. Unpublish first to edit again.
+      if (existing?.isPublished) {
+        skippedPublished++;
+        continue;
+      }
       let result;
       if (existing) {
         existing.marksObtained = marksObtained;
@@ -88,9 +97,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     exam.status = "completed";
     await exam.save();
 
-    const message = outOfRange > 0
-      ? `Marks entered. ${outOfRange} entr${outOfRange > 1 ? "ies" : "y"} skipped — must be between 0 and ${exam.totalMarks}.`
-      : "Marks entered.";
+    const notes: string[] = [];
+    if (outOfRange > 0) notes.push(`${outOfRange} entr${outOfRange > 1 ? "ies" : "y"} skipped — must be between 0 and ${exam.totalMarks}`);
+    if (skippedPublished > 0) notes.push(`${skippedPublished} skipped — already published, unpublish first to edit`);
+    const message = notes.length > 0 ? `Marks entered. ${notes.join("; ")}.` : "Marks entered.";
     return NextResponse.json({ success: true, message, count: saved });
   } catch (err) {
     return NextResponse.json(
