@@ -16,20 +16,34 @@ import { PageLoader } from "@/components/PageLoader";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const SUBJECT_COLORS = [
-  { chip: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  { chip: "bg-purple-50 text-purple-700 border-purple-200", dot: "bg-purple-500" },
-  { chip: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
-  { chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  { chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
-  { chip: "bg-cyan-50 text-cyan-700 border-cyan-200", dot: "bg-cyan-500" },
-  { chip: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
-  { chip: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
+// A validated categorical palette (fixed hue order, chosen so adjacent hues
+// stay distinguishable under color-vision deficiency) instead of an ad hoc
+// pick of Tailwind pastels -- see the dataviz skill's reference palette.
+// Every chip's fill/border/text below is derived from the same one hex via
+// color-mix, so a subject's whole chip reads as one coordinated color
+// instead of three separately-chosen shades.
+const SUBJECT_HUES = [
+  "#2a78d6", // blue
+  "#eb6834", // orange
+  "#1baf7a", // aqua
+  "#e87ba4", // magenta
+  "#4a3aa7", // violet
+  "#008300", // green
+  "#e34948", // red
+  "#eda100", // yellow
 ];
 
 function subjectColor(subject: string, all: string[]) {
-  const idx = Math.max(0, all.indexOf(subject)) % SUBJECT_COLORS.length;
-  return SUBJECT_COLORS[idx];
+  const idx = Math.max(0, all.indexOf(subject)) % SUBJECT_HUES.length;
+  const hue = SUBJECT_HUES[idx];
+  return {
+    dot: hue,
+    style: {
+      backgroundColor: `color-mix(in srgb, ${hue} 10%, white)`,
+      borderColor: `color-mix(in srgb, ${hue} 32%, white)`,
+      color: `color-mix(in srgb, ${hue} 72%, black)`,
+    } as const,
+  };
 }
 
 function initials(name: string) {
@@ -540,9 +554,8 @@ export default function TimetablePage() {
                   </td>
                 </tr>
               ) : (
-                periods.map((period, periodIdx) => {
+                periods.map((period) => {
                   const rowBg = period.isBreak ? "bg-amber-50/40" : "hover:bg-muted/40";
-                  const dot = SUBJECT_COLORS[periodIdx % SUBJECT_COLORS.length].dot;
                   return (
                     <tr key={period._id} className={`${rowBg} transition-colors group`}>
                       <td
@@ -550,14 +563,9 @@ export default function TimetablePage() {
                           period.isBreak ? "bg-amber-50/40" : "bg-card group-hover:bg-muted/40"
                         } transition-colors`}
                       >
-                        <div className="flex items-center gap-2">
-                          {!period.isBreak && <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />}
-                          <div>
-                            <div className="text-xs font-semibold text-foreground">{period.label}</div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {formatTime(period.startTime)} – {formatTime(period.endTime)}
-                            </div>
-                          </div>
+                        <div className="text-xs font-semibold text-foreground">{period.label}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {formatTime(period.startTime)} – {formatTime(period.endTime)}
                         </div>
                       </td>
                       {period.isBreak ? (
@@ -573,21 +581,24 @@ export default function TimetablePage() {
                           const entry = grid[day]?.[pNum];
                           const isToday = day === today;
                           const isCurrent = isToday && pNum === currentPeriod;
+                          const subj = entry ? subjectColor(entry.subject, uniqueSubjects) : null;
                           return (
                             <td key={day} className={`p-1.5 border-b border-border ${isToday ? "bg-primary/[0.03]" : ""}`}>
-                              {entry ? (
+                              {entry && subj ? (
                                 <div
                                   onClick={() => openEditModal(day, pNum)}
+                                  style={subj.style}
                                   className={`relative rounded-xl p-2.5 border text-center transition-all ${
                                     isAdmin ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5" : "cursor-default"
-                                  } ${subjectColor(entry.subject, uniqueSubjects).chip} ${
-                                    isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""
-                                  }`}
+                                  } ${isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""}`}
                                 >
                                   <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
                                   {entry.teacherId && (
                                     <div className="flex items-center justify-center gap-1 mt-1">
-                                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/70 text-[7px] font-bold shrink-0">
+                                      <span
+                                        style={{ backgroundColor: subj.style.color }}
+                                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white shrink-0"
+                                      >
                                         {initials(entry.teacherId.name)}
                                       </span>
                                       <p className="text-[10px] opacity-70 truncate">{entry.teacherId.name}</p>
