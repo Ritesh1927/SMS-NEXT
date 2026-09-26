@@ -218,6 +218,24 @@ function isEditWindowOpen(dateIso: string) {
   return new Date() <= twoHoursBefore;
 }
 
+// `status` only ever advances schooladmin/teacher-side -- to "completed" when
+// marks are entered, to "cancelled" when explicitly cancelled -- nothing
+// flips it based on the calendar. So a test/exam whose date has already
+// passed with marks never entered would otherwise sit labeled "upcoming"
+// indefinitely; this computes what the badge should actually say.
+function displayExamStatus(status: ExamStatus, dateIso: string): { label: string; className: string } {
+  if (status === "cancelled") return { label: "cancelled", className: "bg-red-100 text-red-700" };
+  if (status === "completed") return { label: "completed", className: "bg-green-100 text-green-700" };
+  const examDay = new Date(dateIso);
+  examDay.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Still "upcoming" through the exam's own day -- only a day that's fully
+  // passed with no marks entered counts as needing attention.
+  if (examDay < today) return { label: "awaiting marks", className: "bg-amber-100 text-amber-700" };
+  return { label: status, className: "bg-slate-100 text-slate-600" };
+}
+
 const todayISO = () => new Date().toISOString().split("T")[0];
 
 function mergeRosterAndResults(roster: RosterEntry[], results: ResultRow[]): MergedResultRow[] {
@@ -943,7 +961,7 @@ export function AdminTeacherExams() {
     if (classFilter !== "all" && term.class !== classFilter) return false;
     return true;
   });
-  const upcomingCount = (exams ?? []).filter((e) => e.status === "upcoming").length;
+  const upcomingCount = (exams ?? []).filter((e) => e.status === "upcoming" && displayExamStatus(e.status, e.date).label === "upcoming").length;
   const completedCount = (exams ?? []).filter((e) => e.status === "completed").length;
 
   const testsForResultPicker = (exams ?? []).filter(
@@ -1133,8 +1151,8 @@ export function AdminTeacherExams() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${exam.status === "cancelled" ? "bg-red-100 text-red-700" : exam.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
-                        {exam.status}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(exam.status, exam.date).className}`}>
+                        {displayExamStatus(exam.status, exam.date).label}
                       </span>
                       {locked && !isAdmin ? (
                         <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Request change" title="This test starts within 2 hours, so changes need admin approval — request one">
@@ -1221,8 +1239,8 @@ export function AdminTeacherExams() {
                         </div>
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${term.status === "cancelled" ? "bg-red-100 text-red-700" : term.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
-                          {term.status}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(term.status, term.endDate).className}`}>
+                          {displayExamStatus(term.status, term.endDate).label}
                         </span>
                         {locked && !isAdmin ? (
                           <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change" title="This exam starts within 2 hours, so changes need admin approval — request one">
@@ -1277,7 +1295,7 @@ export function AdminTeacherExams() {
                                               {sub.startTime && sub.endTime ? ` · ${sub.startTime}–${sub.endTime}` : ""} · {sub.totalMarks} marks
                                             </p>
                                           </div>
-                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sub.status === "completed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>{sub.status}</span>
+                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${displayExamStatus(sub.status, sub.date).className}`}>{displayExamStatus(sub.status, sub.date).label}</span>
                                         </div>
                                       ))}
                                     </div>
