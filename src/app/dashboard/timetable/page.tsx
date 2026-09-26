@@ -596,7 +596,7 @@ export default function TimetablePage() {
                                   } ${isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""}`}
                                 >
                                   <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
-                                  {entry.teacherId && (
+                                  {entry.teacherId?.name && (
                                     <div className="flex items-center justify-center gap-1 mt-1">
                                       <span
                                         style={{ backgroundColor: subj.style.color }}

@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { TimetableEntry } from "@/models/TimetableEntry";
 import "@/models/Class";
+import "@/models/Teacher";
 
 // GET /api/timetable/teacher/[teacherId] — a teacher's own weekly schedule
 // across every class they teach. Admin may look up any teacher; a teacher
@@ -21,6 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ teacherI
 
     await connectDB();
     const entries = await TimetableEntry.find({ school: auth.schoolId, teacherId })
+      .populate("teacherId", "name")
       .populate("classId", "name section")
       .sort({ day: 1, periodNumber: 1 });
     return NextResponse.json({ success: true, data: entries });
