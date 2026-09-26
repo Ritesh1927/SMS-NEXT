@@ -294,16 +294,16 @@ export default function StudentsPage() {
         </div>
       ) : (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
-          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
-            <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
+          <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border bg-muted/30">
+            <p className="w-64 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Student</p>
             <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class</p>
-            <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Roll No.</p>
-            <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
+            <p className="w-16 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-center">Roll No.</p>
+            <p className="w-36 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Attendance</p>
             <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredStudents.map((s) => (
             <div key={s._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
-              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
+              <div className="flex items-center gap-3 w-64 shrink-0 min-w-0">
                 <Avatar className={`h-11 w-11 shrink-0 border-2 ${s.isActive ? "border-success/30" : "border-destructive/30"}`}>
                   <AvatarImage src={s.photo} alt={s.name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -327,15 +327,15 @@ export default function StudentsPage() {
               </div>
 
               <div className="hidden sm:block w-28 shrink-0">
-                <p className="text-sm text-foreground/90 truncate">
+                <span className="inline-flex items-center rounded-full bg-primary/8 text-primary px-2.5 py-1 text-xs font-semibold truncate max-w-full">
                   Class {s.class}
                   {s.section ? `-${s.section}` : ""}
-                </p>
+                </span>
               </div>
-              <div className="hidden sm:block w-16 shrink-0">
-                <p className="text-sm text-foreground/90">{s.rollNumber || "—"}</p>
+              <div className="hidden sm:block w-16 shrink-0 text-center">
+                <p className="text-sm font-mono text-foreground/90">{s.rollNumber || "—"}</p>
               </div>
-              <div className="hidden sm:flex items-center gap-2 w-32 shrink-0">
+              <div className="hidden sm:flex items-center gap-2 w-36 shrink-0">
                 {s.attendance > 0 ? (
                   <>
                     <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
