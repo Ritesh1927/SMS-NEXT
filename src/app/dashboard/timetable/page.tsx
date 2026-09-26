@@ -145,7 +145,7 @@ export default function TimetablePage() {
   const [editCell, setEditCell] = useState<{ day: string; periodNumber: number; entry?: TTEntry } | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editTeacherId, setEditTeacherId] = useState("");
-  const [repeatAllDays, setRepeatAllDays] = useState(true);
+  const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
   const [saving, setSaving] = useState(false);
   const [busyTeachers, setBusyTeachers] = useState<Record<string, string>>({});
 
@@ -296,7 +296,10 @@ export default function TimetablePage() {
     setEditCell({ day, periodNumber, entry });
     setEditSubject(entry?.subject ?? "");
     setEditTeacherId(entry?.teacherId?._id ?? "");
-    setRepeatAllDays(!entry);
+    // Editing an existing entry only ever touches that one day; a brand new
+    // entry starts with every day checked so the admin unchecks the ones
+    // that don't apply, instead of an all-or-one toggle.
+    setSelectedDays(entry ? [day] : [...DAYS]);
 
     const token = getToken();
     if (!token) return;
@@ -316,12 +319,12 @@ export default function TimetablePage() {
   };
 
   const handleSave = async () => {
-    if (!editCell || !editSubject.trim() || !selectedClassId) return;
+    if (!editCell || !editSubject.trim() || !selectedClassId || selectedDays.length === 0) return;
     const token = getToken();
     if (!token) return;
     setSaving(true);
     try {
-      const daysToSave = repeatAllDays ? DAYS : [editCell.day];
+      const daysToSave = selectedDays;
       for (const day of daysToSave) {
         await apiPost(
           "/timetable",
@@ -708,17 +711,28 @@ export default function TimetablePage() {
               </div>
             </div>
             {editSubject && !editCell?.entry && (
-              <div className="flex items-center gap-2 px-1">
-                <input
-                  id="repeat-days"
-                  type="checkbox"
-                  checked={repeatAllDays}
-                  onChange={(e) => setRepeatAllDays(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="repeat-days" className="text-sm font-normal cursor-pointer">
-                  Repeat on all weekdays (Mon–Sat)
-                </Label>
+              <div className="space-y-1.5 px-1">
+                <Label className="text-sm font-normal">Apply to these days</Label>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                  {DAYS.map((day) => {
+                    const checked = selectedDays.includes(day);
+                    return (
+                      <label key={day} htmlFor={`day-${day}`} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          id={`day-${day}`}
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setSelectedDays((prev) => (e.target.checked ? [...prev, day] : prev.filter((d) => d !== day)))
+                          }
+                          className="h-4 w-4"
+                        />
+                        {day.slice(0, 3)}
+                      </label>
+                    );
+                  })}
+                </div>
+                {selectedDays.length === 0 && <p className="text-xs text-destructive">Select at least one day.</p>}
               </div>
             )}
             <DialogFooter className="flex gap-2 sm:justify-between mt-2">
@@ -731,7 +745,7 @@ export default function TimetablePage() {
                 <Button variant="outline" onClick={() => setEditCell(null)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={saving || !editSubject.trim()}>
+                <Button onClick={handleSave} disabled={saving || !editSubject.trim() || selectedDays.length === 0}>
                   {saving ? "Saving…" : "Save"}
                 </Button>
               </div>
