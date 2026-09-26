@@ -710,7 +710,7 @@ export default function TimetablePage() {
                 )}
               </div>
             </div>
-            {editSubject && !editCell?.entry && (
+            {editSubject && (
               <div className="space-y-1.5 px-1">
                 <Label className="text-sm font-normal">Apply to these days</Label>
                 <div className="grid grid-cols-3 gap-x-3 gap-y-2">
