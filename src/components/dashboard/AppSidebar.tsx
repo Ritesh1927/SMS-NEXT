@@ -70,8 +70,6 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", pageKey: "pageTimetable", featureKey: "timetable" },
     { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", pageKey: "pageStudyMaterials", featureKey: "materials" },
 
-    { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", pageKey: "pageFees", featureKey: "fees" },
-
     { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", pageKey: "pageNotices", featureKey: "notices" },
     { href: "/dashboard/chat", label: "Communication", icon: MessageSquare, section: "Communication", badge: "unread", pageKey: "pageCommunication", featureKey: "chat" },
 
