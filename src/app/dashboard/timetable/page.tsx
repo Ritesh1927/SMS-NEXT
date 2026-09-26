@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Trash2, Settings, Plus, Zap, BookOpen, Users } from "lucide-react";
+import { Clock, Trash2, Settings, Plus, Zap, BookOpen, Users, Coffee, CalendarDays } from "lucide-react";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -17,17 +17,23 @@ import { PageLoader } from "@/components/PageLoader";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const SUBJECT_COLORS = [
-  "bg-blue-50 text-blue-700 border-blue-200",
-  "bg-purple-50 text-purple-700 border-purple-200",
-  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "bg-amber-50 text-amber-700 border-amber-200",
-  "bg-rose-50 text-rose-700 border-rose-200",
-  "bg-cyan-50 text-cyan-700 border-cyan-200",
+  { chip: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  { chip: "bg-purple-50 text-purple-700 border-purple-200", dot: "bg-purple-500" },
+  { chip: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  { chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  { chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500" },
+  { chip: "bg-cyan-50 text-cyan-700 border-cyan-200", dot: "bg-cyan-500" },
+  { chip: "bg-indigo-50 text-indigo-700 border-indigo-200", dot: "bg-indigo-500" },
+  { chip: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
 ];
 
 function subjectColor(subject: string, all: string[]) {
   const idx = Math.max(0, all.indexOf(subject)) % SUBJECT_COLORS.length;
   return SUBJECT_COLORS[idx];
+}
+
+function initials(name: string) {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function timeToMins(t: string): number {
@@ -477,26 +483,36 @@ export default function TimetablePage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="card-premium overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[900px] border-separate border-spacing-0">
             <thead>
-              <tr className="bg-muted/50">
-                <th className="p-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px] border-b border-border">
+              <tr className="bg-gradient-to-b from-muted/70 to-muted/30">
+                <th className="sticky left-0 z-10 bg-muted/70 p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px] border-b border-border">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-primary" /> Time
                   </div>
                 </th>
-                {DAYS.map((day) => (
-                  <th
-                    key={day}
-                    className={`p-3 text-center text-xs font-semibold uppercase tracking-wider border-b border-border ${
-                      day === today ? "text-primary bg-primary/5" : "text-muted-foreground"
-                    }`}
-                  >
-                    {day}
-                  </th>
-                ))}
+                {DAYS.map((day) => {
+                  const isToday = day === today;
+                  return (
+                    <th
+                      key={day}
+                      className={`p-3.5 text-center text-xs font-semibold uppercase tracking-wider border-b-2 ${
+                        isToday ? "text-primary border-primary bg-primary/5" : "text-muted-foreground border-border"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{day.slice(0, 3)}</span>
+                        {isToday && (
+                          <span className="flex items-center gap-1 text-[9px] font-bold normal-case tracking-normal text-primary">
+                            <CalendarDays className="h-2.5 w-2.5" /> Today
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -519,62 +535,92 @@ export default function TimetablePage() {
                   </td>
                 </tr>
               ) : (
-                periods.map((period) => (
-                  <tr key={period._id} className={period.isBreak ? "bg-muted/50" : "hover:bg-muted/50 transition-colors"}>
-                    <td className="p-3 border-b border-border">
-                      <div className="text-xs font-semibold text-foreground">{period.label}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {formatTime(period.startTime)} – {formatTime(period.endTime)}
-                      </div>
-                    </td>
-                    {DAYS.map((day) => {
-                      if (period.isBreak) {
-                        return (
-                          <td key={day} className="p-2 border-b border-border text-center">
-                            <span className="text-xs text-muted-foreground italic">{period.label}</span>
-                          </td>
-                        );
-                      }
-                      const pNum = period.periodNumber!;
-                      const entry = grid[day]?.[pNum];
-                      const isToday = day === today;
-                      const isCurrent = isToday && pNum === currentPeriod;
-                      return (
-                        <td key={day} className={`p-1.5 border-b border-border ${isToday ? "bg-primary/[0.02]" : ""}`}>
-                          {entry ? (
-                            <div
-                              onClick={() => openEditModal(day, pNum)}
-                              className={`rounded-xl p-2.5 border text-center transition-all ${
-                                isAdmin ? "cursor-pointer hover:scale-[1.03]" : "cursor-default"
-                              } ${subjectColor(entry.subject, uniqueSubjects)} ${
-                                isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""
-                              }`}
-                            >
-                              <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
-                              {entry.teacherId && <p className="text-[10px] opacity-70 mt-0.5">{entry.teacherId.name}</p>}
-                              {(isTeacher || isParent) && entry.classId && (
-                                <p className="text-[10px] opacity-60 mt-0.5">
-                                  {entry.classId.name}
-                                  {entry.classId.section ? `-${entry.classId.section}` : ""}
-                                </p>
-                              )}
-                              {isCurrent && <span className="mt-1 inline-block text-[9px] font-bold bg-primary text-white px-1.5 py-0 rounded">NOW</span>}
+                periods.map((period, periodIdx) => {
+                  const rowBg = period.isBreak ? "bg-amber-50/40" : "hover:bg-muted/40";
+                  const dot = SUBJECT_COLORS[periodIdx % SUBJECT_COLORS.length].dot;
+                  return (
+                    <tr key={period._id} className={`${rowBg} transition-colors group`}>
+                      <td
+                        className={`sticky left-0 z-10 p-3 border-b border-border ${
+                          period.isBreak ? "bg-amber-50/40" : "bg-card group-hover:bg-muted/40"
+                        } transition-colors`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {!period.isBreak && <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />}
+                          <div>
+                            <div className="text-xs font-semibold text-foreground">{period.label}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {formatTime(period.startTime)} – {formatTime(period.endTime)}
                             </div>
-                          ) : (
-                            <div
-                              onClick={() => openEditModal(day, pNum)}
-                              className={`h-full min-h-[48px] flex items-center justify-center rounded-xl transition-colors ${
-                                isAdmin ? "cursor-pointer hover:bg-primary/5" : ""
-                              }`}
-                            >
-                              <span className="text-muted-foreground/40 text-xs">—</span>
-                            </div>
-                          )}
+                          </div>
+                        </div>
+                      </td>
+                      {period.isBreak ? (
+                        <td colSpan={DAYS.length} className="p-2 border-b border-border">
+                          <div className="flex items-center justify-center gap-2 py-1 text-amber-700">
+                            <Coffee className="h-3.5 w-3.5" />
+                            <span className="text-xs font-semibold">{period.label} · every day</span>
+                          </div>
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))
+                      ) : (
+                        DAYS.map((day) => {
+                          const pNum = period.periodNumber!;
+                          const entry = grid[day]?.[pNum];
+                          const isToday = day === today;
+                          const isCurrent = isToday && pNum === currentPeriod;
+                          return (
+                            <td key={day} className={`p-1.5 border-b border-border ${isToday ? "bg-primary/[0.03]" : ""}`}>
+                              {entry ? (
+                                <div
+                                  onClick={() => openEditModal(day, pNum)}
+                                  className={`relative rounded-xl p-2.5 border text-center transition-all ${
+                                    isAdmin ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5" : "cursor-default"
+                                  } ${subjectColor(entry.subject, uniqueSubjects).chip} ${
+                                    isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""
+                                  }`}
+                                >
+                                  <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
+                                  {entry.teacherId && (
+                                    <div className="flex items-center justify-center gap-1 mt-1">
+                                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/70 text-[7px] font-bold shrink-0">
+                                        {initials(entry.teacherId.name)}
+                                      </span>
+                                      <p className="text-[10px] opacity-70 truncate">{entry.teacherId.name}</p>
+                                    </div>
+                                  )}
+                                  {(isTeacher || isParent) && entry.classId && (
+                                    <p className="text-[10px] opacity-60 mt-0.5">
+                                      {entry.classId.name}
+                                      {entry.classId.section ? `-${entry.classId.section}` : ""}
+                                    </p>
+                                  )}
+                                  {isCurrent && (
+                                    <span className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold bg-primary text-white px-1.5 py-0 rounded">
+                                      <span className="h-1 w-1 rounded-full bg-white animate-pulse" /> NOW
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => openEditModal(day, pNum)}
+                                  className={`group/cell h-full min-h-[48px] flex items-center justify-center rounded-xl border border-dashed transition-colors ${
+                                    isAdmin ? "cursor-pointer border-border/60 hover:border-primary/40 hover:bg-primary/5" : "border-transparent"
+                                  }`}
+                                >
+                                  {isAdmin ? (
+                                    <Plus className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/cell:text-primary/60 transition-colors" />
+                                  ) : (
+                                    <span className="text-muted-foreground/40 text-xs">—</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
