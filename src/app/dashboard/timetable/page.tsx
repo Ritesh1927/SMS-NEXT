@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Trash2, Settings, Plus, Zap, BookOpen, Users, CalendarClock } from "lucide-react";
+import { Clock, Trash2, Settings, Plus, Zap, BookOpen, Users } from "lucide-react";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -470,8 +470,7 @@ export default function TimetablePage() {
       </div>
 
       {entries.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatFilterCard icon={CalendarClock} color="#4F46E5" colorDark="#4338CA" value={entries.length} label="Total Periods" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatFilterCard icon={BookOpen} color="#8B5CF6" colorDark="#7C3AED" value={uniqueSubjects.length} label="Subjects" />
           <StatFilterCard icon={Users} color="#0EA5E9" colorDark="#0284C7" value={new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size} label="Teachers" />
           <StatFilterCard icon={Clock} color="#F59E0B" colorDark="#D97706" value={periods.length} label="Period Rows" />
