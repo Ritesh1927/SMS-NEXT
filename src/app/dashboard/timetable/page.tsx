@@ -242,7 +242,11 @@ export default function TimetablePage() {
       .catch(() => {});
   }, [isParent]);
 
-  const loadTimetable = () => {
+  // `showLoader` distinguishes a real navigation (class/child switch, first
+  // mount -- show the full loader) from the silent refetch after saving one
+  // cell (grid stays on screen; only that cell's data actually changed).
+  const loadTimetable = (showLoader = true) => {
+    if (showLoader) setLoading(true);
     const token = getToken();
     const run = async () => {
       if (!token || !user) return;
@@ -267,6 +271,7 @@ export default function TimetablePage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: this must flip the full loader back on for a real class/child switch, not just the first mount.
     loadTimetable();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, isTeacher, isParent, selectedClassId, selectedChildId, user?.id]);
@@ -316,7 +321,7 @@ export default function TimetablePage() {
           token,
         );
       }
-      loadTimetable();
+      loadTimetable(false);
       setEditCell(null);
       toast.success(daysToSave.length > 1 ? `Assigned to ${daysToSave.length} days.` : "Timetable saved.");
     } catch (err) {
@@ -475,7 +480,7 @@ export default function TimetablePage() {
         </div>
       </div>
 
-      {entries.length > 0 && (
+      {!loading && entries.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatFilterCard icon={BookOpen} color="#8B5CF6" colorDark="#7C3AED" value={uniqueSubjects.length} label="Subjects" />
           <StatFilterCard icon={Users} color="#0EA5E9" colorDark="#0284C7" value={new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size} label="Teachers" />
