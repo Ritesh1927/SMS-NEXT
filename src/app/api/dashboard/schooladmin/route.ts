@@ -9,6 +9,7 @@ import { FeePayment } from "@/models/FeePayment";
 import { Result } from "@/models/Result";
 import { Exam } from "@/models/Exam";
 import { Notice } from "@/models/Notice";
+import { Class } from "@/models/Class";
 import { formatClassName } from "@/lib/helpers";
 
 export async function GET(req: Request) {
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [totalStudents, totalTeachers, totalNonTeachingStaff, newStudentsThisMonth, newTeachersThisMonth, classCounts] =
+    const [totalStudents, totalTeachers, totalNonTeachingStaff, newStudentsThisMonth, newTeachersThisMonth, classCounts, allClassNames] =
       await Promise.all([
         Student.countDocuments({ school: schoolId, isActive: true }),
         Teacher.countDocuments({ school: schoolId, isActive: true, staffType: "teaching" }),
@@ -38,14 +39,25 @@ export async function GET(req: Request) {
           // here or this $match silently matches nothing.
           { $match: { school: new mongoose.Types.ObjectId(schoolId), isActive: true } },
           { $group: { _id: "$class", count: { $sum: 1 } } },
-          { $sort: { count: -1 } },
-          { $limit: 6 },
         ]),
+        Class.distinct("name", { school: schoolId }),
       ]);
 
-    const studentsByClass = classCounts
-      .filter((c) => c._id)
-      .map((c) => ({ name: formatClassName(c._id), count: c.count }));
+    // Every class in the school (including zero-student ones) in natural
+    // sequence — the chart used to show only the top 6 by headcount.
+    const orderedClassNames = [...new Set(allClassNames.map(String))].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true }),
+    );
+    const countByClass = new Map(
+      classCounts.filter((c) => c._id).map((c) => [String(c._id), c.count as number]),
+    );
+    for (const c of classCounts) {
+      if (c._id && !orderedClassNames.includes(String(c._id))) orderedClassNames.push(String(c._id));
+    }
+    const studentsByClass = orderedClassNames.map((name) => ({
+      name: formatClassName(name),
+      count: countByClass.get(name) || 0,
+    }));
 
     const schoolObjectId = new mongoose.Types.ObjectId(schoolId);
     const todayStart = new Date();

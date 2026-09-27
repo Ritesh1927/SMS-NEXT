@@ -3,9 +3,17 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment, type IFeePayment } from "@/models/FeePayment";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
+import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
-import { generateSessionMonths, filterMonthsByAdmission } from "@/lib/feeEngine";
+import {
+  generateSessionMonths,
+  filterMonthsByAdmission,
+  resolveFeeMonths,
+  calcProjectedLateFee,
+  concessionAppliesToMonth,
+  concessionAmount,
+} from "@/lib/feeEngine";
 
 interface MonthRow {
   month: string;
@@ -38,7 +46,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
     const structures = await FeeStructure.find({ school: auth.schoolId, class: student.class, isActive: true }).lean<IFeeStructure[]>();
     const payments = await FeePayment.find({ school: auth.schoolId, student: studentId }).lean<IFeePayment[]>();
+    const concessions = await Concession.find({ school: auth.schoolId, student: studentId }).lean<IConcession[]>();
     const school = await Admin.findById(auth.schoolId).select("settings");
+    const lateFeeConfig = school?.settings?.lateFee || {};
 
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -51,12 +61,39 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const data = structures.map((fs) => {
       let months: MonthRow[];
 
+      const rowLateFee = (monthKey: string) => {
+        let due: Date | string | null | undefined = fs.dueDate;
+        if (monthKey !== "one-time") {
+          const d = new Date(monthKey + "-01");
+          if (fs.dueDate) d.setDate(new Date(fs.dueDate).getDate());
+          due = d;
+        }
+        return calcProjectedLateFee(lateFeeConfig, fs.amount, due);
+      };
+
+      const headCons = concessions.filter((c) => !c.feeStructure || String(c.feeStructure) === String(fs._id));
+      let oneTimeConUsed = false;
+      const rowConcession = (monthKey: string, paid: IFeePayment | null) => {
+        const applicable = headCons.find((c) => {
+          if (!concessionAppliesToMonth(c, monthKey)) return false;
+          if (c.duration === "one-time") {
+            if (oneTimeConUsed) return false;
+            oneTimeConUsed = true;
+          }
+          return true;
+        });
+        if (!applicable) return paid?.concession || 0;
+        return paid ? paid.concession || 0 : concessionAmount(fs.amount, applicable);
+      };
+
       if (fs.frequency === "one-time") {
         const paid = findPaid(fs._id, "one-time");
-        const total = fs.amount;
+        const lateFee = paid ? paid.lateFee || 0 : rowLateFee("one-time");
+        const concession = rowConcession("one-time", paid);
+        const total = fs.amount + lateFee - concession;
         const paidAmt = paid?.paidAmount || 0;
         months = [{
-          month: "one-time", amount: fs.amount, lateFee: paid?.lateFee || 0, concession: paid?.concession || 0,
+          month: "one-time", amount: fs.amount, lateFee, concession,
           total, paidAmount: paidAmt, balance: total - paidAmt, status: paid ? "paid" : "pending",
           receiptNo: paid?.receiptNo || null, paidDate: paid?.paidDate || null, paymentMode: paid?.paymentMode || null,
         }];
@@ -65,23 +102,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
           ? `${new Date(fs.dueDate).getFullYear()}-${String(new Date(fs.dueDate).getMonth() + 1).padStart(2, "0")}`
           : applicableMonths[0] || `${now.getFullYear()}-04`;
         const paid = findPaid(fs._id, dueMonth);
-        const total = fs.amount + (paid?.lateFee || 0) - (paid?.concession || 0);
+        const lateFee = paid ? paid.lateFee || 0 : rowLateFee(dueMonth);
+        const concession = rowConcession(dueMonth, paid);
+        const total = fs.amount + lateFee - concession;
         const paidAmt = paid?.paidAmount || 0;
         const dueDate = new Date(dueMonth + "-01");
         const status: MonthRow["status"] = paid ? "paid" : dueDate < now ? "pending" : "upcoming";
         months = [{
-          month: dueMonth, amount: fs.amount, lateFee: paid?.lateFee || 0, concession: paid?.concession || 0,
+          month: dueMonth, amount: fs.amount, lateFee, concession,
           total, paidAmount: paidAmt, balance: total - paidAmt, status,
           receiptNo: paid?.receiptNo || null, paidDate: paid?.paidDate || null, paymentMode: paid?.paymentMode || null,
         }];
       } else {
-        months = applicableMonths.map((monthKey) => {
+        const targetMonths = resolveFeeMonths(fs.frequency, applicableMonths, sessionMonths, fs.dueDate);
+        months = targetMonths.map((monthKey) => {
           const paid = findPaid(fs._id, monthKey);
-          const total = fs.amount + (paid?.lateFee || 0) - (paid?.concession || 0);
+          const lateFee = paid ? paid.lateFee || 0 : rowLateFee(monthKey);
+          const concession = rowConcession(monthKey, paid);
+          const total = fs.amount + lateFee - concession;
           const paidAmt = paid?.paidAmount || 0;
           const status: MonthRow["status"] = paid ? "paid" : monthKey <= currentMonthKey ? "pending" : "upcoming";
           return {
-            month: monthKey, amount: fs.amount, lateFee: paid?.lateFee || 0, concession: paid?.concession || 0,
+            month: monthKey, amount: fs.amount, lateFee, concession,
             total, paidAmount: paidAmt, balance: total - paidAmt, status,
             receiptNo: paid?.receiptNo || null, paidDate: paid?.paidDate || null, paymentMode: paid?.paymentMode || null,
           };

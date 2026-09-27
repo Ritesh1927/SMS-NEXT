@@ -10,6 +10,7 @@ import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
@@ -28,6 +29,7 @@ interface UserRecord {
   isActive: boolean;
   teacherId?: string;
   createdAt: string;
+  students?: { name: string; class: string; section?: string }[];
 }
 
 interface ListResponse {
@@ -57,6 +59,28 @@ const ROLE_GRADIENT: Record<string, { from: string; to: string }> = {
   "non-teaching": { from: "#F97316", to: "#EA580C" },
   parent: { from: "#F43F5E", to: "#E11D48" },
 };
+
+// Parent rows show the linked student(s) instead of the parent's own name,
+// e.g. "Abc - Class 1-A". Returns null when no student is linked so the
+// caller can fall back to the parent name.
+function studentDisplay(u: UserRecord): { label: string; initials: string } | null {
+  const students = (u.students ?? []).filter((s) => s && s.name);
+  if (u.role !== "parent" || students.length === 0) return null;
+  return {
+    label: students.map((s) => `${s.name} - Class ${s.class}${s.section ? `-${s.section}` : ""}`).join(", "),
+    initials: students.flatMap((s) => s.name.trim().split(/\s+/)).map((w) => w[0]).filter(Boolean).join(""),
+  };
+}
+
+// Name shown for a row: the linked student label for parents (when linked),
+// the parent's own name otherwise.
+function displayName(u: UserRecord): string {
+  return studentDisplay(u)?.label ?? u.name;
+}
+
+function displayInitials(u: UserRecord): string {
+  return studentDisplay(u)?.initials ?? u.name.split(" ").map((w) => w[0]).join("");
+}
 
 async function parseJson(res: Response) {
   const json = await res.json().catch(() => ({}));
@@ -125,7 +149,7 @@ export default function UserMasterPage() {
         body: JSON.stringify({ newPassword }),
       });
       await parseJson(res);
-      toast.success(`Password updated for ${pwDialog.user.name}.`);
+      toast.success(`Password updated for ${displayName(pwDialog.user)}.`);
       setPwDialog({ open: false, user: null });
       setNewPassword("");
     } catch (err) {
@@ -162,7 +186,7 @@ export default function UserMasterPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       await parseJson(res);
-      toast.success(`"${delDialog.user.name}" has been deleted.`);
+      toast.success(`"${displayName(delDialog.user)}" has been deleted.`);
       setUsers((prev) => prev.filter((u) => u.userId !== delDialog.user!.userId));
       setDelDialog({ open: false, user: null });
       fetchCounts();
@@ -228,6 +252,17 @@ export default function UserMasterPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
           <Input placeholder="Search by name, email, phone, ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Select value={roleFilter || "all"} onValueChange={(v) => setRoleFilter(!v || v === "all" ? "" : v)}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="teacher">Teacher</SelectItem>
+            <SelectItem value="non-teaching">Non-Teaching</SelectItem>
+            <SelectItem value="parent">Parent</SelectItem>
+          </SelectContent>
+        </Select>
         {roleFilter !== "" && (
           <button
             type="button"
@@ -280,6 +315,7 @@ export default function UserMasterPage() {
                 users.map((u) => {
                   const gradient = ROLE_GRADIENT[u.role];
                   const RoleIcon = ROLE_ICON[u.role];
+                  const name = displayName(u);
                   return (
                   <tr key={`${u.role}-${u.userId}`} className="group transition-colors hover:bg-muted/40">
                     <td className="p-3.5 pl-5">
@@ -288,9 +324,9 @@ export default function UserMasterPage() {
                           className="flex h-9 w-9 items-center justify-center rounded-full text-white text-xs font-bold shrink-0 shadow-sm transition-transform duration-200 group-hover:scale-105"
                           style={gradient ? { background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` } : undefined}
                         >
-                          {u.name.split(" ").map((w) => w[0]).join("")}
+                          {displayInitials(u)}
                         </div>
-                        <span className="text-sm font-medium text-foreground">{u.name}</span>
+                        <span className="text-sm font-medium text-foreground">{name}</span>
                       </div>
                     </td>
                     <td className="p-3.5 text-sm text-muted-foreground">{u.email}</td>
@@ -350,7 +386,7 @@ export default function UserMasterPage() {
           {pwDialog.user && (
             <div className="space-y-4 mt-2">
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm font-medium text-foreground">{pwDialog.user.name}</p>
+                <p className="text-sm font-medium text-foreground">{displayName(pwDialog.user)}</p>
                 <p className="text-xs text-muted-foreground">{pwDialog.user.email} · <span className="capitalize">{pwDialog.user.role}</span></p>
               </div>
               <div className="space-y-1.5">
@@ -384,7 +420,7 @@ export default function UserMasterPage() {
       <ConfirmDialog
         open={delDialog.open}
         onOpenChange={(open) => { if (!open) setDelDialog({ open: false, user: null }); }}
-        title={`Delete "${delDialog.user?.name ?? "User"}"?`}
+        title={`Delete "${delDialog.user ? displayName(delDialog.user) : "User"}"?`}
         description="This action cannot be undone. If this user has existing records (payments, homework, classes), deletion will be blocked."
         confirmLabel="Delete Permanently"
         loading={deleting}

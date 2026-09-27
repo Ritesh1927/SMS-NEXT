@@ -49,7 +49,6 @@ export interface IAdmin extends Document {
       type: "fixed" | "percentage";
       amount: number;
       percent: number;
-      maxAmount: number;
       applyEvery: "once" | "weekly";
     };
   };
@@ -105,7 +104,6 @@ const adminSchema = new Schema<IAdmin>(
         type: { type: String, enum: ["fixed", "percentage"], default: "fixed" },
         amount: { type: Number, default: 100 },
         percent: { type: Number, default: 2 },
-        maxAmount: { type: Number, default: 500 },
         applyEvery: { type: String, enum: ["once", "weekly"], default: "once" },
       },
     },

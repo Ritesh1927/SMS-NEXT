@@ -7,7 +7,7 @@ import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
 import { Parent } from "@/models/Parent";
-import { calcProjectedLateFee, concessionAppliesToMonth } from "@/lib/feeEngine";
+import { calcProjectedLateFee, concessionAppliesToMonth, effectiveDueDate } from "@/lib/feeEngine";
 
 interface PayMultiItem {
   feeStructureId: string;
@@ -115,8 +115,9 @@ export async function POST(req: Request) {
         }
 
         const baseAmount = fs.amount;
+        const monthDueDate = effectiveDueDate(fs.frequency, month, fs.dueDate);
         let lateFeeAmount = 0;
-        if (fs.dueDate) lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, fs.dueDate);
+        if (monthDueDate) lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, monthDueDate);
 
         let concessionAmount = 0;
         const applicableConcession = concessions.find(
@@ -157,7 +158,7 @@ export async function POST(req: Request) {
             lateFee: lateFeeAmount,
             paidAmount: isOnlinePayment ? 0 : totalAmount,
             concession: concessionAmount,
-            dueDate: fs.dueDate,
+            dueDate: monthDueDate ? new Date(monthDueDate) : null,
             paidDate: isOnlinePayment ? null : new Date(),
             status: isOnlinePayment ? "pending" : "paid",
             paymentMode: paymentMode || "cash",

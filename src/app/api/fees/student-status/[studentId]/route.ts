@@ -12,6 +12,8 @@ import {
   concessionAppliesToMonth,
   generateSessionMonths,
   filterMonthsByAdmission,
+  resolveFeeMonths,
+  effectiveDueDate,
 } from "@/lib/feeEngine";
 
 // GET /api/fees/student-status/[studentId] — per-fee-head, per-month status
@@ -79,7 +81,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const buildStatus = (fs: IFeeStructure, month: string, concessionAmount: number): MonthStatus => {
       const key = `${String(fs._id)}|${month}`;
       const paid = paidMap.get(key) || null;
-      const projectedLateFee = paid ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, fs.dueDate);
+      const projectedLateFee = paid ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, effectiveDueDate(fs.frequency, month, fs.dueDate));
       return {
         month,
         paid: !!paid,
@@ -120,8 +122,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
           : 0;
         monthStatus = [buildStatus(fs, dueMonth, concessionAmount)];
       } else {
+        const targetMonths = resolveFeeMonths(fs.frequency, months, allMonths, fs.dueDate);
         let oneTimeConcessionUsed = false;
-        monthStatus = months.map((month) => {
+        monthStatus = targetMonths.map((month) => {
           const applicable = allConcessions.find((c) => {
             if (!concessionAppliesToMonth(c, month)) return false;
             if (c.duration === "one-time") {

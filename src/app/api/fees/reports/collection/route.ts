@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment, type IFeePayment } from "@/models/FeePayment";
-import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
-import { Student } from "@/models/Student";
+import { computeFeeDues } from "@/lib/feeDues";
 
 // GET /api/fees/reports/collection — the Reports tab's "Collection Summary"
 // sub-tab: today/week/month/year collected + payment counts, current
@@ -37,24 +36,11 @@ export async function GET(req: Request) {
     const totalLateFees = allPaid.reduce((s, i) => s + (i.lateFee || 0), 0);
     const totalConcessions = allPaid.reduce((s, i) => s + (i.concession || 0), 0);
 
-    const students = await Student.find({ school: auth.schoolId, isActive: true }).select("_id class").lean<{ _id: unknown; class: string }[]>();
-    const structures = await FeeStructure.find({ school: auth.schoolId, isActive: true }).lean<IFeeStructure[]>();
-    const paidPayments = await FeePayment.find({ school: auth.schoolId, status: "paid" })
-      .select("student feeStructure month")
-      .lean<{ student: unknown; feeStructure: unknown; month: string | null }[]>();
-
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    let totalPending = 0;
-    for (const st of students) {
-      const classStructs = structures.filter((s) => s.class === st.class);
-      for (const fs of classStructs) {
-        const targetMonth = fs.frequency === "one-time" ? "one-time" : currentMonth;
-        const hasPaid = paidPayments.some(
-          (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.month === targetMonth,
-        );
-        if (!hasPaid) totalPending += fs.amount;
-      }
-    }
+    const dues = await computeFeeDues(auth.schoolId);
+    const pending = dues.reduce((s, d) => s + d.amount, 0);
+    const overdue = dues
+      .filter((d) => d.dueDate && new Date(d.dueDate) < now)
+      .reduce((s, d) => s + d.amount, 0);
 
     return NextResponse.json({
       success: true,
@@ -63,8 +49,8 @@ export async function GET(req: Request) {
         week: { collected: weekPaid.reduce((s, i) => s + i.paidAmount, 0), payments: weekPaid.length },
         month: { collected: monthPaid.reduce((s, i) => s + i.paidAmount, 0), payments: monthPaid.length },
         year: { collected: allPaid.reduce((s, i) => s + i.paidAmount, 0) },
-        pending: totalPending,
-        overdue: 0,
+        pending,
+        overdue,
         lateFees: totalLateFees,
         concessions: totalConcessions,
       },

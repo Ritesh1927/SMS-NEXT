@@ -79,7 +79,7 @@ export default function StudentsPage() {
     const token = getToken();
     if (!token) return;
     apiGet<StudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
-      .then((res) => setStudents(res.data))
+      .then((res) => setStudents([...res.data].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))

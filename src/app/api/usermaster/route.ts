@@ -4,6 +4,13 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Parent } from "@/models/Parent";
 import { escapeRegex } from "@/lib/helpers";
+import "@/models/Student";
+
+interface ChildRef {
+  name: string;
+  class: string;
+  section?: string;
+}
 
 interface UserRow {
   userId: string;
@@ -14,6 +21,7 @@ interface UserRow {
   isActive: boolean;
   teacherId?: string;
   createdAt: Date;
+  students?: ChildRef[];
 }
 
 export async function GET(req: Request) {
@@ -46,7 +54,8 @@ export async function GET(req: Request) {
 
     if (!role || role === "parent") {
       const parents = await Parent.find({ school: auth.schoolId })
-        .select("name email phone isActive createdAt")
+        .select("name email phone isActive createdAt students")
+        .populate("students", "name class section")
         .lean();
       users.push(...(parents.map((p) => ({ ...p, userId: String(p._id), role: "parent" as const })) as unknown as UserRow[]));
     }
@@ -54,7 +63,14 @@ export async function GET(req: Request) {
     let filtered = users;
     if (search) {
       const q = new RegExp(escapeRegex(search), "i");
-      filtered = users.filter((u) => q.test(u.name) || q.test(u.email) || (u.phone && q.test(u.phone)) || (u.teacherId && q.test(u.teacherId)));
+      filtered = users.filter(
+        (u) =>
+          q.test(u.name) ||
+          q.test(u.email) ||
+          (u.phone && q.test(u.phone)) ||
+          (u.teacherId && q.test(u.teacherId)) ||
+          (u.students ?? []).some((s) => s && (q.test(s.name) || q.test(`Class ${s.class}-${s.section ?? ""}`))),
+      );
     }
 
     filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

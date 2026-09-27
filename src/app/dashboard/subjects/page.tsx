@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { BookOpen, School, LayoutGrid, Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, Copy, Users, Link2, Loader2 } from "lucide-react";
+import { BookOpen, School, LayoutGrid, Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, Copy, Users, Link2, Loader2, Upload } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
+import { BulkImportDialog } from "@/components/dashboard/BulkImportDialog";
 
 interface SubjectRow {
   _id: string;
@@ -69,6 +70,7 @@ export default function SubjectsPage() {
   const [savingSubject, setSavingSubject] = useState(false);
   const [deleteSubjectId, setDeleteSubjectId] = useState<string | null>(null);
   const [deletingSubject, setDeletingSubject] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const [singleStandard, setSingleStandard] = useState("");
   const [singleSubjectIds, setSingleSubjectIds] = useState<Set<string>>(new Set());
@@ -82,7 +84,7 @@ export default function SubjectsPage() {
     const token = getToken();
     if (!token) return;
     apiGet<{ success: boolean; data: SubjectRow[] }>("/subjects", token)
-      .then((res) => setSubjects(res.data))
+      .then((res) => setSubjects([...res.data].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))))
       .catch(() => toast.error("Failed to load subjects."))
       .finally(() => setSubjectsLoading(false));
   };
@@ -325,9 +327,14 @@ export default function SubjectsPage() {
               <h2 className="text-lg font-semibold text-foreground">Subjects</h2>
               <p className="text-sm text-muted-foreground">{subjectsLoading ? "Loading…" : `${subjects.length} subject(s)`}</p>
             </div>
-            <Button onClick={openCreateSubject} className="gap-2" disabled={subjectsLoading}>
-              <Plus className="h-4 w-4" /> Add Subject
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)} disabled={subjectsLoading}>
+                <Upload className="h-4 w-4" /> Bulk Upload
+              </Button>
+              <Button onClick={openCreateSubject} className="gap-2" disabled={subjectsLoading}>
+                <Plus className="h-4 w-4" /> Add Subject
+              </Button>
+            </div>
           </div>
 
           {subjectsLoading ? (
@@ -764,6 +771,17 @@ export default function SubjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Bulk Upload Subjects"
+        entityLabel="subject"
+        importPath="/subjects/bulk-import"
+        templatePath="/subjects/bulk-import/template"
+        templateFilename="subject_bulk_upload_template.xlsx"
+        onImported={fetchSubjects}
+      />
     </div>
   );
 }

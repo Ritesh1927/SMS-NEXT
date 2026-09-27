@@ -51,7 +51,6 @@ interface SchoolProfile {
       type: "fixed" | "percentage";
       amount: number;
       percent: number;
-      maxAmount: number;
     };
   };
 }
@@ -530,6 +529,7 @@ export default function SettingsPage() {
                         value={profile.settings.lateFee.amount}
                         onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, amount: Number(e.target.value) } } })}
                       />
+                      <p className="text-xs text-muted-foreground/70 mt-1">Charged per day after grace period</p>
                     </Field>
                   ) : (
                     <Field label="Late Fee Percentage (%)">
@@ -540,17 +540,9 @@ export default function SettingsPage() {
                         value={profile.settings.lateFee.percent}
                         onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, percent: Number(e.target.value) } } })}
                       />
+                      <p className="text-xs text-muted-foreground/70 mt-1">Percent of fee charged per day after grace period</p>
                     </Field>
                   )}
-                  <Field label="Maximum Late Fee (₹)">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={profile.settings.lateFee.maxAmount}
-                      onChange={(e) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, maxAmount: Number(e.target.value) } } })}
-                    />
-                    <p className="text-xs text-muted-foreground/70 mt-1">Cap on late fee amount</p>
-                  </Field>
                 </div>
               )}
             </Panel>

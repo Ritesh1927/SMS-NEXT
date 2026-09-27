@@ -193,7 +193,7 @@ export function ParentExams() {
         </div>
         {children.length > 1 && (
           <Select value={selectedChildId} onValueChange={(v) => setSelectedChildId(v || "")}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select child" /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-[180px] max-w-full"><SelectValue placeholder="Select child" /></SelectTrigger>
             <SelectContent>
               {children.map((c) => (
                 <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>

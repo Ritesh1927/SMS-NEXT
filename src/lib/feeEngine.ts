@@ -8,7 +8,6 @@ export interface LateFeeConfig {
   type?: "fixed" | "percentage";
   amount?: number;
   percent?: number;
-  maxAmount?: number;
 }
 
 export interface ConcessionLike {
@@ -39,7 +38,11 @@ export function concessionAppliesToMonth(concession: ConcessionLike, month: stri
   return true;
 }
 
-// Late fee = daily charge × days after grace period, capped at maxAmount
+export function concessionAmount(base: number, c: { isPct: boolean; value: number }): number {
+  return Math.min(base, c.isPct ? Math.round((base * c.value) / 100) : c.value);
+}
+
+// Late fee = daily charge × days after grace period (no cap)
 export function calcProjectedLateFee(
   lateFeeConfig: LateFeeConfig,
   baseAmount: number,
@@ -57,9 +60,7 @@ export function calcProjectedLateFee(
   const type = lateFeeConfig.type || "fixed";
   const fixedPerDay = lateFeeConfig.amount ?? 100;
   const pctPerDay = lateFeeConfig.percent ?? 2;
-  const maxCap = lateFeeConfig.maxAmount ?? 500;
-  const fee = type === "fixed" ? fixedPerDay * chargeableDays : Math.round((baseAmount * pctPerDay) / 100 * chargeableDays);
-  return Math.min(fee, maxCap);
+  return type === "fixed" ? fixedPerDay * chargeableDays : Math.round((baseAmount * pctPerDay) / 100 * chargeableDays);
 }
 
 // Generates the 12 months of the current academic session (e.g. Apr 2026 –
@@ -82,4 +83,40 @@ export function filterMonthsByAdmission(months: string[], admissionDate: Date | 
   const admMonth = `${admDate.getFullYear()}-${String(admDate.getMonth() + 1).padStart(2, "0")}`;
   const idx = months.indexOf(admMonth);
   return idx > 0 ? months.slice(idx) : months;
+}
+
+export function resolveFeeMonths(
+  frequency: string,
+  applicableMonths: string[],
+  allSessionMonths: string[],
+  dueDate?: Date | string | null,
+): string[] {
+  if (frequency !== "quarterly") return applicableMonths;
+  const inSession = new Set(applicableMonths);
+  let quarterKeys: string[] = [];
+  if (dueDate) {
+    const d = new Date(dueDate);
+    quarterKeys = [0, 3, 6, 9]
+      .map((off) => {
+        const m = d.getMonth() + off;
+        return `${d.getFullYear() + Math.floor(m / 12)}-${String((m % 12) + 1).padStart(2, "0")}`;
+      })
+      .filter((k) => inSession.has(k));
+  }
+  if (quarterKeys.length === 0) {
+    quarterKeys = [0, 3, 6, 9].map((i) => allSessionMonths[i]).filter((k) => !!k && inSession.has(k));
+  }
+  return quarterKeys;
+}
+
+export function effectiveDueDate(
+  frequency: string,
+  month: string,
+  dueDate: Date | string | null | undefined,
+): Date | string | null | undefined {
+  if (frequency !== "quarterly" || !dueDate || !month || month === "one-time") return dueDate;
+  const [y, m] = month.split("-").map(Number);
+  if (!y || !m) return dueDate;
+  const day = new Date(dueDate).getDate();
+  return new Date(y, m - 1, Math.min(day, new Date(y, m, 0).getDate()));
 }

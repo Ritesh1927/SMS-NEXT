@@ -40,6 +40,8 @@ interface TeacherOption {
   _id: string;
   name: string;
   teacherId: string;
+  staffType: string;
+  primarySubject: string;
 }
 
 interface ClassesResponse {
@@ -77,12 +79,17 @@ export default function ClassesPage() {
 
   const isTeacher = user?.role === "teacher";
 
-  const assignedTeacherIds = new Set(
+  // Teachers already serving as class teacher of ANOTHER class (the class
+  // being edited is excluded so its own teacher stays selectable) — kept as
+  // a map so the dropdown can label them with the class they're bound to.
+  const assignedTeacherClass = new Map(
     (classes || [])
       .filter((c) => c.classTeacher && c._id !== editingId)
-      .map((c) => c.classTeacher!._id),
+      .map((c) => [c.classTeacher!._id, `Class ${c.name}-${c.section}`] as const),
   );
-  const availableTeachers = teachers.filter((t) => !assignedTeacherIds.has(t._id));
+  const availableTeachers = teachers
+    .filter((t) => t.staffType !== "non-teaching")
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
 
   const load = () => {
     const token = getToken();
@@ -353,9 +360,15 @@ export default function ClassesPage() {
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_TEACHER}>None</SelectItem>
-                  {availableTeachers.map((t) => (
-                    <SelectItem key={t._id} value={t._id}>{t.name} ({t.teacherId})</SelectItem>
-                  ))}
+                  {availableTeachers.map((t) => {
+                    const assignedTo = assignedTeacherClass.get(t._id);
+                    const subject = t.primarySubject?.trim();
+                    return (
+                      <SelectItem key={t._id} value={t._id} disabled={!!assignedTo}>
+                        {t.name}{subject ? ` (${subject})` : ""}{assignedTo ? ` — Class Teacher of ${assignedTo}` : ""}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </Field>

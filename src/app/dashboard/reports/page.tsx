@@ -389,7 +389,7 @@ export default function ReportsPage() {
             <div className="flex-1 min-w-[240px] space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Select Exam</p>
               <Select value={selectedExam} onValueChange={(v) => setSelectedExam(v || "")}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Choose an exam to view results" />
                 </SelectTrigger>
                 <SelectContent>

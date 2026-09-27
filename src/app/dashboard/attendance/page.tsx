@@ -684,7 +684,7 @@ function ParentAttendance() {
         <PageHeader icon={CalendarCheck} title="Attendance Record" subtitle="Monthly attendance history for your child." accent="amber" />
         {children && children.length > 1 && (
           <Select value={childId} onValueChange={(v) => setChildId(v || "")}>
-            <SelectTrigger className="w-56"><SelectValue placeholder="Select a child" /></SelectTrigger>
+            <SelectTrigger className="w-auto min-w-52 max-w-full"><SelectValue placeholder="Select a child" /></SelectTrigger>
             <SelectContent>
               {children.map((c) => (
                 <SelectItem key={c._id} value={c._id}>
@@ -695,7 +695,7 @@ function ParentAttendance() {
           </Select>
         )}
         {selectedChild && children && children.length === 1 && (
-          <div className="rounded-full bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm">
+          <div className="rounded-full bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-2 text-sm max-w-full break-words">
             <span className="font-semibold text-foreground">{selectedChild.name}</span>
             <span className="text-muted-foreground"> — Class {selectedChild.class}{selectedChild.section ? `-${selectedChild.section}` : ""}</span>
           </div>
