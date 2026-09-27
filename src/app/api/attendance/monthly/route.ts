@@ -39,7 +39,9 @@ export async function GET(req: Request) {
         $group: {
           _id: "$classId",
           total: { $sum: 1 },
-          present: { $sum: { $cond: [{ $in: ["$status", ["present", "late"]] }, 1, 0] } },
+          present: { $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] } },
+          late: { $sum: { $cond: [{ $eq: ["$status", "late"] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ["$status", "absent"] }, 1, 0] } },
         },
       },
     ]);
@@ -51,8 +53,12 @@ export async function GET(req: Request) {
     const data = grouped
       .map((g) => ({
         class: classMap.get(String(g._id)) || "Unknown",
-        rate: g.total > 0 ? Math.round((g.present / g.total) * 100) : 0,
+        // Late still counts toward the on-time rate, but present/late/absent
+        // are reported separately so the UI can show a real breakdown.
+        rate: g.total > 0 ? Math.round(((g.present + g.late) / g.total) * 100) : 0,
         present: g.present,
+        late: g.late,
+        absent: g.absent,
         total: g.total,
       }))
       .sort((a, b) => a.class.localeCompare(b.class));

@@ -87,7 +87,7 @@ export default function ReportsPage() {
   const [attMonth, setAttMonth] = useState(new Date().getMonth() + 1);
   const [attYear, setAttYear] = useState(new Date().getFullYear());
   const [attClassId, setAttClassId] = useState("all");
-  const [attData, setAttData] = useState<{ class: string; rate: number; present: number; total: number }[]>([]);
+  const [attData, setAttData] = useState<{ class: string; rate: number; present: number; late: number; absent: number; total: number }[]>([]);
   const [loadingAtt, setLoadingAtt] = useState(false);
 
   const [exams, setExams] = useState<ExamDoc[]>([]);
@@ -126,7 +126,7 @@ export default function ReportsPage() {
     if (!token) return;
     const params = new URLSearchParams({ month: String(attMonth), year: String(attYear) });
     if (attClassId !== "all") params.set("classId", attClassId);
-    apiGet<{ success: boolean; data: { class: string; rate: number; present: number; total: number }[] }>(`/attendance/monthly?${params}`, token)
+    apiGet<{ success: boolean; data: { class: string; rate: number; present: number; late: number; absent: number; total: number }[] }>(`/attendance/monthly?${params}`, token)
       .then((res) => setAttData(res.data))
       .catch(() => toast.error("Failed to load attendance data."))
       .finally(() => setLoadingAtt(false));
@@ -333,7 +333,7 @@ export default function ReportsPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1 ml-auto"
-                onClick={() => downloadCSV(["Class", "Rate (%)", "Present", "Total"], attData.map((d) => [d.class, d.rate, d.present, d.total]), `attendance-${MONTHS[attMonth - 1]}-${attYear}.csv`)}
+                onClick={() => downloadCSV(["Class", "Rate (%)", "Present", "Late", "Absent", "Total"], attData.map((d) => [d.class, d.rate, d.present, d.late, d.absent, d.total]), `attendance-${MONTHS[attMonth - 1]}-${attYear}.csv`)}
               >
                 <Download className="h-3 w-3" /> Export CSV
               </Button>
@@ -371,19 +371,51 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
-                    {attData.map((d) => (
-                      <div key={d.class} className="flex items-center justify-between px-5 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{d.class}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {d.present} present out of {d.total} total
-                          </p>
+                    {attData.map((d) => {
+                      const best = attData.length > 1 && d.rate === Math.max(...attData.map((r) => r.rate));
+                      const worst = attData.length > 1 && d.rate === Math.min(...attData.map((r) => r.rate)) && d.rate !== Math.max(...attData.map((r) => r.rate));
+                      return (
+                        <div key={d.class} className="px-5 py-3.5 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground">{d.class}</p>
+                              {best && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                                  <TrendingUp className="h-2.5 w-2.5" /> Best
+                                </span>
+                              )}
+                              {worst && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                                  <AlertCircle className="h-2.5 w-2.5" /> Needs attention
+                                </span>
+                              )}
+                            </div>
+                            <span className={statusPillClass(d.rate >= 90 ? "success" : d.rate >= 75 ? "warning" : "destructive")}>
+                              {d.rate}%
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${d.rate >= 90 ? "bg-success" : d.rate >= 75 ? "bg-warning" : "bg-destructive"}`}
+                              style={{ width: `${d.rate}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="text-foreground font-medium">{d.total}</span> students marked
+                            <span className="text-border">·</span>
+                            <span className="text-success font-medium">{d.present}</span> present
+                            {d.late > 0 && (
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="text-warning font-medium">{d.late}</span> late
+                              </>
+                            )}
+                            <span className="text-border">·</span>
+                            <span className="text-destructive font-medium">{d.absent}</span> absent
+                          </div>
                         </div>
-                        <span className={statusPillClass(d.rate >= 90 ? "success" : d.rate >= 75 ? "warning" : "destructive")}>
-                          {d.rate}%
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
