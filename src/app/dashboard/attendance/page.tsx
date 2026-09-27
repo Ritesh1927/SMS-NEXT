@@ -34,12 +34,7 @@ interface RosterEntry {
 
 interface ClassesResponse {
   success: boolean;
-  data: { _id: string; name: string; section: string }[];
-}
-
-interface TeacherDashboardResponse {
-  success: boolean;
-  data: { classBreakdown: { classId?: string; label: string }[] };
+  data: { _id: string; name: string; section: string; classTeacher?: { _id: string } | null }[];
 }
 
 interface RosterResponse {
@@ -85,10 +80,14 @@ export default function AttendancePage() {
         .then((res) => setClassOptions(res.data.map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` }))))
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
     } else if (user.role === "teacher") {
-      apiGet<TeacherDashboardResponse>("/dashboard/teacher", token)
+      // /api/attendance/class/[classId] only allows the class's actual
+      // classTeacher, not every class a teacher is merely assigned to
+      // teach a subject in -- so the picker here must be scoped the same
+      // way, or picking one of those other classes would 403.
+      apiGet<ClassesResponse>("/classes", token)
         .then((res) =>
           setClassOptions(
-            res.data.classBreakdown.filter((c) => c.classId).map((c) => ({ _id: c.classId as string, label: c.label })),
+            res.data.filter((c) => c.classTeacher?._id === user.id).map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` })),
           ),
         )
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
@@ -157,6 +156,11 @@ export default function AttendancePage() {
     return <p className="text-sm text-muted-foreground">Attendance isn&apos;t available for your role.</p>;
   }
 
+  // Matches the backend: a teacher can mark a date once, but never re-edit
+  // it afterward (whether that's yesterday or earlier today) -- only an
+  // admin (with allowAttendanceEdit on) can revise an already-saved day.
+  const locked = user.role === "teacher" && alreadyMarked;
+
   return (
     <div>
       <PageHeader icon={ClipboardCheck} title="Attendance" subtitle="Mark daily attendance and review attendance trends." accent="amber" className="mb-6" />
@@ -211,10 +215,10 @@ export default function AttendancePage() {
                   }`}
                 >
                   {alreadyMarked ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
-                  {alreadyMarked ? "Already marked for this date" : "Not marked yet"}
+                  {alreadyMarked ? (locked ? "Already marked — locked for editing" : "Already marked for this date") : "Not marked yet"}
                 </span>
               )}
-              {roster && roster.length > 0 && (
+              {roster && roster.length > 0 && !locked && (
                 <>
                   <Button variant="outline" onClick={() => markAll("present")} className="text-success border-success/30 hover:bg-success/10">
                     Mark All Present
@@ -277,10 +281,11 @@ export default function AttendancePage() {
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setStatus(entry.student._id, s)}
+                        onClick={() => !locked && setStatus(entry.student._id, s)}
+                        disabled={locked}
                         className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-colors ${
                           entry.status === s ? STATUS_STYLES[s] : "bg-transparent text-muted-foreground border-border"
-                        }`}
+                        } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         {s === "present" && <Check className="h-3 w-3" />}
                         {s === "absent" && <X className="h-3 w-3" />}
