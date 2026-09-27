@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Flame, Medal, Users, Star, Zap } from "lucide-react";
+import { Trophy, Flame, Medal, Users, Star, Zap, BookOpen, GraduationCap, IndianRupee, Award } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,17 @@ const RANK_BADGE: Record<number, { color: string; colorDark: string }> = {
   3: { color: "#B45309", colorDark: "#92400E" },
 };
 
+// Mirrors exactly what each route awards — see homework/[id]/submit,
+// exams/[id]/marks and fees/pay-multi (+ payments routes) for the source of
+// truth. Keep in sync if those change.
+const POINT_RULES: { icon: typeof BookOpen; color: string; title: string; detail: string }[] = [
+  { icon: BookOpen, color: "#6366F1", title: "Homework submitted on time", detail: "+3 points" },
+  { icon: BookOpen, color: "#94A3B8", title: "Homework submitted late", detail: "+1 point" },
+  { icon: GraduationCap, color: "#EAB308", title: "Exam score of 90% or above", detail: "+20 points + \"Top Scorer\" badge" },
+  { icon: GraduationCap, color: "#8B5CF6", title: "Exam score of 75–89%", detail: "+10 points" },
+  { icon: IndianRupee, color: "#16A34A", title: "Fee payment recorded as paid", detail: "+5 points" },
+];
+
 export default function LeaderboardPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [star, setStar] = useState<Row | null>(null);
@@ -60,7 +71,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Trophy} title="Leaderboard" subtitle="Top students ranked by points earned from attendance, exams, fees and homework." accent="fuchsia" />
+      <PageHeader icon={Trophy} title="Leaderboard" subtitle="Top students ranked by points earned from exams, fee payments and homework." accent="fuchsia" />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -68,6 +79,30 @@ export default function LeaderboardPage() {
         <PageLoader label="Loading leaderboard..." />
       ) : (
         <>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Award className="h-4 w-4 text-primary" /> How points are earned
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {POINT_RULES.map((rule) => (
+            <div key={rule.title} className="flex items-start gap-3 rounded-xl border border-border p-3">
+              <div
+                className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${rule.color}1A`, color: rule.color }}
+              >
+                <rule.icon className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground leading-snug">{rule.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{rule.detail}</p>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       {rows.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatFilterCard icon={Users} color="#4F46E5" colorDark="#4338CA" value={rows.length} label="Ranked Students" />
