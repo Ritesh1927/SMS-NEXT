@@ -96,6 +96,8 @@ const CHART_TOOLTIP_STYLE = {
   boxShadow: "0 8px 24px -8px rgba(15,23,42,0.15)",
 };
 
+const CLASS_BAR_COLORS = ["#4F46E5", "#14B8A6", "#8B5CF6", "#F97316", "#EC4899", "#06B6D4", "#6366F1", "#84CC16", "#EAB308", "#3B82F6"];
+
 export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: string; schoolName?: string }) {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -430,19 +432,20 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               variant="dark"
               decoration={<HeaderBarsGlyph />}
             />
-            <div className="bg-card p-6 space-y-3">
-              {studentsByClass.map((c) => {
-                const max = Math.max(1, ...studentsByClass.map((x) => x.count));
-                return (
-                  <div key={c.name} className="flex items-center gap-3">
-                    <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">{c.name}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${(c.count / max) * 100}%` }} />
-                    </div>
-                    <span className="w-6 shrink-0 text-right text-xs font-semibold text-foreground">{c.count}</span>
-                  </div>
-                );
-              })}
+            <div className="bg-card p-6">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={studentsByClass} margin={{ top: 16, left: -16, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis dataKey="name" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={studentsByClass.length > 8 ? -30 : 0} textAnchor={studentsByClass.length > 8 ? "end" : "middle"} height={studentsByClass.length > 8 ? 56 : 30} />
+                  <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`${v} Students`, "Count"]} />
+                  <Bar dataKey="count" name="Students" radius={[6, 6, 0, 0]} maxBarSize={48} label={{ position: "top", fill: "#334155", fontSize: 12, fontWeight: 600 }}>
+                    {studentsByClass.map((_, i) => (
+                      <Cell key={i} fill={CLASS_BAR_COLORS[i % CLASS_BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}

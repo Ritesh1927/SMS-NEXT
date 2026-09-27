@@ -3,14 +3,24 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
+import { Concession, type IConcession } from "@/models/Concession";
 import { Student, type IStudent } from "@/models/Student";
 import { Admin } from "@/models/Admin";
-import { generateSessionMonths, filterMonthsByAdmission, isMonthUpcoming } from "@/lib/feeEngine";
+import {
+  generateSessionMonths,
+  filterMonthsByAdmission,
+  isMonthUpcoming,
+  resolveFeeMonths,
+  concessionAppliesToMonth,
+  concessionAmount,
+} from "@/lib/feeEngine";
 
 interface OutstandingRow {
   _id: string;
   invoiceNo: string;
   month: string;
+  feeHead: string;
+  frequency: string;
   student: Pick<IStudent, "name" | "class" | "section" | "studentId">;
   total: number;
   paidAmount: number;
@@ -48,7 +58,16 @@ export async function GET(req: Request) {
     const payments = await FeePayment.find({ school: auth.schoolId }).lean<
       { student: unknown; feeStructure: unknown; status: string; month: string | null }[]
     >();
+    const concessions = await Concession.find({ school: auth.schoolId }).lean<IConcession[]>();
     const school = await Admin.findById(auth.schoolId).select("settings");
+
+    const conByStudent = new Map<string, IConcession[]>();
+    for (const c of concessions) {
+      const key = String(c.student);
+      const list = conByStudent.get(key) || [];
+      list.push(c);
+      conByStudent.set(key, list);
+    }
 
     const now = new Date();
     const sessionMonths = generateSessionMonths(school?.settings?.sessionStartMonth || "April", now.getFullYear());
@@ -58,17 +77,33 @@ export async function GET(req: Request) {
     for (const st of students) {
       const classStructs = structures.filter((s) => s.class === st.class);
       const applicableMonths = filterMonthsByAdmission(sessionMonths, st.admissionDate);
+      const stuCons = conByStudent.get(String(st._id)) || [];
 
       for (const fs of classStructs) {
+        const headCons = stuCons.filter((c) => !c.feeStructure || String(c.feeStructure) === String(fs._id));
+        let oneTimeConUsed = false;
+        const netFor = (monthKey: string) => {
+          const con = headCons.find((c) => {
+            if (!concessionAppliesToMonth(c, monthKey)) return false;
+            if (c.duration === "one-time") {
+              if (oneTimeConUsed) return false;
+              oneTimeConUsed = true;
+            }
+            return true;
+          });
+          return Math.max(0, fs.amount - (con ? concessionAmount(fs.amount, con) : 0));
+        };
+
         if (fs.frequency === "one-time") {
           const isPaid = payments.some(
             (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.status === "paid" && p.month === "one-time",
           );
           if (!isPaid) {
+            const net = netFor("one-time");
             const daysOverdue = fs.dueDate ? Math.floor((now.getTime() - new Date(fs.dueDate).getTime()) / 86400000) : 0;
             result.push({
-              _id: String(fs._id), invoiceNo: "—", month: "one-time", student: st,
-              total: fs.amount, paidAmount: 0, balance: fs.amount,
+              _id: String(fs._id), invoiceNo: "—", month: "one-time", feeHead: fs.title, frequency: fs.frequency, student: st,
+              total: net, paidAmount: 0, balance: net,
               status: daysOverdue > 0 ? "overdue" : "pending",
               dueDate: fs.dueDate, daysOverdue: Math.max(daysOverdue, 0),
             });
@@ -81,28 +116,33 @@ export async function GET(req: Request) {
             (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.status === "paid" && p.month === dueMonth,
           );
           if (!isPaid && applicableMonths.includes(dueMonth) && !isMonthUpcoming(fs.dueDate, dueMonth, now)) {
+            const net = netFor(dueMonth);
             const dueDate = new Date(dueMonth + "-01");
             const daysOverdue = dueDate < now ? Math.floor((now.getTime() - dueDate.getTime()) / 86400000) : 0;
             result.push({
-              _id: `${fs._id}-${dueMonth}`, invoiceNo: "—", month: dueMonth, student: st,
-              total: fs.amount, paidAmount: 0, balance: fs.amount,
+              _id: `${fs._id}-${dueMonth}`, invoiceNo: "—", month: dueMonth, feeHead: fs.title, frequency: fs.frequency, student: st,
+              total: net, paidAmount: 0, balance: net,
               status: daysOverdue > 0 ? "overdue" : "pending",
               dueDate: fs.dueDate, daysOverdue: Math.max(daysOverdue, 0),
             });
           }
         } else {
-          for (const monthKey of applicableMonths) {
+          // "monthly" passes applicableMonths through unchanged; "quarterly"
+          // narrows it to the quarter-start months.
+          const targetMonths = resolveFeeMonths(fs.frequency, applicableMonths, sessionMonths, fs.dueDate);
+          for (const monthKey of targetMonths) {
             if (isMonthUpcoming(fs.dueDate, monthKey, now)) continue;
             const isPaid = payments.some(
               (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.status === "paid" && p.month === monthKey,
             );
             if (!isPaid) {
+              const net = netFor(monthKey);
               const dueDate = new Date(monthKey + "-01");
               if (fs.dueDate) dueDate.setDate(new Date(fs.dueDate).getDate());
               const daysOverdue = dueDate < now ? Math.floor((now.getTime() - dueDate.getTime()) / 86400000) : 0;
               result.push({
-                _id: `${fs._id}-${monthKey}`, invoiceNo: "—", month: monthKey, student: st,
-                total: fs.amount, paidAmount: 0, balance: fs.amount,
+                _id: `${fs._id}-${monthKey}`, invoiceNo: "—", month: monthKey, feeHead: fs.title, frequency: fs.frequency, student: st,
+                total: net, paidAmount: 0, balance: net,
                 status: daysOverdue > 0 ? "overdue" : "pending",
                 dueDate, daysOverdue: Math.max(daysOverdue, 0),
               });

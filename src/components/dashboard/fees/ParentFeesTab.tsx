@@ -85,7 +85,7 @@ export default function ParentFeesTab() {
         kids.map(async (k): Promise<ChildFees> => {
           try {
             const feeRes = await apiGet<FeeStatusResponse>(`/fees/student-status/${k._id}`, token);
-            const rawHeads = feeRes.data.feeHeads || [];
+            const rawHeads = [...(feeRes.data.feeHeads || [])].sort((a, b) => a.title.localeCompare(b.title));
 
             let totalPaid = 0, totalPending = 0, totalUpcoming = 0, total = 0, totalLateFee = 0, totalConcession = 0;
             const feeHeads: FeeHead[] = rawHeads.map((h) => {
@@ -93,8 +93,8 @@ export default function ParentFeesTab() {
               const pendingMonths = h.months.filter((m) => !m.paid && !m.upcoming);
               const upcomingMonths = h.months.filter((m) => !m.paid && m.upcoming);
               const headPaid = paidMonths.reduce((s, m) => s + (m.paidAmount || m.amount), 0);
-              const headPending = pendingMonths.reduce((s, m) => s + m.amount, 0);
-              const headUpcoming = upcomingMonths.reduce((s, m) => s + m.amount, 0);
+              const headPending = pendingMonths.reduce((s, m) => s + Math.max(0, m.amount - (m.concession || 0)), 0);
+              const headUpcoming = upcomingMonths.reduce((s, m) => s + Math.max(0, m.amount - (m.concession || 0)), 0);
               h.months.forEach((m) => {
                 if (m.lateFee > 0) totalLateFee += m.lateFee;
                 if (m.concession > 0) totalConcession += m.concession;
@@ -448,7 +448,7 @@ export default function ParentFeesTab() {
                       <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                         <h3 className="text-base font-semibold text-foreground">{fh.title}</h3>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline">₹{fh.amount}{fh.frequency === "one-time" || fh.frequency === "yearly" ? "" : "/month"}</Badge>
+                          <Badge variant="outline">₹{fh.amount}{fh.frequency === "monthly" ? "/month" : fh.frequency === "quarterly" ? "/quarter" : ""}</Badge>
                           <Badge variant={fh.frequency === "one-time" || fh.frequency === "yearly" ? "secondary" : "default"}>{fh.frequency}</Badge>
                         </div>
                       </div>
@@ -477,7 +477,7 @@ export default function ParentFeesTab() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold">₹{fh.amount}</span>
+                                <span className="text-sm font-semibold">₹{isPaid ? fh.amount : Math.max(0, (singleMonth?.amount ?? fh.amount) - (singleMonth?.concession || 0))}</span>
                                 {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : isUpcoming && !isSelected ? <Badge className="bg-blue-50 text-blue-500 border-0">Upcoming</Badge> : isSelected ? <Badge className="bg-primary/10 text-primary border-0">Selected</Badge> : null}
                               </div>
                             </button>
@@ -496,31 +496,31 @@ export default function ParentFeesTab() {
                               )}
                             </div>
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                              {fh.months.map((m) => {
+                              {sorted.map((m) => {
                                 const locked = !m.paid && isLocked(m.month);
                                 const selected = !!selectedMonths[fh._id]?.[m.month];
                                 return (
-                                <button
-                                  key={m.month}
-                                  type="button"
-                                  onClick={() => !m.paid && !locked && toggleMonth(fh._id, m.month)}
-                                  disabled={m.paid || locked}
-                                  title={locked ? "Pay the earlier month(s) first." : undefined}
-                                  className={`p-2 rounded-lg border text-center text-xs transition-all ${m.paid ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed" : locked ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed" : selected ? "bg-primary/10 border-primary text-primary font-semibold" : m.upcoming ? "bg-blue-50/50 border-blue-100 text-blue-500 hover:border-primary/50" : "border-border hover:border-primary/50 text-muted-foreground"}`}
-                                >
-                                  <p className="font-medium">{getMonthLabel(m.month)}</p>
-                                  {m.paid ? (
-                                    <CheckCircle2 className="h-3 w-3 mx-auto mt-1 text-green-600" />
-                                  ) : locked ? (
-                                    <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
-                                  ) : (
-                                    <div className="mt-0.5 space-y-0.5">
-                                      {m.concession > 0 ? <p className="text-green-600">₹{fh.amount - m.concession}</p> : <p>₹{m.amount}</p>}
-                                      {m.lateFee > 0 && <p className="text-red-600 text-[10px]">+₹{m.lateFee} late</p>}
-                                      {m.concession > 0 && <p className="text-green-600 text-[10px]">-₹{m.concession} concession</p>}
-                                    </div>
-                                  )}
-                                </button>
+                                  <button
+                                    key={m.month}
+                                    type="button"
+                                    onClick={() => !m.paid && !locked && toggleMonth(fh._id, m.month)}
+                                    disabled={m.paid || locked}
+                                    title={locked ? "Pay the earlier month(s) first." : undefined}
+                                    className={`p-2 rounded-lg border text-center text-xs transition-all ${m.paid ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed" : locked ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed" : selected ? "bg-primary/10 border-primary text-primary font-semibold" : m.upcoming ? "bg-blue-50/50 border-blue-100 text-blue-500 hover:border-primary/50" : "border-border hover:border-primary/50 text-muted-foreground"}`}
+                                  >
+                                    <p className="font-medium">{getMonthLabel(m.month)}</p>
+                                    {m.paid ? (
+                                      <CheckCircle2 className="h-3 w-3 mx-auto mt-1 text-green-600" />
+                                    ) : locked ? (
+                                      <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
+                                    ) : (
+                                      <div className="mt-0.5 space-y-0.5">
+                                        {m.concession > 0 ? <p className="text-green-600">₹{fh.amount - m.concession}</p> : <p>₹{m.amount}</p>}
+                                        {m.lateFee > 0 && <p className="text-red-600 text-[10px]">+₹{m.lateFee} late</p>}
+                                        {m.concession > 0 && <p className="text-green-600 text-[10px]">-₹{m.concession} concession</p>}
+                                      </div>
+                                    )}
+                                  </button>
                                 );
                               })}
                             </div>
@@ -674,7 +674,7 @@ export default function ParentFeesTab() {
                 {receiptData.feeHeadTotals.map((item, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-800">{item.feeHead} ({item.month === "one-time" ? "One-Time" : item.month})</span>
+                      <span className="text-green-800">{item.feeHead} ({item.month === "one-time" ? "One-Time" : getMonthLabel(item.month || "")})</span>
                       <span className="font-medium text-green-800">₹{item.amount.toLocaleString("en-IN")}</span>
                     </div>
                     {(item.lateFee ?? 0) > 0 && <div className="flex justify-between text-xs text-red-600 pl-4"><span>Late Fee</span><span>+₹{(item.lateFee ?? 0).toLocaleString("en-IN")}</span></div>}

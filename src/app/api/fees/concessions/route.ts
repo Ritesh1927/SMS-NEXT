@@ -39,6 +39,12 @@ export async function POST(req: Request) {
     if (!student || value === undefined) {
       return NextResponse.json({ success: false, message: "student and value are required." }, { status: 400 });
     }
+    if (duration === "until-date" && !validUntil) {
+      return NextResponse.json({ success: false, message: "validUntil is required for until-date duration." }, { status: 400 });
+    }
+    if (isPct !== false && Number(value) > 100) {
+      return NextResponse.json({ success: false, message: "Percent discount cannot exceed 100." }, { status: 400 });
+    }
 
     await connectDB();
     const con = await Concession.create({

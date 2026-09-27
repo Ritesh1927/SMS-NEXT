@@ -19,6 +19,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     const { type, value, isPct, description, feeStructure, duration, validUntil } = await req.json();
 
+    if (duration === "until-date" && !validUntil) {
+      return NextResponse.json({ success: false, message: "validUntil is required for until-date duration." }, { status: 400 });
+    }
+    if (isPct === true && value !== undefined && Number(value) > 100) {
+      return NextResponse.json({ success: false, message: "Percent discount cannot exceed 100." }, { status: 400 });
+    }
+
     const update: Record<string, unknown> = {};
     if (type !== undefined) update.type = type;
     if (value !== undefined) update.value = value;

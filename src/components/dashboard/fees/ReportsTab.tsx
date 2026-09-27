@@ -76,7 +76,7 @@ function RptCollectionSummary() {
 }
 
 interface OutstandingRow {
-  _id: string; month: string;
+  _id: string; month: string; feeHead: string; frequency: string;
   student: { _id: string; name: string; class: string; section: string } | null;
   total: number; daysOverdue: number; status: "overdue" | "pending";
 }
@@ -167,16 +167,22 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead><tr className="border-b border-border bg-muted/50">
-            {["Student", "Class", "Month", "Amount", "Days Overdue", "Status"].map((h) => <Th key={h}>{h}</Th>)}
+            {["Student", "Class", "Fee Head", "Month", "Amount", "Days Overdue", "Status"].map((h) => <Th key={h}>{h}</Th>)}
           </tr></thead>
           <tbody>
-            {filtered.length === 0 && <EmptyRow cols={6} msg="No outstanding dues" />}
+            {filtered.length === 0 && <EmptyRow cols={7} msg="No outstanding dues" />}
             {filtered.map((inv) => {
               const status = getStatus(inv);
               return (
                 <tr key={`${inv._id}-${inv.student?._id}`} className="border-b border-border hover:bg-muted/50">
                   <td className="px-4 py-3 text-sm font-medium text-foreground">{inv.student?.name || "—"}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{inv.student ? `Class ${inv.student.class}-${inv.student.section}` : "—"}</td>
+                  <td className="px-4 py-3 text-sm text-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{inv.feeHead || "—"}</span>
+                      {inv.frequency && <Badge variant="outline" className="text-xs capitalize">{inv.frequency}</Badge>}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{inv.month === "one-time" ? "One-Time" : getMonthLabel(inv.month)}</td>
                   <td className="px-4 py-3 text-sm font-semibold">{fmt(inv.total)}</td>
                   <td className="px-4 py-3 text-sm text-red-600 font-semibold">{inv.daysOverdue > 0 ? `${inv.daysOverdue}d` : "—"}</td>
@@ -285,7 +291,7 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
                 <span className="text-sm font-semibold">{fs.title}</span>
                 {freqBadge(fs.frequency)}
               </div>
-              <span className="text-xs text-muted-foreground">₹{fs.amount.toLocaleString("en-IN")}{fs.frequency === "one-time" || fs.frequency === "yearly" ? "" : "/month"}</span>
+              <span className="text-xs text-muted-foreground">₹{fs.amount.toLocaleString("en-IN")}{fs.frequency === "monthly" ? "/month" : fs.frequency === "quarterly" ? "/quarter" : ""}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">

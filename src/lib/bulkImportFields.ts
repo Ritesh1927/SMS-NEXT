@@ -93,3 +93,21 @@ export const TEACHER_SAMPLE_ROW: Record<string, string> = {
   [TEACHER_KEYS.bloodGroup]: "",
   [TEACHER_KEYS.employmentType]: "full-time",
 };
+
+export const SUBJECT_LABELS = {
+  name: "Subject Name*",
+  description: "Description",
+} as const;
+
+export const SUBJECT_KEYS = normalizedKeys(SUBJECT_LABELS);
+
+export const SUBJECT_TEMPLATE_COLUMNS: TemplateColumn[] = Object.entries(SUBJECT_LABELS).map(([field, label]) => ({
+  key: SUBJECT_KEYS[field as keyof typeof SUBJECT_LABELS],
+  label,
+  width: label.length > 24 ? 30 : 20,
+}));
+
+export const SUBJECT_SAMPLE_ROW: Record<string, string> = {
+  [SUBJECT_KEYS.name]: "Mathematics",
+  [SUBJECT_KEYS.description]: "Core algebra and geometry",
+};

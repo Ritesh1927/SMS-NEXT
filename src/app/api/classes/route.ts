@@ -33,8 +33,12 @@ export async function GET(req: Request) {
 
     const classes = await Class.find(classQuery)
       .populate("classTeacher", "name teacherId")
-      .populate("assignedSubjects", "name code")
-      .sort({ name: 1, section: 1 });
+      .populate("assignedSubjects", "name code");
+    classes.sort(
+      (a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true }) ||
+        String(a.section).localeCompare(String(b.section), undefined, { numeric: true }),
+    );
 
     const withCounts = await Promise.all(
       classes.map(async (c) => {

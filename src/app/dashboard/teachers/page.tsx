@@ -9,6 +9,7 @@ import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -70,7 +71,7 @@ export default function TeachersPage() {
     const token = getToken();
     if (!token) return;
     apiGet<TeachersResponse>("/teachers", token)
-      .then((res) => setTeachers(res.data))
+      .then((res) => setTeachers([...res.data].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load teachers."));
   };
 
@@ -202,6 +203,16 @@ export default function TeachersPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search by name, email, subject, department..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
+            <Select value={staffFilter || "all"} onValueChange={(v) => setStaffFilter(v === "all" ? "" : (v as "teaching" | "non-teaching"))}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="teaching">Teaching</SelectItem>
+                <SelectItem value="non-teaching">Non-Teaching</SelectItem>
+              </SelectContent>
+            </Select>
             {staffFilter !== "" && (
               <button
                 type="button"

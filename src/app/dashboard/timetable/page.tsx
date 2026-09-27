@@ -482,7 +482,7 @@ export default function TimetablePage() {
               value={selectedChildId}
               onValueChange={(v) => setSelectedChildId(v || "")}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-auto min-w-[180px] max-w-full">
                 <SelectValue placeholder="Select child" />
               </SelectTrigger>
               <SelectContent>
@@ -661,7 +661,7 @@ export default function TimetablePage() {
                 </Label>
                 {subjectOptions.length > 0 ? (
                   <Select value={editSubject} onValueChange={(v) => setEditSubject(v || "")}>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
@@ -683,7 +683,7 @@ export default function TimetablePage() {
                   value={editTeacherId || "__none__"}
                   onValueChange={(v) => setEditTeacherId(!v || v === "__none__" ? "" : v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>

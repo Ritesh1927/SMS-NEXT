@@ -10,7 +10,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { downloadReceipt, previewReceipt, generateReceiptNumber, type ReceiptData } from "@/lib/receipt";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -382,7 +382,7 @@ export default function CollectFeeTab() {
       if (!s.name.toLowerCase().includes(q) && !s.studentId.toLowerCase().includes(q)) return false;
     }
     return true;
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-6">
@@ -470,7 +470,7 @@ export default function CollectFeeTab() {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <CardTitle className="text-base font-semibold">{fh.title}</CardTitle>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">₹{fh.amount}{fh.frequency === "one-time" ? "" : "/month"}</Badge>
+                        <Badge variant="outline">₹{fh.amount}{fh.frequency === "monthly" ? "/month" : fh.frequency === "quarterly" ? "/quarter" : ""}</Badge>
                         <Badge variant={fh.frequency === "one-time" ? "secondary" : "default"}>{fh.frequency}</Badge>
                         {fh.concession && (
                           <Badge className="bg-green-100 text-green-700 border-0">
@@ -498,7 +498,7 @@ export default function CollectFeeTab() {
                               <p className="text-xs text-muted-foreground">{isPaid ? "Paid" : "One-time payment"}</p>
                             </div>
                           </div>
-                          {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : <span className="text-sm font-semibold">₹{fh.amount}</span>}
+                            {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : <span className="text-sm font-semibold">₹{Math.max(0, (fh.months[0]?.amount ?? fh.amount) - (fh.months[0]?.concession || 0))}</span>}
                         </div>
                       );
                     })() : (
@@ -542,7 +542,7 @@ export default function CollectFeeTab() {
                                   <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
                                 ) : (
                                   <>
-                                    <p className="mt-0.5">₹{m.amount}</p>
+                                    <p className="mt-0.5">₹{Math.max(0, m.amount - (m.concession || 0))}</p>
                                     {m.upcoming && !selected && <p className="text-[9px] text-blue-400">Upcoming</p>}
                                   </>
                                 )}
@@ -598,18 +598,26 @@ export default function CollectFeeTab() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                      <div className="flex gap-2">
-                        <Select value={paymentMode} onValueChange={(v) => setPaymentMode((v || paymentMode) as PaymentMode)}>
-                          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="online">Online</SelectItem>
-                            <SelectItem value="cheque">Cheque</SelectItem>
-                            <SelectItem value="dd">DD</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input placeholder="Remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-40" />
+                    <div className="flex flex-col gap-2 w-full sm:w-80">
+                      <Select value={paymentMode} onValueChange={(v) => setPaymentMode((v || paymentMode) as PaymentMode)}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="online">Online</SelectItem>
+                          <SelectItem value="cheque">Cheque</SelectItem>
+                          <SelectItem value="dd">DD</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="space-y-1">
+                        <label htmlFor="collect-remarks" className="text-xs font-medium text-muted-foreground">Remarks</label>
+                        <Textarea
+                          id="collect-remarks"
+                          placeholder="Add remarks — payment notes, reference number, reason..."
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          rows={4}
+                          className="resize-y"
+                        />
                       </div>
                       <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={handlePay} disabled={paying || summary.itemCount === 0}>
                         {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <IndianRupee className="h-4 w-4" />}
@@ -686,7 +694,7 @@ export default function CollectFeeTab() {
                 {receiptData.feeHeadTotals.map((item, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-green-800">{item.feeHead} ({item.month === "one-time" ? "One-Time" : item.month})</span>
+                      <span className="text-green-800">{item.feeHead} ({getMonthLabelHistory(item.month)})</span>
                       <span className="font-medium text-green-800">₹{item.amount.toLocaleString("en-IN")}</span>
                     </div>
                     {(item.lateFee ?? 0) > 0 && (

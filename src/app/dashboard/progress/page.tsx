@@ -76,7 +76,7 @@ export default function ProgressPage() {
             value={selectedChildId}
             onValueChange={(v) => setSelectedChildId(v || "")}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-auto min-w-[180px] max-w-full">
               <SelectValue placeholder="Select child" />
             </SelectTrigger>
             <SelectContent>

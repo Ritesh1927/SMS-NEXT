@@ -14,6 +14,7 @@ import {
   filterMonthsByAdmission,
   dueDateForMonth,
   isMonthUpcoming,
+  resolveFeeMonths,
 } from "@/lib/feeEngine";
 
 // GET /api/fees/student-status/[studentId] — per-fee-head, per-month status
@@ -88,10 +89,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const buildStatus = (fs: IFeeStructure, month: string, concessionAmount: number): MonthStatus => {
       const key = `${String(fs._id)}|${month}`;
       const paid = paidMap.get(key) || null;
+      // A FeeStructure stores one sample dueDate (a day-of-month convention);
+      // dueDateForMonth shifts that day into whichever month this occurrence
+      // is actually for (monthly, quarterly, or yearly alike), so a later
+      // month never inherits an earlier one's raw stored date.
       const dueDate = dueDateForMonth(fs.dueDate, month);
       // One-time fees (e.g. admission) stay payable whenever set, regardless
       // of how far off their due date is -- only genuinely recurring
-      // (monthly/yearly) periods get locked to their own fee period.
+      // (monthly/quarterly/yearly) periods get locked to their own fee period.
       const upcoming = !paid && month !== "one-time" && isMonthUpcoming(fs.dueDate, month, now);
       const projectedLateFee = paid || upcoming ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, dueDate);
       return {
@@ -136,8 +141,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
           : 0;
         monthStatus = [buildStatus(fs, dueMonth, concessionAmount)];
       } else {
+        // "monthly" passes applicableMonths through unchanged; "quarterly"
+        // narrows it to the quarter-start months.
+        const targetMonths = resolveFeeMonths(fs.frequency, months, allMonths, fs.dueDate);
         let oneTimeConcessionUsed = false;
-        monthStatus = months.map((month) => {
+        monthStatus = targetMonths.map((month) => {
           const applicable = allConcessions.find((c) => {
             if (!concessionAppliesToMonth(c, month)) return false;
             if (c.duration === "one-time") {

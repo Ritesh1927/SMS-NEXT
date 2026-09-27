@@ -1,34 +1,22 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
-import { isMonthUpcoming } from "@/lib/feeEngine";
+import { computeFeeDues } from "@/lib/feeDues";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-type LeanPayment = {
-  status: string;
-  amount: number;
-  paidAmount: number;
-  lateFee?: number;
-  paidDate?: Date | null;
-  dueDate?: Date | null;
-  month?: string | null;
-  feeStructure?: { dueDate?: Date | string | null } | null;
-  student?: { class?: string } | null;
-};
-
-// A not-yet-due month's row still carries whatever status it had at
-// creation (see student-status's isMonthUpcoming) -- exclude it from
-// "pending" here the same way, so this summary/chart agrees with the
-// Pending Fee Records list instead of double-counting money not yet owed.
-function isUpcomingRow(p: LeanPayment): boolean {
-  return p.status !== "paid" && !!p.month && !!p.feeStructure && isMonthUpcoming(p.feeStructure.dueDate, p.month);
-}
 
 // GET /api/fees/analytics — admin-only, for the Fees page's Dashboard tab:
 // collected vs. pending totalled per calendar month this year, plus an
 // overall summary including late fees collected.
+//
+// "Pending" is computed from computeFeeDues (every FeeStructure x student
+// combination that's actually due and unpaid), not by scanning existing
+// FeePayment rows -- a month nobody has ever tried to pay yet has no
+// FeePayment doc at all, so scanning payments would silently miss it, and
+// computeFeeDues already excludes not-yet-due (upcoming) periods so this
+// agrees with the Pending Fee Records list instead of double-counting.
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "schooladmin") {
@@ -37,30 +25,37 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const schoolId = new mongoose.Types.ObjectId(auth.schoolId);
     const year = new Date().getFullYear();
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    const allPayments = await FeePayment.find({ school: auth.schoolId })
-      .select("status amount paidAmount lateFee paidDate dueDate month feeStructure student")
-      .populate("feeStructure", "dueDate")
-      .populate("student", "class")
-      .lean<LeanPayment[]>();
+    const [monthlyCollected, yearPayments, classWiseRaw, dues] = await Promise.all([
+      FeePayment.aggregate([
+        { $match: { school: schoolId, status: "paid", paidDate: { $gte: yearStart, $lte: yearEnd } } },
+        { $group: { _id: { $month: "$paidDate" }, total: { $sum: "$paidAmount" } } },
+      ]),
+      FeePayment.find({ school: schoolId, status: "paid", paidDate: { $gte: yearStart, $lte: yearEnd } }).select(
+        "amount paidAmount lateFee concession",
+      ),
+      FeePayment.aggregate([
+        { $match: { school: schoolId, status: "paid" } },
+        { $lookup: { from: "students", localField: "student", foreignField: "_id", as: "s" } },
+        { $unwind: "$s" },
+        { $group: { _id: "$s.class", collected: { $sum: "$paidAmount" } } },
+        { $sort: { _id: 1 } },
+      ]),
+      computeFeeDues(String(auth.schoolId)),
+    ]);
 
-    const collectedByMonth = new Map<number, number>();
+    const collectedByMonth = new Map(monthlyCollected.map((m) => [m._id, m.total]));
     const pendingByMonth = new Map<number, number>();
-    const classWiseMap = new Map<string, number>();
-
-    for (const p of allPayments) {
-      if (p.status === "paid") {
-        if (p.paidDate && new Date(p.paidDate).getFullYear() === year) {
-          const m = new Date(p.paidDate).getMonth() + 1;
-          collectedByMonth.set(m, (collectedByMonth.get(m) || 0) + p.paidAmount);
-        }
-        const cls = p.student?.class;
-        if (cls) classWiseMap.set(cls, (classWiseMap.get(cls) || 0) + p.paidAmount);
-      } else if (!isUpcomingRow(p) && p.dueDate && new Date(p.dueDate).getFullYear() === year) {
-        const m = new Date(p.dueDate).getMonth() + 1;
-        pendingByMonth.set(m, (pendingByMonth.get(m) || 0) + (p.amount - p.paidAmount));
-      }
+    for (const d of dues) {
+      if (!d.dueDate) continue;
+      const dt = new Date(d.dueDate);
+      if (dt.getFullYear() !== year) continue;
+      const key = dt.getMonth() + 1;
+      pendingByMonth.set(key, (pendingByMonth.get(key) || 0) + d.amount);
     }
 
     const data = MONTHS.map((month, i) => ({
@@ -69,14 +64,11 @@ export async function GET(req: Request) {
       pending: Math.round(pendingByMonth.get(i + 1) || 0),
     }));
 
-    const totalCollected = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.paidAmount, 0);
-    const totalPending = allPayments
-      .filter((p) => p.status !== "paid" && !isUpcomingRow(p))
-      .reduce((s, p) => s + (p.amount - p.paidAmount), 0);
-    const totalLateFees = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + (p.lateFee || 0), 0);
-    const classWise = [...classWiseMap.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([cls, collected]) => ({ class: cls, collected: Math.round(collected) }));
+    const totalCollected = yearPayments.reduce((s, p) => s + p.paidAmount, 0);
+    const totalPending = dues.reduce((s, d) => s + d.amount, 0);
+    const totalLateFees = yearPayments.reduce((s, p) => s + (p.lateFee || 0), 0);
+    const totalConcessions = yearPayments.reduce((s, p) => s + (p.concession || 0), 0);
+    const classWise = classWiseRaw.map((c) => ({ class: String(c._id), collected: Math.round(c.collected) }));
 
     return NextResponse.json({
       success: true,
@@ -86,6 +78,7 @@ export async function GET(req: Request) {
         totalCollected: Math.round(totalCollected),
         totalPending: Math.round(totalPending),
         totalLateFees: Math.round(totalLateFees),
+        totalConcessions: Math.round(totalConcessions),
       },
     });
   } catch (err) {

@@ -43,7 +43,7 @@ interface AnalyticsMonth { month: string; collected: number; pending: number }
 interface ClassWiseChart { class: string; collected: number }
 interface AnalyticsResponse {
   success: boolean; data: AnalyticsMonth[]; classWise: ClassWiseChart[];
-  summary: { totalCollected: number; totalPending: number; totalLateFees: number };
+  summary: { totalCollected: number; totalPending: number; totalLateFees: number; totalConcessions: number };
 }
 interface StructuresResponse { success: boolean; data: StructureRow[] }
 interface ClassesResponse { success: boolean; data: ClassOption[] }
@@ -66,6 +66,16 @@ const ALL_TABS = [
 
 type BatchFeeRow = { title: string; amount: string; frequency: Frequency; dueDate: string; description: string };
 const EMPTY_BATCH_ROW: BatchFeeRow = { title: "", amount: "", frequency: "monthly", dueDate: "", description: "" };
+
+// One-click starters for the create dialog — admin still types the amount.
+const FEE_PRESETS: { title: string; frequency: Frequency }[] = [
+  { title: "Tuition Fee", frequency: "monthly" },
+  { title: "Transport Fee", frequency: "monthly" },
+  { title: "Admission Fee", frequency: "one-time" },
+  { title: "Examination Fee", frequency: "yearly" },
+  { title: "Lab Fee", frequency: "yearly" },
+  { title: "Activity Fee", frequency: "yearly" },
+];
 
 function resolveDefaultDueDate() {
   const d = new Date();
@@ -91,6 +101,9 @@ export default function AdminFeesPage() {
   const [academicYear, setAcademicYear] = useState("");
 
   const [structClass, setStructClass] = useState("");
+  // Classes targeted by the Create Fee Heads dialog (batch mode) — fee
+  // structures are stored per standard name, so this is a set of names.
+  const [structClasses, setStructClasses] = useState<Set<string>>(new Set());
   const [structModal, setStructModal] = useState<{ open: boolean; editing: StructureRow | null }>({ open: false, editing: null });
   const [structForm, setStructForm] = useState({ title: "", amount: "", frequency: "monthly" as Frequency, dueDate: "", description: "" });
   const [structSaving, setStructSaving] = useState(false);
@@ -99,6 +112,7 @@ export default function AdminFeesPage() {
   const [pendingDeleteStructure, setPendingDeleteStructure] = useState<StructureRow | null>(null);
 
   const [conModal, setConModal] = useState<{ open: boolean; editing: ConcessionRow | null }>({ open: false, editing: null });
+  const [conClassFilter, setConClassFilter] = useState("all");
   const [conForm, setConForm] = useState({
     studentId: "", feeStructureId: "", type: "Custom" as ConcessionType, value: "", isPct: true,
     description: "", duration: "recurring" as ConcessionDuration, validUntil: "",
@@ -120,8 +134,8 @@ export default function AdminFeesPage() {
       ]);
       setClasses(clsR.data);
       setStructClass((prev) => prev || clsR.data[0]?.name || "");
-      setStudents(stuR.data);
-      setStructures(strR.data);
+      setStudents([...stuR.data].sort((a, b) => a.name.localeCompare(b.name)));
+      setStructures([...strR.data].sort((a, b) => a.title.localeCompare(b.title)));
       setAnalytics(anaR);
 
       if (canManage) {
@@ -154,12 +168,14 @@ export default function AdminFeesPage() {
     thisMonth: analytics?.data[new Date().getMonth()]?.collected ?? 0,
     totalPending: analytics?.summary.totalPending ?? 0,
     totalLateFees: analytics?.summary.totalLateFees ?? 0,
+    totalConcessions: analytics?.summary.totalConcessions ?? 0,
     classWise: analytics?.classWise ?? [],
   };
 
   const openAddStruct = () => {
     setBatchFees([EMPTY_BATCH_ROW]);
     setBatchMode(true);
+    setStructClasses(new Set(structClass ? [structClass] : []));
     setStructModal({ open: true, editing: null });
   };
   const openEditStruct = (s: StructureRow) => {
@@ -171,25 +187,38 @@ export default function AdminFeesPage() {
   const removeBatchRow = (idx: number) => setBatchFees((prev) => prev.filter((_, i) => i !== idx));
   const updateBatchRow = (idx: number, key: keyof BatchFeeRow, value: string) =>
     setBatchFees((prev) => prev.map((f, i) => (i === idx ? { ...f, [key]: value } : f)));
+  const toggleStructClass = (name: string) =>
+    setStructClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  const addPresetRow = (p: { title: string; frequency: Frequency }) =>
+    setBatchFees((prev) => {
+      if (prev.some((f) => f.title.trim().toLowerCase() === p.title.toLowerCase())) return prev;
+      const blank = (f: BatchFeeRow) => !f.title.trim() && !f.amount && !f.description && !f.dueDate;
+      return [...prev.filter((f) => !blank(f)), { title: p.title, amount: "", frequency: p.frequency, dueDate: "", description: "" }];
+    });
 
   const saveStruct = async (e: FormEvent) => {
     e.preventDefault();
     const token = getToken();
     if (!token) return;
-    if (!structClass) {
-      toast.error("Please select a class");
-      return;
-    }
 
     if (batchMode && !structModal.editing) {
+      if (structClasses.size === 0) {
+        toast.error("Select at least one class");
+        return;
+      }
       const validFees = batchFees.filter((f) => f.title.trim() && f.amount);
       if (validFees.length === 0) {
         toast.error("Add at least one fee head with title and amount");
         return;
       }
       for (const f of validFees) {
-        if ((f.frequency === "yearly" || f.frequency === "one-time") && !f.dueDate) {
-          toast.error(`Due date required for "${f.title}" (yearly/one-time)`);
+        if ((f.frequency === "yearly" || f.frequency === "one-time" || f.frequency === "quarterly") && !f.dueDate) {
+          toast.error(`Due date required for "${f.title}" (${f.frequency})`);
           return;
         }
       }
@@ -199,15 +228,21 @@ export default function AdminFeesPage() {
           title: f.title.trim(), amount: Number(f.amount), frequency: f.frequency,
           dueDate: f.dueDate || resolveDefaultDueDate(), description: f.description,
         }));
-        const res = await fetch("/api/fees/structures/batch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ class: structClass, academicYear, fees: feesPayload }),
-        });
-        const json: { success: boolean; message?: string; data?: StructureRow[] } = await res.json();
-        if (!res.ok || !json.success) throw new Error(json.message || "Failed to save");
-        setStructures((prev) => [...(json.data || []), ...prev]);
-        toast.success(`${validFees.length} fee head(s) created for class ${structClass}`);
+        // One batch POST per selected class — the endpoint is per-class, so
+        // multi-class create is a small client-side loop, no API change.
+        const created: StructureRow[] = [];
+        for (const cls of structClasses) {
+          const res = await fetch("/api/fees/structures/batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ class: cls, academicYear, fees: feesPayload }),
+          });
+          const json: { success: boolean; message?: string; data?: StructureRow[] } = await res.json();
+          if (!res.ok || !json.success) throw new Error(json.message || `Failed to save for class ${cls}`);
+          created.push(...(json.data || []));
+        }
+        setStructures((prev) => [...created, ...prev]);
+        toast.success(`${validFees.length} fee head(s) created for ${structClasses.size} class${structClasses.size === 1 ? "" : "es"}`);
         setStructModal({ open: false, editing: null });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to save");
@@ -217,13 +252,18 @@ export default function AdminFeesPage() {
       return;
     }
 
+    if (!structClass) {
+      toast.error("Please select a class");
+      return;
+    }
+
     if (!structForm.title.trim() || !structForm.amount) {
       toast.error("Title and amount are required");
       return;
     }
-    const needsDueDate = structForm.frequency === "yearly" || structForm.frequency === "one-time";
+    const needsDueDate = structForm.frequency === "yearly" || structForm.frequency === "one-time" || structForm.frequency === "quarterly";
     if (needsDueDate && !structForm.dueDate) {
-      toast.error("Due date is required for yearly / one-time fees");
+      toast.error("Due date is required for yearly / one-time / quarterly fees");
       return;
     }
     setStructSaving(true);
@@ -278,10 +318,13 @@ export default function AdminFeesPage() {
   };
 
   const openAddCon = () => {
+    setConClassFilter("all");
     setConForm({ studentId: students[0]?._id || "", feeStructureId: "", type: "Custom", value: "", isPct: true, description: "", duration: "recurring", validUntil: "" });
     setConModal({ open: true, editing: null });
   };
   const openEditCon = (c: ConcessionRow) => {
+    const stu = students.find((s) => s._id === c.student?._id);
+    setConClassFilter(stu ? `${stu.class}-${stu.section || ""}` : "all");
     setConForm({
       studentId: c.student?._id || "", feeStructureId: c.feeStructure?._id || "", type: c.type, value: String(c.value),
       isPct: c.isPct, description: c.description, duration: c.duration, validUntil: c.validUntil ? c.validUntil.slice(0, 10) : "",
@@ -293,6 +336,14 @@ export default function AdminFeesPage() {
     const token = getToken();
     if (!token || !conForm.studentId || !conForm.value) {
       toast.error("Student and value required");
+      return;
+    }
+    if (conForm.duration === "until-date" && !conForm.validUntil) {
+      toast.error("Valid Until date is required for \"Until a date\" duration");
+      return;
+    }
+    if (conForm.isPct && Number(conForm.value) > 100) {
+      toast.error("Percent discount cannot exceed 100%");
       return;
     }
     setConSaving(true);
@@ -339,6 +390,8 @@ export default function AdminFeesPage() {
   };
 
   const validBatchCount = batchFees.filter((f) => f.title.trim() && f.amount).length;
+  const uniqueStructClassNames = [...new Set(classes.map((c) => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const conStudentOptions = students.filter((s) => conClassFilter === "all" || `${s.class}-${s.section || ""}` === conClassFilter);
   const selectedConStudent = students.find((s) => s._id === conForm.studentId);
   const conFeeStructureOptions = structures.filter((s) => s.class === selectedConStudent?.class);
 
@@ -383,6 +436,9 @@ export default function AdminFeesPage() {
             <StatFilterCard icon={AlertCircle} color="#4F46E5" colorDark="#4338CA" value={fmt(dash.totalPending)} label="Pending Dues" sublabel="Across all students" />
             {dash.totalLateFees > 0 && (
               <StatFilterCard icon={Clock} color="#DC2626" colorDark="#B91C1C" value={fmt(dash.totalLateFees)} label="Late Fees Collected" sublabel="From overdue payments" />
+            )}
+            {dash.totalConcessions > 0 && (
+              <StatFilterCard icon={Tag} color="#16A34A" colorDark="#15803D" value={fmt(dash.totalConcessions)} label="Concessions Given" sublabel="Discounts on payments" />
             )}
           </div>
 
@@ -562,13 +618,26 @@ export default function AdminFeesPage() {
           </DialogHeader>
           <form onSubmit={saveStruct} className="space-y-4 mt-2">
             {!structModal.editing && (
-              <Field label="Class">
-                <Select value={structClass} onValueChange={(v) => setStructClass(v || structClass)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a class" /></SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => <SelectItem key={c._id} value={c.name}>{c.name}{c.section ? `-${c.section}` : ""}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <Field label="Apply to Classes" required>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setStructClasses(structClasses.size === uniqueStructClassNames.length && uniqueStructClassNames.length > 0 ? new Set() : new Set(uniqueStructClassNames))}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${structClasses.size === uniqueStructClassNames.length && uniqueStructClassNames.length > 0 ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
+                  >
+                    All Classes
+                  </button>
+                  {uniqueStructClassNames.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => toggleStructClass(name)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${structClasses.has(name) ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
+                    >
+                      Class {name}
+                    </button>
+                  ))}
+                </div>
               </Field>
             )}
 
@@ -578,6 +647,20 @@ export default function AdminFeesPage() {
 
             {batchMode && !structModal.editing ? (
               <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Quick add:</span>
+                  {FEE_PRESETS.map((p) => (
+                    <button
+                      key={p.title}
+                      type="button"
+                      onClick={() => addPresetRow(p)}
+                      disabled={batchFees.some((f) => f.title.trim().toLowerCase() === p.title.toLowerCase())}
+                      className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted-foreground"
+                    >
+                      <Plus className="h-3 w-3" /> {p.title}
+                    </button>
+                  ))}
+                </div>
                 {batchFees.map((f, idx) => (
                   <div key={idx} className="rounded-lg border border-border p-4 space-y-3 relative">
                     {batchFees.length > 1 && (
@@ -598,9 +681,10 @@ export default function AdminFeesPage() {
                           <SelectContent>{FREQ_OPTS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                         </Select>
                       </Field>
-                      {(f.frequency === "yearly" || f.frequency === "one-time") && (
-                        <Field label="Due Date">
+                      {(f.frequency === "yearly" || f.frequency === "one-time" || f.frequency === "quarterly") && (
+                        <Field label="Due Date" required={f.frequency === "quarterly"}>
                           <Input type="date" value={f.dueDate} onChange={(e) => updateBatchRow(idx, "dueDate", e.target.value)} />
+                          {f.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
                         </Field>
                       )}
                     </div>
@@ -628,9 +712,10 @@ export default function AdminFeesPage() {
                       <SelectContent>{FREQ_OPTS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
-                  {(structForm.frequency === "yearly" || structForm.frequency === "one-time") && (
-                    <Field label="Due Date">
+                  {(structForm.frequency === "yearly" || structForm.frequency === "one-time" || structForm.frequency === "quarterly") && (
+                    <Field label="Due Date" required={structForm.frequency === "quarterly"}>
                       <Input type="date" value={structForm.dueDate} onChange={(e) => setStructForm((f) => ({ ...f, dueDate: e.target.value }))} />
+                      {structForm.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
                     </Field>
                   )}
                 </div>
@@ -642,7 +727,7 @@ export default function AdminFeesPage() {
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={structSaving}>
-                {structSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : structModal.editing ? "Update" : batchMode ? `Create ${validBatchCount} Fee Head(s)` : "Create Fee Head"}
+                {structSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : structModal.editing ? "Update" : batchMode ? `Create ${validBatchCount} Fee Head(s) for ${structClasses.size} Class(es)` : "Create Fee Head"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setStructModal({ open: false, editing: null })}>Cancel</Button>
             </div>
@@ -656,11 +741,28 @@ export default function AdminFeesPage() {
             <DialogTitle className="text-lg text-foreground flex items-center gap-2"><Tag className="h-4 w-4 text-primary" /> {conModal.editing ? "Edit Concession" : "Add Concession"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={saveCon} className="space-y-3 mt-2">
+            <Field label="Class" required>
+              <Select value={conClassFilter} onValueChange={(v) => {
+                const next = v || "all";
+                setConClassFilter(next);
+                setConForm((f) => {
+                  if (!f.studentId) return f;
+                  const stillVisible = students.some((s) => s._id === f.studentId && (next === "all" || `${s.class}-${s.section || ""}` === next));
+                  return stillVisible ? f : { ...f, studentId: "", feeStructureId: "" };
+                });
+              }}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="All Classes" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classes.map((c) => <SelectItem key={c._id} value={`${c.name}-${c.section || ""}`}>Class {c.name}{c.section ? `-${c.section}` : ""}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Student" required>
               <Select value={conForm.studentId} onValueChange={(v) => setConForm((f) => ({ ...f, studentId: v || f.studentId, feeStructureId: "" }))} disabled={!!conModal.editing}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select student" /></SelectTrigger>
                 <SelectContent>
-                  {students.map((s) => <SelectItem key={s._id} value={s._id}>{s.name} (Class {s.class}{s.section ? "-" + s.section : ""})</SelectItem>)}
+                  {conStudentOptions.map((s) => <SelectItem key={s._id} value={s._id}>{s.name} (Class {s.class}{s.section ? "-" + s.section : ""})</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -680,7 +782,7 @@ export default function AdminFeesPage() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Value" required>
-                <Input type="number" min={0} placeholder="e.g. 20 or 500" value={conForm.value} onChange={(e) => setConForm((f) => ({ ...f, value: e.target.value }))} required />
+                <Input type="number" min={0} max={conForm.isPct ? 100 : undefined} placeholder={conForm.isPct ? "e.g. 20" : "e.g. 500"} value={conForm.value} onChange={(e) => setConForm((f) => ({ ...f, value: e.target.value }))} required />
               </Field>
               <Field label="Discount Type">
                 <div className="flex gap-2">

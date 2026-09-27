@@ -84,7 +84,7 @@ export default function ParentsPage() {
     const token = getToken();
     if (!token) return;
     apiGet<ParentsResponse>("/parents", token)
-      .then((res) => setParents(res.data))
+      .then((res) => setParents([...res.data].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load parents."));
   };
 
