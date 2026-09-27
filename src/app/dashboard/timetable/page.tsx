@@ -501,7 +501,7 @@ export default function TimetablePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatFilterCard icon={BookOpen} color="#8B5CF6" colorDark="#7C3AED" value={uniqueSubjects.length} label="Subjects" />
           <StatFilterCard icon={Users} color="#0EA5E9" colorDark="#0284C7" value={new Set(entries.map((e) => e.teacherId?._id).filter(Boolean)).size} label="Teachers" />
-          <StatFilterCard icon={Clock} color="#F59E0B" colorDark="#D97706" value={periods.length} label="Period Rows" />
+          <StatFilterCard icon={Clock} color="#F59E0B" colorDark="#D97706" value={periods.filter((p) => !p.isBreak).length} label="Periods" />
         </div>
       )}
 
