@@ -236,6 +236,19 @@ function displayExamStatus(status: ExamStatus, dateIso: string): { label: string
   return { label: status, className: "bg-slate-100 text-slate-600" };
 }
 
+// A ScheduledExam's own `status` is set at creation and only ever changed by
+// an explicit edit or cancel -- nothing flips it to "completed" when every
+// subject under it finishes, so a fully-marked term would otherwise sit
+// labeled "upcoming" forever. Cancellation is a real, explicit action so
+// it's trusted as-is; completion is instead derived from the term's actual
+// subject exams (already loaded client-side) whenever there are any.
+function termEffectiveStatus(term: TermRow, exams: ExamRow[] | null): ExamStatus {
+  if (term.status === "cancelled") return "cancelled";
+  const subjectExams = (exams ?? []).filter((e) => e.scheduledExamId === term._id);
+  if (subjectExams.length > 0 && subjectExams.every((e) => e.status === "completed")) return "completed";
+  return term.status;
+}
+
 const todayISO = () => new Date().toISOString().split("T")[0];
 
 function mergeRosterAndResults(roster: RosterEntry[], results: ResultRow[]): MergedResultRow[] {
@@ -961,8 +974,18 @@ export function AdminTeacherExams() {
     if (classFilter !== "all" && term.class !== classFilter) return false;
     return true;
   });
-  const upcomingCount = (exams ?? []).filter((e) => e.status === "upcoming" && displayExamStatus(e.status, e.date).label === "upcoming").length;
-  const completedCount = (exams ?? []).filter((e) => e.status === "completed").length;
+  // A multi-subject exam term is one ScheduledExam but one Exam doc per
+  // subject, so counting from the flat `exams` list would count a 5-subject
+  // term as 5 upcoming/completed instead of 1. Standalone tests (no
+  // scheduledExamId) are counted individually as before; terms are counted
+  // once each, using the same status derivation as their own list-row badge
+  // so the totals here always match what's shown per row.
+  const upcomingCount =
+    (exams ?? []).filter((e) => !e.scheduledExamId && displayExamStatus(e.status, e.date).label === "upcoming").length +
+    (terms ?? []).filter((t) => displayExamStatus(termEffectiveStatus(t, exams), t.endDate).label === "upcoming").length;
+  const completedCount =
+    (exams ?? []).filter((e) => !e.scheduledExamId && e.status === "completed").length +
+    (terms ?? []).filter((t) => termEffectiveStatus(t, exams) === "completed").length;
 
   const testsForResultPicker = (exams ?? []).filter(
     (e) => !e.scheduledExamId && (rClass === "all" || `${e.class}::${e.section || ""}` === rClass),
@@ -1239,8 +1262,8 @@ export function AdminTeacherExams() {
                         </div>
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(term.status, term.endDate).className}`}>
-                          {displayExamStatus(term.status, term.endDate).label}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(termEffectiveStatus(term, exams), term.endDate).className}`}>
+                          {displayExamStatus(termEffectiveStatus(term, exams), term.endDate).label}
                         </span>
                         {locked && !isAdmin ? (
                           <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change" title="This exam starts within 2 hours, so changes need admin approval — request one">
