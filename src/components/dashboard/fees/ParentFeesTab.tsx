@@ -176,22 +176,47 @@ export default function ParentFeesTab() {
     };
   };
 
-  const toggleMonth = (feeHeadId: string, month: string, upcoming?: boolean) => {
-    // Not payable until its own fee period starts -- mirrors the same
-    // isMonthUpcoming rule the backend enforces.
-    if (upcoming) return;
-    setSelectedMonths((prev) => ({
-      ...prev,
-      [feeHeadId]: { ...(prev[feeHeadId] || {}), [month]: !prev[feeHeadId]?.[month] },
-    }));
+  // Past, current, and future months are all payable -- "upcoming" is
+  // informational only. The one real constraint is order: a month can't be
+  // selected while an earlier unpaid month in the same fee head is neither
+  // paid nor also selected in this pass.
+  const toggleMonth = (feeHeadId: string, month: string) => {
+    setSelectedMonths((prev) => {
+      const current = prev[feeHeadId] || {};
+      const fh = child?.feeHeads.find((f) => f._id === feeHeadId);
+      if (!fh) return prev;
+      const sorted = [...fh.months].sort((a, b) => a.month.localeCompare(b.month));
+      const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
+      if (firstUnpaidIdx < 0) return prev;
+      const newSel = { ...current, [month]: !current[month] };
+      for (let i = firstUnpaidIdx; i < sorted.length; i++) {
+        const m = sorted[i];
+        if (m.paid) continue;
+        if (newSel[m.month]) {
+          for (let j = firstUnpaidIdx; j < i; j++) {
+            const pm = sorted[j];
+            if (!pm.paid && !newSel[pm.month]) return prev;
+          }
+        } else {
+          for (let k = i + 1; k < sorted.length; k++) {
+            if (newSel[sorted[k].month]) return prev;
+          }
+          break;
+        }
+      }
+      return { ...prev, [feeHeadId]: newSel };
+    });
   };
 
-  const toggleAllPending = (feeHeadId: string, months: { month: string; paid: boolean; upcoming: boolean }[]) => {
-    const duePending = months.filter((m) => !m.paid && !m.upcoming);
-    const allSelected = duePending.every((m) => selectedMonths[feeHeadId]?.[m.month]);
-    const newSel: Record<string, boolean> = {};
-    if (!allSelected) duePending.forEach((m) => { newSel[m.month] = true; });
-    setSelectedMonths((prev) => ({ ...prev, [feeHeadId]: newSel }));
+  const toggleAllPending = (feeHeadId: string, months: { month: string; paid: boolean }[]) => {
+    const sorted = [...months].sort((a, b) => a.month.localeCompare(b.month));
+    const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
+    if (firstUnpaidIdx < 0) return;
+    const current = selectedMonths[feeHeadId] || {};
+    const allSelected = sorted.slice(firstUnpaidIdx).every((m) => m.paid || current[m.month]);
+    const newSelection: Record<string, boolean> = {};
+    if (!allSelected) sorted.slice(firstUnpaidIdx).forEach((m) => { if (!m.paid) newSelection[m.month] = true; });
+    setSelectedMonths((prev) => ({ ...prev, [feeHeadId]: newSelection }));
   };
 
   const summary = (child?.feeHeads || []).reduce(
@@ -406,6 +431,18 @@ export default function ParentFeesTab() {
                   const paidMonths = fh.months.filter((m) => m.paid);
                   const pendingMonths = fh.months.filter((m) => !m.paid && !m.upcoming);
                   const upcomingMonths = fh.months.filter((m) => !m.paid && m.upcoming);
+                  const sorted = [...fh.months].sort((a, b) => a.month.localeCompare(b.month));
+                  const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
+                  const isLocked = (month: string) => {
+                    if (firstUnpaidIdx < 0) return false;
+                    const idx = sorted.findIndex((m) => m.month === month);
+                    if (sorted[idx]?.paid) return false;
+                    if (idx === firstUnpaidIdx) return false;
+                    for (let i = firstUnpaidIdx; i < idx; i++) {
+                      if (!sorted[i].paid && !selectedMonths[fh._id]?.[sorted[i].month]) return true;
+                    }
+                    return false;
+                  };
                   return (
                     <div key={fh._id} className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
                       <div className="px-5 py-4 border-b border-border flex items-center justify-between">
@@ -426,10 +463,9 @@ export default function ParentFeesTab() {
                           return (
                             <button
                               type="button"
-                              disabled={isPaid || isUpcoming}
-                              onClick={() => toggleMonth(fh._id, monthKey, isUpcoming)}
-                              title={isUpcoming ? "Not payable yet -- this fee period hasn't started." : undefined}
-                              className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${isPaid ? "bg-green-50 border-green-200 cursor-not-allowed" : isUpcoming ? "bg-blue-50/50 border-blue-100 cursor-not-allowed" : isSelected ? "bg-primary/10 border-primary ring-1 ring-primary/20" : "border-border hover:border-primary/50 cursor-pointer"}`}
+                              disabled={isPaid}
+                              onClick={() => toggleMonth(fh._id, monthKey)}
+                              className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${isPaid ? "bg-green-50 border-green-200 cursor-not-allowed" : isSelected ? "bg-primary/10 border-primary ring-1 ring-primary/20" : "border-border hover:border-primary/50 cursor-pointer"}`}
                             >
                               <div className="flex items-center gap-3">
                                 <div className={`h-4 w-4 rounded flex items-center justify-center ${isPaid ? "bg-green-500" : isSelected ? "bg-primary" : "border border-gray-300"}`}>
@@ -437,12 +473,12 @@ export default function ParentFeesTab() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium">{fh.title}</p>
-                                  <p className="text-xs text-muted-foreground">{isPaid ? "Paid" : isUpcoming ? "Not due yet" : label}</p>
+                                  <p className="text-xs text-muted-foreground">{isPaid ? "Paid" : isUpcoming ? "Not yet due, payable in advance" : label}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold">₹{fh.amount}</span>
-                                {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : isUpcoming ? <Badge className="bg-blue-50 text-blue-500 border-0">Upcoming</Badge> : isSelected ? <Badge className="bg-primary/10 text-primary border-0">Selected</Badge> : null}
+                                {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : isUpcoming && !isSelected ? <Badge className="bg-blue-50 text-blue-500 border-0">Upcoming</Badge> : isSelected ? <Badge className="bg-primary/10 text-primary border-0">Selected</Badge> : null}
                               </div>
                             </button>
                           );
@@ -453,27 +489,30 @@ export default function ParentFeesTab() {
                                 {paidMonths.length} paid · {pendingMonths.length} pending
                                 {upcomingMonths.length > 0 && ` · ${upcomingMonths.length} upcoming`}
                               </p>
-                              {pendingMonths.length > 0 && (
+                              {(pendingMonths.length > 0 || upcomingMonths.length > 0) && (
                                 <Button variant="ghost" size="sm" onClick={() => toggleAllPending(fh._id, fh.months)}>
-                                  {pendingMonths.every((m) => selectedMonths[fh._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
+                                  {fh.months.filter((m) => !m.paid).every((m) => selectedMonths[fh._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
                                 </Button>
                               )}
                             </div>
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                              {fh.months.map((m) => (
+                              {fh.months.map((m) => {
+                                const locked = !m.paid && isLocked(m.month);
+                                const selected = !!selectedMonths[fh._id]?.[m.month];
+                                return (
                                 <button
                                   key={m.month}
                                   type="button"
-                                  onClick={() => toggleMonth(fh._id, m.month, m.upcoming)}
-                                  disabled={m.paid || m.upcoming}
-                                  title={m.upcoming ? "Not payable yet -- this fee period hasn't started." : undefined}
-                                  className={`p-2 rounded-lg border text-center text-xs transition-all ${m.paid ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed" : m.upcoming ? "bg-blue-50/50 border-blue-100 text-blue-400 cursor-not-allowed" : selectedMonths[fh._id]?.[m.month] ? "bg-primary/10 border-primary text-primary font-semibold" : "border-border hover:border-primary/50 text-muted-foreground"}`}
+                                  onClick={() => !m.paid && !locked && toggleMonth(fh._id, m.month)}
+                                  disabled={m.paid || locked}
+                                  title={locked ? "Pay the earlier month(s) first." : undefined}
+                                  className={`p-2 rounded-lg border text-center text-xs transition-all ${m.paid ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed" : locked ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed" : selected ? "bg-primary/10 border-primary text-primary font-semibold" : m.upcoming ? "bg-blue-50/50 border-blue-100 text-blue-500 hover:border-primary/50" : "border-border hover:border-primary/50 text-muted-foreground"}`}
                                 >
                                   <p className="font-medium">{getMonthLabel(m.month)}</p>
                                   {m.paid ? (
                                     <CheckCircle2 className="h-3 w-3 mx-auto mt-1 text-green-600" />
-                                  ) : m.upcoming ? (
-                                    <p className="mt-0.5 text-[10px]">Upcoming</p>
+                                  ) : locked ? (
+                                    <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
                                   ) : (
                                     <div className="mt-0.5 space-y-0.5">
                                       {m.concession > 0 ? <p className="text-green-600">₹{fh.amount - m.concession}</p> : <p>₹{m.amount}</p>}
@@ -482,7 +521,8 @@ export default function ParentFeesTab() {
                                     </div>
                                   )}
                                 </button>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}

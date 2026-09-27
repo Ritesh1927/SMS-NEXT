@@ -7,7 +7,7 @@ import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
 import { Parent } from "@/models/Parent";
-import { calcProjectedLateFee, concessionAppliesToMonth, dueDateForMonth, isMonthUpcoming } from "@/lib/feeEngine";
+import { calcProjectedLateFee, concessionAppliesToMonth, dueDateForMonth, generateSessionMonths, filterMonthsByAdmission } from "@/lib/feeEngine";
 
 interface PayMultiItem {
   feeStructureId: string;
@@ -81,14 +81,35 @@ export async function POST(req: Request) {
       const fs = await FeeStructure.findOne({ _id: feeStructureId, school: auth.schoolId });
       if (!fs) continue;
 
-      for (const month of months) {
+      // Any month is payable -- past, current, or future -- but a monthly
+      // fee's months must be paid in order: a later month can't be paid
+      // while an earlier one is still outstanding, whether that earlier
+      // one was already paid before or is simply included in this same
+      // request alongside it.
+      let orderedMonths: string[] = [];
+      const paidInStructure = new Set<string>();
+      if (fs.frequency === "monthly") {
+        orderedMonths = filterMonthsByAdmission(
+          generateSessionMonths(school?.settings?.sessionStartMonth || "April", new Date().getFullYear()),
+          student.admissionDate,
+        );
+        const paidDocs = await FeePayment.find({
+          school: auth.schoolId, student: studentId, feeStructure: feeStructureId, status: "paid",
+        }).select("month");
+        for (const p of paidDocs) if (p.month) paidInStructure.add(p.month);
+      }
+      const requestedSet = new Set(months);
+      const orderedRequest = fs.frequency === "monthly" ? [...months].sort() : months;
+
+      for (const month of orderedRequest) {
         if (earliestPayableMonth && month !== "one-time" && month < earliestPayableMonth) continue;
 
-        // A month isn't payable until its own fee period has started --
-        // mirrors the same rule student-status uses to mark it "upcoming"
-        // rather than "pending", so it can't be paid ahead of schedule even
-        // via a direct API call.
-        if (month !== "one-time" && isMonthUpcoming(fs.dueDate, month)) continue;
+        if (orderedMonths.length > 0) {
+          const idx = orderedMonths.indexOf(month);
+          if (idx > 0 && orderedMonths.slice(0, idx).some((m) => !paidInStructure.has(m) && !requestedSet.has(m))) {
+            continue; // an earlier month in this series is still unpaid and wasn't requested either
+          }
+        }
 
         const existingPaid = await FeePayment.findOne({
           school: auth.schoolId,
