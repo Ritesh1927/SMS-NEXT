@@ -5,7 +5,7 @@ import { FeePayment } from "@/models/FeePayment";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { Student, type IStudent } from "@/models/Student";
 import { Admin } from "@/models/Admin";
-import { generateSessionMonths, filterMonthsByAdmission } from "@/lib/feeEngine";
+import { generateSessionMonths, filterMonthsByAdmission, isMonthUpcoming } from "@/lib/feeEngine";
 
 interface OutstandingRow {
   _id: string;
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
           const isPaid = payments.some(
             (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.status === "paid" && p.month === dueMonth,
           );
-          if (!isPaid && applicableMonths.includes(dueMonth)) {
+          if (!isPaid && applicableMonths.includes(dueMonth) && !isMonthUpcoming(fs.dueDate, dueMonth, now)) {
             const dueDate = new Date(dueMonth + "-01");
             const daysOverdue = dueDate < now ? Math.floor((now.getTime() - dueDate.getTime()) / 86400000) : 0;
             result.push({
@@ -92,6 +92,7 @@ export async function GET(req: Request) {
           }
         } else {
           for (const monthKey of applicableMonths) {
+            if (isMonthUpcoming(fs.dueDate, monthKey, now)) continue;
             const isPaid = payments.some(
               (p) => String(p.student) === String(st._id) && String(p.feeStructure) === String(fs._id) && p.status === "paid" && p.month === monthKey,
             );

@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
+import { isMonthUpcoming } from "@/lib/feeEngine";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+type LeanPayment = {
+  status: string;
+  amount: number;
+  paidAmount: number;
+  lateFee?: number;
+  paidDate?: Date | null;
+  dueDate?: Date | null;
+  month?: string | null;
+  feeStructure?: { dueDate?: Date | string | null } | null;
+  student?: { class?: string } | null;
+};
+
+// A not-yet-due month's row still carries whatever status it had at
+// creation (see student-status's isMonthUpcoming) -- exclude it from
+// "pending" here the same way, so this summary/chart agrees with the
+// Pending Fee Records list instead of double-counting money not yet owed.
+function isUpcomingRow(p: LeanPayment): boolean {
+  return p.status !== "paid" && !!p.month && !!p.feeStructure && isMonthUpcoming(p.feeStructure.dueDate, p.month);
+}
 
 // GET /api/fees/analytics — admin-only, for the Fees page's Dashboard tab:
 // collected vs. pending totalled per calendar month this year, plus an
@@ -17,32 +37,31 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
-    const schoolId = new mongoose.Types.ObjectId(auth.schoolId);
     const year = new Date().getFullYear();
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
 
-    const [monthlyCollected, monthlyPending, allPayments, classWiseRaw] = await Promise.all([
-      FeePayment.aggregate([
-        { $match: { school: schoolId, status: "paid", paidDate: { $gte: yearStart, $lte: yearEnd } } },
-        { $group: { _id: { $month: "$paidDate" }, total: { $sum: "$paidAmount" } } },
-      ]),
-      FeePayment.aggregate([
-        { $match: { school: schoolId, status: { $ne: "paid" }, dueDate: { $gte: yearStart, $lte: yearEnd } } },
-        { $group: { _id: { $month: "$dueDate" }, total: { $sum: { $subtract: ["$amount", "$paidAmount"] } } } },
-      ]),
-      FeePayment.find({ school: schoolId }).select("status amount paidAmount lateFee"),
-      FeePayment.aggregate([
-        { $match: { school: schoolId, status: "paid" } },
-        { $lookup: { from: "students", localField: "student", foreignField: "_id", as: "s" } },
-        { $unwind: "$s" },
-        { $group: { _id: "$s.class", collected: { $sum: "$paidAmount" } } },
-        { $sort: { _id: 1 } },
-      ]),
-    ]);
+    const allPayments = await FeePayment.find({ school: auth.schoolId })
+      .select("status amount paidAmount lateFee paidDate dueDate month feeStructure student")
+      .populate("feeStructure", "dueDate")
+      .populate("student", "class")
+      .lean<LeanPayment[]>();
 
-    const collectedByMonth = new Map(monthlyCollected.map((m) => [m._id, m.total]));
-    const pendingByMonth = new Map(monthlyPending.map((m) => [m._id, m.total]));
+    const collectedByMonth = new Map<number, number>();
+    const pendingByMonth = new Map<number, number>();
+    const classWiseMap = new Map<string, number>();
+
+    for (const p of allPayments) {
+      if (p.status === "paid") {
+        if (p.paidDate && new Date(p.paidDate).getFullYear() === year) {
+          const m = new Date(p.paidDate).getMonth() + 1;
+          collectedByMonth.set(m, (collectedByMonth.get(m) || 0) + p.paidAmount);
+        }
+        const cls = p.student?.class;
+        if (cls) classWiseMap.set(cls, (classWiseMap.get(cls) || 0) + p.paidAmount);
+      } else if (!isUpcomingRow(p) && p.dueDate && new Date(p.dueDate).getFullYear() === year) {
+        const m = new Date(p.dueDate).getMonth() + 1;
+        pendingByMonth.set(m, (pendingByMonth.get(m) || 0) + (p.amount - p.paidAmount));
+      }
+    }
 
     const data = MONTHS.map((month, i) => ({
       month,
@@ -51,9 +70,13 @@ export async function GET(req: Request) {
     }));
 
     const totalCollected = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + p.paidAmount, 0);
-    const totalPending = allPayments.filter((p) => p.status !== "paid").reduce((s, p) => s + (p.amount - p.paidAmount), 0);
+    const totalPending = allPayments
+      .filter((p) => p.status !== "paid" && !isUpcomingRow(p))
+      .reduce((s, p) => s + (p.amount - p.paidAmount), 0);
     const totalLateFees = allPayments.filter((p) => p.status === "paid").reduce((s, p) => s + (p.lateFee || 0), 0);
-    const classWise = classWiseRaw.map((c) => ({ class: String(c._id), collected: Math.round(c.collected) }));
+    const classWise = [...classWiseMap.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([cls, collected]) => ({ class: cls, collected: Math.round(collected) }));
 
     return NextResponse.json({
       success: true,
