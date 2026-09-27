@@ -30,9 +30,16 @@ const timetableEntrySchema = new Schema<ITimetableEntry>(
 
 // One entry per class + day + period.
 timetableEntrySchema.index({ school: 1, classId: 1, day: 1, periodNumber: 1 }, { unique: true });
-// A teacher can't be in two classes during the same period — matches
-// SMS-BACKEND's own unique+sparse index (sparse so null teacherId is fine).
-timetableEntrySchema.index({ school: 1, teacherId: 1, day: 1, periodNumber: 1 }, { unique: true, sparse: true });
+// A teacher can't be in two classes during the same period. teacherId
+// defaults to (and is stored as) null rather than being omitted, so a plain
+// `sparse` index -- which only skips documents missing the field entirely,
+// not ones explicitly set to null -- would still collide across every
+// no-teacher entry in the school for the same day+period. A partial index
+// scoped to actual ObjectId values sidesteps that.
+timetableEntrySchema.index(
+  { school: 1, teacherId: 1, day: 1, periodNumber: 1 },
+  { unique: true, partialFilterExpression: { teacherId: { $type: "objectId" } } },
+);
 
 export const TimetableEntry: Model<ITimetableEntry> =
   mongoose.models.TimetableEntry || mongoose.model<ITimetableEntry>("TimetableEntry", timetableEntrySchema);
