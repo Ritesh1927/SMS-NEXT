@@ -10,11 +10,9 @@ import { Student } from "@/models/Student";
 // student login (confirmed not to exist here) or are a separate,
 // admin-authored-badges subsystem this app doesn't have yet — the
 // points/badges this leaderboard ranks are already being earned through
-// exams, fee payments and homework (see those routes' `points` increments
-// for the exact rule per action), with nowhere to see them until now.
-// `streakDays` is carried over from the Student schema but nothing in this
-// app currently increments it, so it will read 0 for every student until an
-// attendance-streak job is added — don't read it as a working feature yet.
+// exams, fee payments, homework and attendance streaks (see those routes'
+// `points` increments, and attendance/route.ts + lib/attendanceStreak.ts
+// for the streak-milestone rule), with nowhere to see them until now.
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || !["schooladmin", "teacher", "parent"].includes(auth.role)) {

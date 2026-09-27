@@ -8,6 +8,7 @@ import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
 import "@/models/Parent";
 import { sendAbsentAlertMail } from "@/lib/mail";
+import { computeStreak, pointsForStreakCrossing } from "@/lib/attendanceStreak";
 
 // POST /api/attendance — bulk-mark a class's roster for one date.
 // Body: { classId, date, attendance: [{ studentId, status }] }
@@ -71,6 +72,28 @@ export async function POST(req: Request) {
       }),
     ) as unknown as mongoose.AnyBulkWriteOperation<IAttendanceRecord>[];
     await AttendanceRecord.bulkWrite(ops);
+
+    // Recompute each marked student's consecutive-attendance streak from
+    // their full record history (not just incremented by 1) so that editing
+    // or backfilling a past date still yields the correct current streak,
+    // and pay out any streak-milestone bonus points just crossed.
+    const studentIds = [...new Set(attendance.map((r: { studentId: string }) => r.studentId))] as string[];
+    const streakStudents = await Student.find({ _id: { $in: studentIds } }).select("streakDays");
+    const oldStreakMap = new Map(streakStudents.map((s) => [String(s._id), s.streakDays || 0]));
+
+    await Promise.all(
+      studentIds.map(async (sid) => {
+        const records = await AttendanceRecord.find({ school: auth.schoolId, studentId: sid })
+          .select("status")
+          .sort({ date: -1 })
+          .lean();
+        const newStreak = computeStreak(records);
+        const bonus = pointsForStreakCrossing(oldStreakMap.get(sid) || 0, newStreak);
+        const update: Record<string, unknown> = { $set: { streakDays: newStreak } };
+        if (bonus > 0) update.$inc = { points: bonus };
+        await Student.findByIdAndUpdate(sid, update);
+      }),
+    );
 
     const absentIds = attendance.filter((r: { status: string }) => r.status === "absent").map((r: { studentId: string }) => r.studentId);
     if (absentIds.length > 0) {

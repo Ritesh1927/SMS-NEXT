@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Trophy, Flame, Medal, Users, Star, Zap, BookOpen, GraduationCap, IndianRupee, Award } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
+import { STREAK_MILESTONES } from "@/lib/attendanceStreak";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/PageLoader";
 import { EmptyState } from "@/components/EmptyState";
@@ -41,14 +42,21 @@ const RANK_BADGE: Record<number, { color: string; colorDark: string }> = {
 };
 
 // Mirrors exactly what each route awards — see homework/[id]/submit,
-// exams/[id]/marks and fees/pay-multi (+ payments routes) for the source of
-// truth. Keep in sync if those change.
+// exams/[id]/marks, fees/pay-multi (+ payments routes) and attendance/route
+// (streak milestones, via lib/attendanceStreak) for the source of truth.
+// Keep in sync if those change.
 const POINT_RULES: { icon: typeof BookOpen; color: string; title: string; detail: string }[] = [
   { icon: BookOpen, color: "#6366F1", title: "Homework submitted on time", detail: "+3 points" },
   { icon: BookOpen, color: "#94A3B8", title: "Homework submitted late", detail: "+1 point" },
   { icon: GraduationCap, color: "#EAB308", title: "Exam score of 90% or above", detail: "+20 points + \"Top Scorer\" badge" },
   { icon: GraduationCap, color: "#8B5CF6", title: "Exam score of 75–89%", detail: "+10 points" },
   { icon: IndianRupee, color: "#16A34A", title: "Fee payment recorded as paid", detail: "+5 points" },
+  ...STREAK_MILESTONES.map((m) => ({
+    icon: Flame,
+    color: "#F97316",
+    title: `${m.threshold}-day attendance streak`,
+    detail: `+${m.points} points`,
+  })),
 ];
 
 export default function LeaderboardPage() {
@@ -71,7 +79,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Trophy} title="Leaderboard" subtitle="Top students ranked by points earned from exams, fee payments and homework." accent="fuchsia" />
+      <PageHeader icon={Trophy} title="Leaderboard" subtitle="Top students ranked by points earned from attendance streaks, exams, fee payments and homework." accent="fuchsia" />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
