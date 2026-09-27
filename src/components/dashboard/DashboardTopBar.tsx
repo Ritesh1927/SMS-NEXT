@@ -390,7 +390,7 @@ export function DashboardTopBar({
                   Settings
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={onLogout} className="gap-2 rounded-lg text-red-600 focus:text-red-600">
+              <DropdownMenuItem onClick={onLogout} variant="destructive" className="gap-2 rounded-lg">
                 <LogOut className="h-4 w-4" />
                 Log out
               </DropdownMenuItem>
