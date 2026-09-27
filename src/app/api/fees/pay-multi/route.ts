@@ -7,7 +7,7 @@ import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
 import { Parent } from "@/models/Parent";
-import { calcProjectedLateFee, concessionAppliesToMonth } from "@/lib/feeEngine";
+import { calcProjectedLateFee, concessionAppliesToMonth, dueDateForMonth, isMonthUpcoming } from "@/lib/feeEngine";
 
 interface PayMultiItem {
   feeStructureId: string;
@@ -84,6 +84,12 @@ export async function POST(req: Request) {
       for (const month of months) {
         if (earliestPayableMonth && month !== "one-time" && month < earliestPayableMonth) continue;
 
+        // A month isn't payable until its own fee period has started --
+        // mirrors the same rule student-status uses to mark it "upcoming"
+        // rather than "pending", so it can't be paid ahead of schedule even
+        // via a direct API call.
+        if (month !== "one-time" && isMonthUpcoming(fs.dueDate, month)) continue;
+
         const existingPaid = await FeePayment.findOne({
           school: auth.schoolId,
           student: studentId,
@@ -114,9 +120,10 @@ export async function POST(req: Request) {
           });
         }
 
+        const monthDueDate = dueDateForMonth(fs.dueDate, month);
         const baseAmount = fs.amount;
         let lateFeeAmount = 0;
-        if (fs.dueDate) lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, fs.dueDate);
+        if (monthDueDate) lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, monthDueDate);
 
         let concessionAmount = 0;
         const applicableConcession = concessions.find(
@@ -157,7 +164,7 @@ export async function POST(req: Request) {
             lateFee: lateFeeAmount,
             paidAmount: isOnlinePayment ? 0 : totalAmount,
             concession: concessionAmount,
-            dueDate: fs.dueDate,
+            dueDate: monthDueDate,
             paidDate: isOnlinePayment ? null : new Date(),
             status: isOnlinePayment ? "pending" : "paid",
             paymentMode: paymentMode || "cash",

@@ -23,6 +23,7 @@ type PaymentMode = "cash" | "online" | "cheque" | "dd";
 interface FeeHeadMonth {
   month: string;
   paid: boolean;
+  upcoming: boolean;
   amount: number;
   paidAmount: number;
   lateFee: number;
@@ -218,6 +219,9 @@ export default function CollectFeeTab() {
       const current = prev[feeHeadId] || {};
       const fh = feeHeads.find((f) => f._id === feeHeadId);
       if (!fh) return prev;
+      // Not payable until its own fee period starts -- mirrors the same
+      // isMonthUpcoming rule the backend enforces.
+      if (fh.months.find((m) => m.month === month)?.upcoming) return prev;
       const sorted = [...fh.months].sort((a, b) => a.month.localeCompare(b.month));
       const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
       if (firstUnpaidIdx < 0) return prev;
@@ -248,10 +252,10 @@ export default function CollectFeeTab() {
     const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
     if (firstUnpaidIdx < 0) return;
     const current = selectedMonths[feeHeadId] || {};
-    const allSelected = sorted.slice(firstUnpaidIdx).every((m) => m.paid || current[m.month]);
+    const allSelected = sorted.slice(firstUnpaidIdx).every((m) => m.paid || m.upcoming || current[m.month]);
     const newSelection: Record<string, boolean> = {};
     if (!allSelected) {
-      sorted.slice(firstUnpaidIdx).forEach((m) => { if (!m.paid) newSelection[m.month] = true; });
+      sorted.slice(firstUnpaidIdx).forEach((m) => { if (!m.paid && !m.upcoming) newSelection[m.month] = true; });
     }
     setSelectedMonths((prev) => ({ ...prev, [feeHeadId]: newSelection }));
   };
@@ -444,7 +448,8 @@ export default function CollectFeeTab() {
 
             {!loading && feeHeads.map((fh) => {
               const paidMonths = fh.months.filter((m) => m.paid).map((m) => m.month);
-              const unpaidMonths = fh.months.filter((m) => !m.paid);
+              const pendingMonths = fh.months.filter((m) => !m.paid && !m.upcoming);
+              const upcomingMonths = fh.months.filter((m) => !m.paid && m.upcoming);
               const sorted = [...fh.months].sort((a, b) => a.month.localeCompare(b.month));
               const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
               const isLocked = (month: string) => {
@@ -497,32 +502,46 @@ export default function CollectFeeTab() {
                     })() : (
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm text-muted-foreground">{paidMonths.length} paid · {unpaidMonths.length} pending</p>
+                          <p className="text-sm text-muted-foreground">
+                            {paidMonths.length} paid · {pendingMonths.length} pending
+                            {upcomingMonths.length > 0 && ` · ${upcomingMonths.length} upcoming`}
+                          </p>
                           <Button variant="ghost" size="sm" onClick={() => toggleAllMonths(fh._id)}>
-                            {unpaidMonths.every((m) => selectedMonths[fh._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
+                            {pendingMonths.length > 0 && pendingMonths.every((m) => selectedMonths[fh._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
                           </Button>
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                           {sorted.map((m) => {
-                            const locked = !m.paid && isLocked(m.month);
+                            const locked = !m.paid && !m.upcoming && isLocked(m.month);
                             return (
                               <button
                                 key={m.month}
                                 type="button"
-                                onClick={() => !m.paid && !locked && toggleMonth(fh._id, m.month)}
-                                disabled={m.paid || locked}
+                                onClick={() => !m.paid && !m.upcoming && !locked && toggleMonth(fh._id, m.month)}
+                                disabled={m.paid || m.upcoming || locked}
+                                title={m.upcoming ? "Not payable yet -- this fee period hasn't started." : undefined}
                                 className={`p-2 rounded-lg border text-center text-xs transition-all ${
                                   m.paid
                                     ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed"
-                                    : locked
-                                      ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                                      : selectedMonths[fh._id]?.[m.month]
-                                        ? "bg-primary/10 border-primary text-primary font-semibold"
-                                        : "border-border hover:border-primary/50 text-muted-foreground"
+                                    : m.upcoming
+                                      ? "bg-blue-50/50 border-blue-100 text-blue-400 cursor-not-allowed"
+                                      : locked
+                                        ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                                        : selectedMonths[fh._id]?.[m.month]
+                                          ? "bg-primary/10 border-primary text-primary font-semibold"
+                                          : "border-border hover:border-primary/50 text-muted-foreground"
                                 }`}
                               >
                                 <p className="font-medium">{getMonthLabel(m.month)}</p>
-                                {m.paid ? <Check className="h-3 w-3 mx-auto mt-1 text-green-600" /> : locked ? <p className="mt-0.5 text-[10px]">🔒 Pay prev</p> : <p className="mt-0.5">₹{m.amount}</p>}
+                                {m.paid ? (
+                                  <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
+                                ) : m.upcoming ? (
+                                  <p className="mt-0.5 text-[10px]">Upcoming</p>
+                                ) : locked ? (
+                                  <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
+                                ) : (
+                                  <p className="mt-0.5">₹{m.amount}</p>
+                                )}
                               </button>
                             );
                           })}

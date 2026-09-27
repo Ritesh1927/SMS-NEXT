@@ -3,15 +3,31 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
 import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
-import { FeeStructure } from "@/models/FeeStructure";
+import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { Student } from "@/models/Student";
+import { isMonthUpcoming, dueDateForMonth } from "@/lib/feeEngine";
 import "@/models/Teacher";
 
 function populate(q: ReturnType<typeof FeePayment.find>) {
   return q
     .populate("student", "name studentId class section rollNumber")
-    .populate("feeStructure", "title class amount frequency")
+    .populate("feeStructure", "title class amount frequency dueDate")
     .populate("collectedBy", "name teacherId");
+}
+
+// A per-month FeePayment row (created by pay-multi, e.g. when an admin
+// selects several months at once for an online payment that only some of
+// them were ever confirmed for) carries whatever status it had at creation
+// time -- nothing revisits it as time passes. So a row for a month that
+// hasn't started yet can still read "pending" indefinitely. Reclassify
+// against the month it's actually for (not the raw stored status) so it
+// only ever counts as "pending" once that month has arrived; before that
+// it's "upcoming", regardless of what's stored in the database.
+function isUpcomingRow(f: { status: string; month?: string | null; feeStructure?: unknown }): boolean {
+  if (f.status === "paid" || !f.month) return false;
+  const structure = f.feeStructure as (IFeeStructure & { dueDate?: Date | string | null }) | null;
+  if (!structure) return false;
+  return isMonthUpcoming(structure.dueDate, f.month);
 }
 
 export async function GET(req: Request) {
@@ -28,10 +44,14 @@ export async function GET(req: Request) {
     const studentId = searchParams.get("studentId");
 
     const query: Record<string, unknown> = { school: auth.schoolId };
-    if (status) query.status = status;
+    if (status === "upcoming") query.status = { $ne: "paid" };
+    else if (status) query.status = status;
     if (studentId) query.student = studentId;
 
-    const fees = await populate(FeePayment.find(query).sort({ createdAt: -1 }));
+    let fees = await populate(FeePayment.find(query).sort({ createdAt: -1 }));
+    if (status === "upcoming") fees = fees.filter((f) => isUpcomingRow(f));
+    else if (status === "pending" || status === "overdue") fees = fees.filter((f) => !isUpcomingRow(f));
+
     type PopulatedStudent = { class?: string };
     const filtered = cls
       ? fees.filter((f) => (f.student as unknown as PopulatedStudent)?.class === cls)
@@ -42,7 +62,19 @@ export async function GET(req: Request) {
       .filter((f) => f.status !== "paid")
       .reduce((s, f) => s + (f.amount - f.paidAmount), 0);
 
-    return NextResponse.json({ success: true, data: filtered, summary: { totalCollected, totalPending } });
+    // The stored dueDate on an unpaid per-month row can be stale (it's a
+    // one-time snapshot copied at creation, and pay-multi used to copy the
+    // structure's raw date verbatim for every month before that was fixed)
+    // -- show the recomputed one for the month it's actually for instead.
+    const data = filtered.map((f) => {
+      const structure = f.feeStructure as unknown as (IFeeStructure & { dueDate?: Date | string | null }) | null;
+      if (f.status === "paid" || !f.month || !structure) return f;
+      const correctedDueDate = dueDateForMonth(structure.dueDate, f.month);
+      if (!correctedDueDate) return f;
+      return { ...f.toObject(), dueDate: correctedDueDate };
+    });
+
+    return NextResponse.json({ success: true, data, summary: { totalCollected, totalPending } });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load fee payments." },

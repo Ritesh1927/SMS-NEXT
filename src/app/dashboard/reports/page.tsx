@@ -97,6 +97,8 @@ export default function ReportsPage() {
 
   const [pendingFees, setPendingFees] = useState<PendingFee[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
+  const [upcomingFees, setUpcomingFees] = useState<PendingFee[]>([]);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -162,6 +164,13 @@ export default function ReportsPage() {
       .then((res) => setPendingFees(res.data))
       .catch(() => {})
       .finally(() => setLoadingPending(false));
+    // Future-month fees (a period that hasn't started yet) are excluded
+    // from "pending" and shown here instead -- they aren't due, so they
+    // shouldn't read as owed money yet.
+    apiGet<{ success: boolean; data: PendingFee[] }>("/fees/payments?status=upcoming", token)
+      .then((res) => setUpcomingFees(res.data))
+      .catch(() => {})
+      .finally(() => setLoadingUpcoming(false));
   }, [tab]);
 
   if (user && user.role !== "schooladmin" && user.role !== "teacher") {
@@ -628,6 +637,69 @@ export default function ReportsPage() {
                     </tbody>
                   </table>
                   {pendingFees.length > 25 && <p className="text-xs text-center text-muted-foreground py-3 border-t border-border">Showing 25 of {pendingFees.length} records. Export CSV for the full list.</p>}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Upcoming Fee Records {upcomingFees.length > 0 && `(${upcomingFees.length})`}</CardTitle>
+                {upcomingFees.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() =>
+                      downloadCSV(
+                        ["Student", "Class", "Fee Title", "Amount", "Paid", "Balance", "Due Date", "Status"],
+                        upcomingFees.map((f) => [f.student?.name || "—", f.student?.class || "—", f.title, f.amount, f.paidAmount, f.amount - f.paidAmount, f.dueDate?.slice(0, 10) || "—", f.status]),
+                        "upcoming-fees.csv",
+                      )
+                    }
+                  >
+                    <Download className="h-3 w-3" /> Export
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Not yet due -- these fee periods haven&apos;t started yet.</p>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingUpcoming ? (
+                <PageLoader label="Loading upcoming fees..." />
+              ) : upcomingFees.length === 0 ? (
+                <EmptyStateCompact message="No upcoming fees." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        {["Student", "Class", "Fee Title", "Total", "Paid", "Balance", "Due Date", "Status"].map((h) => (
+                          <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {upcomingFees.slice(0, 25).map((f, i) => (
+                        <tr key={i} className="hover:bg-muted/50">
+                          <td className="px-4 py-2.5 font-medium text-foreground">{f.student?.name || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.student?.class || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.title}</td>
+                          <td className="px-4 py-2.5 text-foreground">₹{f.amount?.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-green-700">₹{f.paidAmount?.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-red-600 font-medium">₹{(f.amount - f.paidAmount)?.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{f.dueDate?.slice(0, 10) || "—"}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={`${statusPillClass("info")} capitalize`}>Upcoming</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {upcomingFees.length > 25 && <p className="text-xs text-center text-muted-foreground py-3 border-t border-border">Showing 25 of {upcomingFees.length} records. Export CSV for the full list.</p>}
                 </div>
               )}
             </CardContent>

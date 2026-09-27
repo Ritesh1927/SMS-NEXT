@@ -12,6 +12,8 @@ import {
   concessionAppliesToMonth,
   generateSessionMonths,
   filterMonthsByAdmission,
+  dueDateForMonth,
+  isMonthUpcoming,
 } from "@/lib/feeEngine";
 
 // GET /api/fees/student-status/[studentId] — per-fee-head, per-month status
@@ -66,6 +68,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     type MonthStatus = {
       month: string;
       paid: boolean;
+      upcoming: boolean;
+      dueDate: Date | null;
       amount: number;
       paidAmount: number;
       lateFee: number;
@@ -76,13 +80,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       paymentMode: string | null;
     };
 
+    // A recurring month isn't payable/pending until its own fee period
+    // starts (isMonthUpcoming); the structure only stores one sample
+    // dueDate (a day-of-month convention), so each occurrence's real due
+    // date is that day carried into its own month (dueDateForMonth), never
+    // the raw stored date reused as-is.
     const buildStatus = (fs: IFeeStructure, month: string, concessionAmount: number): MonthStatus => {
       const key = `${String(fs._id)}|${month}`;
       const paid = paidMap.get(key) || null;
-      const projectedLateFee = paid ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, fs.dueDate);
+      const dueDate = dueDateForMonth(fs.dueDate, month);
+      // One-time fees (e.g. admission) stay payable whenever set, regardless
+      // of how far off their due date is -- only genuinely recurring
+      // (monthly/yearly) periods get locked to their own fee period.
+      const upcoming = !paid && month !== "one-time" && isMonthUpcoming(fs.dueDate, month, now);
+      const projectedLateFee = paid || upcoming ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, dueDate);
       return {
         month,
         paid: !!paid,
+        upcoming,
+        dueDate,
         amount: paid ? paid.amount : fs.amount + projectedLateFee,
         paidAmount: paid ? paid.paidAmount : 0,
         lateFee: paid ? paid.lateFee : projectedLateFee,

@@ -75,6 +75,37 @@ export function generateSessionMonths(sessionStartMonth: string, year: number): 
   return months;
 }
 
+// Resolves the actual due date for one occurrence of a recurring fee. A
+// FeeStructure stores a single dueDate as a day-of-month convention (e.g.
+// "pay by the 15th"), so each month's real due date is that day carried
+// into the target month -- not the structure's literal stored date, which
+// is just one sample instance (and, for "one-time" fees, its own due date
+// as-is). Used everywhere a month is checked against "has this become due
+// yet" so a future month never inherits an already-passed sample date.
+export function dueDateForMonth(structureDueDate: Date | string | null | undefined, month: string): Date | null {
+  if (!structureDueDate) return null;
+  const base = new Date(structureDueDate);
+  if (month === "one-time") return base;
+  const [year, mo] = month.split("-").map(Number);
+  if (!year || !mo) return base;
+  const daysInMonth = new Date(year, mo, 0).getDate();
+  return new Date(year, mo - 1, Math.min(base.getDate(), daysInMonth));
+}
+
+// True once this occurrence's own month has started relative to `now` --
+// the fee *period* gates payability (a fee becomes payable as soon as its
+// month begins), not the exact day-of-month due date, which only marks
+// when it turns late. So September's fee is payable all through
+// September; October's isn't payable (or shown as due) until October
+// itself arrives, however far off its 10th/15th falls.
+export function isMonthUpcoming(structureDueDate: Date | string | null | undefined, month: string, now: Date = new Date()): boolean {
+  const due = dueDateForMonth(structureDueDate, month);
+  if (!due) return false;
+  const dueMonthKey = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, "0")}`;
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return dueMonthKey > currentMonthKey;
+}
+
 // Drops session months that fall before the student's admission date.
 export function filterMonthsByAdmission(months: string[], admissionDate: Date | string | null | undefined): string[] {
   if (!admissionDate) return months;
