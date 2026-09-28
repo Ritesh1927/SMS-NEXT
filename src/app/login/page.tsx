@@ -16,21 +16,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { apiPost } from "@/lib/api";
 import loginImage from "@/assets/login-img.png";
 
-interface SignupFormData {
-  schoolName: string;
-  schoolAddress: string;
-  schoolPhone: string;
-  name: string;
-  email: string;
-  password: string;
-  phone: string;
-}
-
-const EMPTY_SIGNUP: SignupFormData = {
-  schoolName: "", schoolAddress: "", schoolPhone: "",
-  name: "", email: "", password: "", phone: "",
-};
-
 const FEATURES = [
   { icon: ShieldCheck, title: "Secure & Reliable", desc: "Your data is safe with us" },
   { icon: Zap, title: "Smart Management", desc: "Simplify and automate school operations" },
@@ -46,14 +31,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  const [signupOpen, setSignupOpen] = useState(false);
-  const [signupStep, setSignupStep] = useState<1 | 2>(1);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [signupLoading, setSignupLoading] = useState(false);
-  const [signupEmail, setSignupEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [signupForm, setSignupForm] = useState<SignupFormData>(EMPTY_SIGNUP);
 
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
@@ -102,38 +79,6 @@ export default function LoginPage() {
       router.push("/dashboard");
     } else {
       toast.error("Login Failed", { description: res.error || "Login failed." });
-    }
-  };
-
-  const handleSignupSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSignupLoading(true);
-    try {
-      await apiPost("/auth/signup", signupForm);
-      setSignupEmail(signupForm.email);
-      setSignupStep(2);
-      toast.success("Check your email", { description: "An OTP has been sent to your email." });
-    } catch (err) {
-      toast.error("Signup Failed", { description: err instanceof Error ? err.message : "Please try again." });
-    } finally {
-      setSignupLoading(false);
-    }
-  };
-
-  const handleOtpVerify = async (e: FormEvent) => {
-    e.preventDefault();
-    setSignupLoading(true);
-    try {
-      await apiPost("/auth/verify-signup-otp", { email: signupEmail, otp });
-      toast.success("School Registered!", { description: "You can now login with your credentials." });
-      setSignupOpen(false);
-      setSignupStep(1);
-      setOtp("");
-      setSignupForm(EMPTY_SIGNUP);
-    } catch (err) {
-      toast.error("Invalid OTP", { description: err instanceof Error ? err.message : "Please check and try again." });
-    } finally {
-      setSignupLoading(false);
     }
   };
 
@@ -276,14 +221,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setSignupOpen(true)}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200"
-              >
-                Register school
-              </button>
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => {
@@ -567,132 +505,6 @@ export default function LoginPage() {
                 className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back
-              </button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ═══ Signup Dialog ═══ */}
-      <Dialog
-        open={signupOpen}
-        onOpenChange={(open) => {
-          setSignupOpen(open);
-          if (!open) {
-            setSignupStep(1);
-            setOtp("");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg text-foreground">
-              {signupStep === 1 ? "Register Your School" : "Verify Email"}
-            </DialogTitle>
-          </DialogHeader>
-
-          {signupStep === 1 ? (
-            <form onSubmit={handleSignupSubmit} className="mt-2">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">School Information</p>
-                  {(
-                    [
-                      { label: "School Name", placeholder: "e.g. Lincoln Academy", key: "schoolName" },
-                      { label: "School Address", placeholder: "Full address", key: "schoolAddress" },
-                      { label: "School Phone", placeholder: "+91 98765 43210", key: "schoolPhone" },
-                    ] as const
-                  ).map((f) => (
-                    <div key={f.key} className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">{f.label}</label>
-                      <Input
-                        placeholder={f.placeholder}
-                        value={signupForm[f.key]}
-                        onChange={(e) => setSignupForm((fr) => ({ ...fr, [f.key]: e.target.value }))}
-                        required
-                        maxLength={100}
-                        className="rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin Account</p>
-                  {(
-                    [
-                      { label: "Your Name", placeholder: "Full name", key: "name" as const },
-                      { label: "Email", placeholder: "admin@school.com", key: "email" as const, type: "email" },
-                      { label: "Password", placeholder: "Min. 6 characters", key: "password" as const, type: "password", min: 6 },
-                      { label: "Phone", placeholder: "+91 98765 43210", key: "phone" as const },
-                    ]
-                  ).map((f) => (
-                    <div key={f.key} className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">{f.label}</label>
-                      <div className="relative">
-                        <Input
-                          type={f.key === "password" ? (showSignupPassword ? "text" : "password") : f.type || "text"}
-                          placeholder={f.placeholder}
-                          value={signupForm[f.key]}
-                          onChange={(e) => setSignupForm((fr) => ({ ...fr, [f.key]: e.target.value }))}
-                          required
-                          maxLength={f.key === "password" ? 100 : 255}
-                          minLength={f.min}
-                          className={`rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary ${f.key === "password" ? "pr-10" : ""}`}
-                        />
-                        {f.key === "password" && (
-                          <button
-                            type="button"
-                            onClick={() => setShowSignupPassword((v) => !v)}
-                            aria-label={showSignupPassword ? "Hide password" : "Show password"}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-sm"
-                          >
-                            {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 border-0 text-white mt-5 transition-all duration-300"
-                disabled={signupLoading}
-              >
-                {signupLoading ? "Registering..." : "Register School"}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleOtpVerify} className="space-y-4 mt-2">
-              <p className="text-sm text-muted-foreground">
-                We sent a verification code to <span className="font-medium text-foreground">{signupEmail}</span>.
-              </p>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">OTP Code</label>
-                <Input
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  required
-                  maxLength={6}
-                  className="text-center text-xl tracking-[0.3em] h-12 rounded-xl font-mono focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 border-0 text-white transition-all duration-300"
-                disabled={signupLoading}
-              >
-                {signupLoading ? "Verifying..." : "Verify & Activate"}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setSignupStep(1)}
-                className="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 transition-colors"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back to registration
               </button>
             </form>
           )}
