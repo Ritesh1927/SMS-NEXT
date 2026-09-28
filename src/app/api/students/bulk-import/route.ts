@@ -9,6 +9,7 @@ import { sendCredentialsMail } from "@/lib/mail";
 import { parseWorkbookRows } from "@/lib/excelImport";
 import { STUDENT_KEYS } from "@/lib/bulkImportFields";
 import { resequenceRollNumbers } from "@/lib/rollNumber";
+import { getUserLimitStatus } from "@/lib/userLimit";
 
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -67,11 +68,15 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    const [existingClasses, existingParents, studentCount] = await Promise.all([
+    const [existingClasses, existingParents, studentCount, limit] = await Promise.all([
       Class.find({ school: auth.schoolId }).select("name section"),
       Parent.find({ school: auth.schoolId }).select("email students"),
       Student.countDocuments({ school: auth.schoolId }),
+      getUserLimitStatus(auth.schoolId),
     ]);
+    // Decremented as rows are created below, so the cap is enforced across
+    // the whole batch (not just checked once against the pre-import count).
+    let seatsLeft = limit.capped ? limit.remaining : Infinity;
 
     const classesByName = new Map<string, string[]>();
     const classKeySet = new Set<string>();
@@ -156,6 +161,11 @@ export async function POST(req: Request) {
       const address = (row[STUDENT_KEYS.address] || "").trim();
       const bloodGroup = (row[STUDENT_KEYS.bloodGroup] || "").trim();
 
+      if (seatsLeft < 1) {
+        fail(`User limit reached (${limit.used}/${limit.total} used) — ask the platform admin to increase this school's user limit.`);
+        continue;
+      }
+
       // Everything validated — this row is going in.
       admissionSeq += 1;
       const admissionNo = `ADM-${year}-${String(admissionSeq).padStart(4, "0")}`;
@@ -207,6 +217,7 @@ export async function POST(req: Request) {
         await student.save();
 
         touchedClassSections.set(`${studentClass}::${section}`, { studentClass, section });
+        seatsLeft -= 1;
         results.push({ row: excelRow, name, status: "created", studentId: student.studentId });
       } catch (err) {
         results.push({ row: excelRow, name, status: "failed", message: err instanceof Error ? err.message : "Failed to create student." });

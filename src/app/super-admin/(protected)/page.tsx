@@ -49,6 +49,20 @@ async function parseJson(res: Response) {
   return json;
 }
 
+// Strips non-digits and any leading zeros (keeping a lone "0") so typing
+// into a field that starts at 0 replaces it instead of prefixing "0" onto
+// whatever gets typed next.
+function parseCountInput(raw: string): number {
+  const digitsOnly = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  return digitsOnly === "" ? 0 : Number(digitsOnly);
+}
+
+// A count field bound to a number that defaults to 0 should show blank
+// while at 0, not a literal "0" the user has to delete before typing.
+function countInputValue(n: number): string {
+  return n === 0 ? "" : String(n);
+}
+
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
 
@@ -610,7 +624,15 @@ export default function SuperAdminDashboardPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold text-gray-500">Extra Users (beyond {selectedPlan?.includedUsers || 0} free)</Label>
-                    <Input type="number" min={0} value={createForm.extraUsers} onChange={(e) => setCreateForm((f) => ({ ...f, extraUsers: Number(e.target.value) }))} className="rounded-xl" />
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="0"
+                      value={countInputValue(createForm.extraUsers)}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, extraUsers: parseCountInput(e.target.value) }))}
+                      className="rounded-xl"
+                    />
                   </div>
                   <div className="space-y-1 flex items-end">
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 w-full">
@@ -727,7 +749,15 @@ export default function SuperAdminDashboardPage() {
                 <Label className="text-xs font-semibold text-gray-500">
                   Extra Users (currently {renewSchool.license?.extraUsers || 0})
                 </Label>
-                <Input type="number" min={0} value={renewForm.extraUsers} onChange={(e) => setRenewForm((f) => ({ ...f, extraUsers: Number(e.target.value) }))} className="rounded-xl" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  value={countInputValue(renewForm.extraUsers)}
+                  onChange={(e) => setRenewForm((f) => ({ ...f, extraUsers: parseCountInput(e.target.value) }))}
+                  className="rounded-xl"
+                />
               </div>
 
               <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-sm space-y-1">

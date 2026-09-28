@@ -6,6 +6,7 @@ import { generatePassword, hashPassword } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
 import { parseWorkbookRows } from "@/lib/excelImport";
 import { TEACHER_KEYS } from "@/lib/bulkImportFields";
+import { getUserLimitStatus } from "@/lib/userLimit";
 
 const MAX_ROWS = 500;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -64,8 +65,14 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    const existingTeachers = await Teacher.find({ school: auth.schoolId }).select("email");
+    const [existingTeachers, limit] = await Promise.all([
+      Teacher.find({ school: auth.schoolId }).select("email"),
+      getUserLimitStatus(auth.schoolId),
+    ]);
     const usedEmails = new Set(existingTeachers.map((t) => t.email.toLowerCase()));
+    // Decremented as rows are created below, so the cap is enforced across
+    // the whole batch (not just checked once against the pre-import count).
+    let seatsLeft = limit.capped ? limit.remaining : Infinity;
 
     const results: RowResult[] = [];
 
@@ -137,6 +144,11 @@ export async function POST(req: Request) {
       const address = (row[TEACHER_KEYS.address] || "").trim();
       const bloodGroup = (row[TEACHER_KEYS.bloodGroup] || "").trim();
 
+      if (seatsLeft < 1) {
+        fail(`User limit reached (${limit.used}/${limit.total} used) — ask the platform admin to increase this school's user limit.`);
+        continue;
+      }
+
       // Reserve the email immediately so a later duplicate row in the same
       // file is caught too, not just duplicates against the existing DB.
       usedEmails.add(email);
@@ -172,6 +184,7 @@ export async function POST(req: Request) {
           console.log("Bulk import teacher mail error:", e instanceof Error ? e.message : e);
         }
 
+        seatsLeft -= 1;
         results.push({ row: excelRow, name, status: "created", teacherId: teacher.teacherId });
       } catch (err) {
         results.push({ row: excelRow, name, status: "failed", message: err instanceof Error ? err.message : "Failed to create staff member." });

@@ -5,6 +5,7 @@ import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
+import { getUserLimitStatus, userLimitMessage } from "@/lib/userLimit";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -63,6 +64,12 @@ export async function POST(req: Request) {
     }
 
     await connectDB();
+
+    const limit = await getUserLimitStatus(auth.schoolId);
+    if (limit.capped && limit.remaining < 1) {
+      return NextResponse.json({ success: false, message: userLimitMessage(limit) }, { status: 403 });
+    }
+
     if (await Teacher.findOne({ email, school: auth.schoolId })) {
       return NextResponse.json(
         { success: false, message: "Teacher email already exists in this school." },
