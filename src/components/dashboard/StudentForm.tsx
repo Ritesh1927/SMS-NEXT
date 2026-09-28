@@ -87,6 +87,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   const isEdit = !!studentId;
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [classLoading, setClassLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -139,7 +140,49 @@ export function StudentForm({ studentId }: { studentId?: string }) {
       .finally(() => setLoading(false));
   }, [studentId, isEdit]);
 
-  const update = (key: keyof typeof EMPTY_FORM, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const update = (key: keyof typeof EMPTY_FORM, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    // Clear a field's error the moment the user edits it, rather than
+    // making them resubmit before finding out they've fixed it.
+    setErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+  const errClass = (key: string) => (errors[key] ? "border-destructive focus-visible:ring-destructive/30" : "");
+
+  // Collects every validation failure at once (not just the first) so the
+  // form can point out everything wrong in one pass instead of the user
+  // resubmitting repeatedly to discover errors one at a time.
+  const validate = (): Record<string, string> => {
+    const e: Record<string, string> = {};
+    const phoneRe = /^\d{10}$/;
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!form.name.trim()) e.name = "Student name is required.";
+    if (!form.studentClass) e.studentClass = "Please select a class.";
+    if (!form.dateOfBirth) e.dateOfBirth = "Date of birth is required.";
+    else if (new Date(form.dateOfBirth) > new Date()) e.dateOfBirth = "Date of birth cannot be in the future.";
+    if (form.phone && !phoneRe.test(form.phone)) e.phone = "Must be exactly 10 digits.";
+
+    if (!form.parentEmail.trim()) e.parentEmail = "Parent email is required.";
+    else if (!emailRe.test(form.parentEmail)) e.parentEmail = "Invalid email format.";
+    if (!form.parentName.trim()) e.parentName = "Father's name is required.";
+    if (!form.motherName.trim()) e.motherName = "Mother's name is required.";
+    if (!form.parentPhone) e.parentPhone = "Father's phone is required.";
+    else if (!phoneRe.test(form.parentPhone)) e.parentPhone = "Must be exactly 10 digits.";
+    if (form.motherPhone && !phoneRe.test(form.motherPhone)) e.motherPhone = "Must be exactly 10 digits.";
+
+    if (!form.admissionDate) e.admissionDate = "Admission date is required.";
+    else if (new Date(form.admissionDate) > new Date()) e.admissionDate = "Cannot be a future date.";
+
+    if (form.aadhaarNumber && !/^\d{12}$/.test(form.aadhaarNumber)) e.aadhaarNumber = "Must be exactly 12 digits.";
+    if (form.emergencyPhone && !phoneRe.test(form.emergencyPhone)) e.emergencyPhone = "Must be exactly 10 digits.";
+
+    return e;
+  };
 
   const classSelectValue = form.studentClass ? `${form.studentClass}::${form.section}` : "";
 
@@ -237,23 +280,21 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return toast.error("Student name is required.");
-    if (!form.dateOfBirth) return toast.error("Date of birth is required.");
-    if (!form.studentClass) return toast.error("Please select a class.");
-    if (!form.parentName.trim()) return toast.error("Father's name is required.");
-    if (!form.motherName.trim()) return toast.error("Mother's name is required.");
-    if (!form.parentPhone) return toast.error("Parent phone is required.");
-    if (!form.parentEmail.trim()) return toast.error("Parent email is required.");
-    if (!form.admissionDate) return toast.error("Admission date is required.");
-    if (new Date(form.admissionDate) > new Date()) return toast.error("Admission date cannot be a future date.");
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.parentEmail)) return toast.error("Invalid parent email format.");
-    if (form.phone && !/^\d{10}$/.test(form.phone)) return toast.error("Student phone must be exactly 10 digits.");
-    if (!/^\d{10}$/.test(form.parentPhone)) return toast.error("Parent phone must be exactly 10 digits.");
-    if (new Date(form.dateOfBirth) > new Date()) return toast.error("Date of birth cannot be in the future.");
-    if (form.aadhaarNumber && !/^\d{12}$/.test(form.aadhaarNumber)) return toast.error("Aadhaar must be exactly 12 digits.");
-    if (form.emergencyPhone && !/^\d{10}$/.test(form.emergencyPhone)) return toast.error("Emergency phone must be exactly 10 digits.");
+    const fieldErrors = validate();
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      const order = [
+        "name", "studentClass", "dateOfBirth", "phone", "parentEmail", "parentName", "motherName",
+        "parentPhone", "motherPhone", "admissionDate", "aadhaarNumber", "emergencyPhone",
+      ];
+      const firstKey = order.find((k) => k in fieldErrors);
+      if (firstKey) {
+        document.getElementById(`field-${firstKey}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      const count = Object.keys(fieldErrors).length;
+      toast.error(count === 1 ? "Please fix the highlighted field." : `Please fix the ${count} highlighted fields.`);
+      return;
+    }
 
     const token = getToken();
     if (!token) return;
@@ -345,11 +386,11 @@ export function StudentForm({ studentId }: { studentId?: string }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Full Name" required>
-              <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Student name" maxLength={100} required />
+            <Field label="Full Name" required id="field-name" error={errors.name}>
+              <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Student name" maxLength={100} required className={errClass("name")} />
             </Field>
-            <Field label="Phone">
-              <Input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} />
+            <Field label="Phone" id="field-phone" error={errors.phone}>
+              <Input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} className={errClass("phone")} />
             </Field>
             <Field label="Gender" required>
               <Select value={form.gender} onValueChange={(v) => update("gender", v || form.gender)}>
@@ -361,8 +402,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Date of Birth" required>
-              <Input type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} max={todayISO()} required />
+            <Field label="Date of Birth" required id="field-dateOfBirth" error={errors.dateOfBirth}>
+              <Input type="date" value={form.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} max={todayISO()} required className={errClass("dateOfBirth")} />
             </Field>
             <Field label="Blood Group">
               <Select value={form.bloodGroup} onValueChange={(v) => update("bloodGroup", v || "")}>
@@ -374,7 +415,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Email" required>
+            <Field label="Email" required id="field-parentEmail" error={errors.parentEmail}>
               <div className="relative">
                 <Input
                   value={form.parentEmail}
@@ -384,6 +425,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                   type="email"
                   maxLength={255}
                   required
+                  className={errClass("parentEmail")}
                 />
                 {checkingParentEmail && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground/70" />
@@ -398,10 +440,10 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
         <Section title="Class Details" icon={GraduationCap}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2 space-y-1.5">
+            <div id="field-studentClass" className="sm:col-span-2 space-y-1.5 scroll-mt-24">
               <label className="text-sm font-medium text-foreground">Class <span className="text-red-500">*</span></label>
               <Select value={classSelectValue} onValueChange={handleClassChange} disabled={classLoading}>
-                <SelectTrigger className="w-full"><SelectValue placeholder={classLoading ? "Loading classes..." : "Select class"} /></SelectTrigger>
+                <SelectTrigger className={`w-full ${errClass("studentClass")}`}><SelectValue placeholder={classLoading ? "Loading classes..." : "Select class"} /></SelectTrigger>
                 <SelectContent>
                   {classOptions.length === 0 && !classLoading && <SelectItem value="__none__" disabled>No classes found.</SelectItem>}
                   {classOptions.map((c) => (
@@ -409,6 +451,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.studentClass && <p className="text-xs text-destructive">{errors.studentClass}</p>}
             </div>
             <Field label="Roll Number">
               <Input value={isEdit ? form.rollNumber : ""} placeholder={isEdit ? "" : "Auto-assigned alphabetically on save"} disabled />
@@ -422,20 +465,20 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
         <Section title="Parent / Guardian" icon={Users}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Father Name" required>
-              <Input value={form.parentName} onChange={(e) => update("parentName", e.target.value)} placeholder="Father's name" maxLength={100} required />
+            <Field label="Father Name" required id="field-parentName" error={errors.parentName}>
+              <Input value={form.parentName} onChange={(e) => update("parentName", e.target.value)} placeholder="Father's name" maxLength={100} required className={errClass("parentName")} />
             </Field>
-            <Field label="Father Mobile No" required>
-              <Input value={form.parentPhone} onChange={(e) => update("parentPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Father's phone" inputMode="numeric" maxLength={10} required />
+            <Field label="Father Mobile No" required id="field-parentPhone" error={errors.parentPhone}>
+              <Input value={form.parentPhone} onChange={(e) => update("parentPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Father's phone" inputMode="numeric" maxLength={10} required className={errClass("parentPhone")} />
             </Field>
             <Field label="Father Occupation">
               <Input value={form.fatherOccupation} onChange={(e) => update("fatherOccupation", e.target.value)} placeholder="Father's occupation" maxLength={100} />
             </Field>
-            <Field label="Mother Name" required>
-              <Input value={form.motherName} onChange={(e) => update("motherName", e.target.value)} placeholder="Mother's name" maxLength={100} required />
+            <Field label="Mother Name" required id="field-motherName" error={errors.motherName}>
+              <Input value={form.motherName} onChange={(e) => update("motherName", e.target.value)} placeholder="Mother's name" maxLength={100} required className={errClass("motherName")} />
             </Field>
-            <Field label="Mother Mobile No">
-              <Input value={form.motherPhone} onChange={(e) => update("motherPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Mother's phone" inputMode="numeric" maxLength={10} />
+            <Field label="Mother Mobile No" id="field-motherPhone" error={errors.motherPhone}>
+              <Input value={form.motherPhone} onChange={(e) => update("motherPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Mother's phone" inputMode="numeric" maxLength={10} className={errClass("motherPhone")} />
             </Field>
             <Field label="Mother Occupation">
               <Input value={form.motherOccupation} onChange={(e) => update("motherOccupation", e.target.value)} placeholder="Mother's occupation" maxLength={100} />
@@ -445,13 +488,13 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
         <Section title="Admission Details" icon={CalendarClock}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Admission Date" required>
+            <Field label="Admission Date" required id="field-admissionDate" error={errors.admissionDate}>
               <Input
                 type="date"
                 value={form.admissionDate}
                 onChange={(e) => update("admissionDate", e.target.value)}
                 disabled={isEdit}
-                className={isEdit ? "opacity-60 cursor-not-allowed" : ""}
+                className={isEdit ? "opacity-60 cursor-not-allowed" : errClass("admissionDate")}
                 required
                 max={todayISO()}
               />
@@ -470,8 +513,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
 
         <Section title="Documents" icon={FileBadge}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Aadhaar Number">
-              <Input value={form.aadhaarNumber} onChange={(e) => update("aadhaarNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar" inputMode="numeric" maxLength={12} />
+            <Field label="Aadhaar Number" id="field-aadhaarNumber" error={errors.aadhaarNumber}>
+              <Input value={form.aadhaarNumber} onChange={(e) => update("aadhaarNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar" inputMode="numeric" maxLength={12} className={errClass("aadhaarNumber")} />
             </Field>
           </div>
         </Section>
@@ -481,8 +524,8 @@ export function StudentForm({ studentId }: { studentId?: string }) {
             <Field label="Contact Name">
               <Input value={form.emergencyContact} onChange={(e) => update("emergencyContact", e.target.value)} placeholder="Contact name" maxLength={100} />
             </Field>
-            <Field label="Contact Phone">
-              <Input value={form.emergencyPhone} onChange={(e) => update("emergencyPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} />
+            <Field label="Contact Phone" id="field-emergencyPhone" error={errors.emergencyPhone}>
+              <Input value={form.emergencyPhone} onChange={(e) => update("emergencyPhone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Phone" inputMode="numeric" maxLength={10} className={errClass("emergencyPhone")} />
             </Field>
             <Field label="Relationship">
               <Select value={form.emergencyRelation} onValueChange={(v) => update("emergencyRelation", v || "")}>
@@ -550,14 +593,23 @@ function Section({ title, icon: Icon, children }: { title: string; icon?: Lucide
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({
+  label, required, error, id, children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  id?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-1.5">
+    <div id={id} className="space-y-1.5 scroll-mt-24">
       <label className="text-sm font-medium text-foreground">
         {label}
         {required && <span className="text-destructive"> *</span>}
       </label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

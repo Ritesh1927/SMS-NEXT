@@ -91,6 +91,9 @@ export async function POST(req: Request) {
     if (!/^\d{10}$/.test(parentPhone)) {
       return NextResponse.json({ success: false, message: "Parent phone must be exactly 10 digits." }, { status: 400 });
     }
+    if (motherPhone && !/^\d{10}$/.test(motherPhone)) {
+      return NextResponse.json({ success: false, message: "Mother's phone must be exactly 10 digits." }, { status: 400 });
+    }
     if (new Date(dateOfBirth) > new Date()) {
       return NextResponse.json({ success: false, message: "Date of birth cannot be in the future." }, { status: 400 });
     }
