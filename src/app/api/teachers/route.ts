@@ -62,6 +62,24 @@ export async function POST(req: Request) {
     if (isTeaching && !primarySubject) {
       return NextResponse.json({ success: false, message: "Primary subject is required for teaching staff." }, { status: 400 });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ success: false, message: "Invalid email format." }, { status: 400 });
+    }
+    if (phone && !/^\d{10}$/.test(phone)) {
+      return NextResponse.json({ success: false, message: "Phone must be exactly 10 digits." }, { status: 400 });
+    }
+    if (dateOfBirth && new Date(dateOfBirth) > new Date()) {
+      return NextResponse.json({ success: false, message: "Date of birth cannot be in the future." }, { status: 400 });
+    }
+    if (aadhaarNumber && !/^\d{12}$/.test(aadhaarNumber)) {
+      return NextResponse.json({ success: false, message: "Aadhaar must be exactly 12 digits." }, { status: 400 });
+    }
+    if (panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(String(panNumber).toUpperCase())) {
+      return NextResponse.json({ success: false, message: "PAN must be in the format ABCDE1234F." }, { status: 400 });
+    }
+    if (emergencyPhone && !/^\d{10}$/.test(emergencyPhone)) {
+      return NextResponse.json({ success: false, message: "Emergency phone must be exactly 10 digits." }, { status: 400 });
+    }
 
     await connectDB();
 

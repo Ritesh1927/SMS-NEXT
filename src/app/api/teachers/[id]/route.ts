@@ -46,6 +46,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
+
+    // PATCH is a partial update, so every check here only fires for a field
+    // actually present in the body, matching the rules POST already
+    // enforces on create. email isn't in ALLOWED_FIELDS below (it's the
+    // login identifier, not editable here), so it isn't checked.
+    if (body.name !== undefined && !String(body.name).trim()) {
+      return NextResponse.json({ success: false, message: "Name cannot be empty." }, { status: 400 });
+    }
+    if (body.phone && !/^\d{10}$/.test(body.phone)) {
+      return NextResponse.json({ success: false, message: "Phone must be exactly 10 digits." }, { status: 400 });
+    }
+    if (body.dateOfBirth && new Date(body.dateOfBirth) > new Date()) {
+      return NextResponse.json({ success: false, message: "Date of birth cannot be in the future." }, { status: 400 });
+    }
+    if (body.aadhaarNumber && !/^\d{12}$/.test(body.aadhaarNumber)) {
+      return NextResponse.json({ success: false, message: "Aadhaar must be exactly 12 digits." }, { status: 400 });
+    }
+    if (body.panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(String(body.panNumber).toUpperCase())) {
+      return NextResponse.json({ success: false, message: "PAN must be in the format ABCDE1234F." }, { status: 400 });
+    }
+    if (body.emergencyPhone && !/^\d{10}$/.test(body.emergencyPhone)) {
+      return NextResponse.json({ success: false, message: "Emergency phone must be exactly 10 digits." }, { status: 400 });
+    }
+
     const updates: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) updates[key] = body[key];
