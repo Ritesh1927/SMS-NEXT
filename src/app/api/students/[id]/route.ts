@@ -62,6 +62,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
+
+    // PATCH is a partial update, so every check here only fires for a field
+    // actually present in the body -- unlike POST's required-field checks,
+    // this isn't re-requiring anything, just format-checking whatever was
+    // sent, matching the rules POST already enforces on create.
+    if (body.name !== undefined && !String(body.name).trim()) {
+      return NextResponse.json({ success: false, message: "Student name cannot be empty." }, { status: 400 });
+    }
+    if (body.phone && !/^\d{10}$/.test(body.phone)) {
+      return NextResponse.json({ success: false, message: "Student phone must be exactly 10 digits." }, { status: 400 });
+    }
+    if (body.dateOfBirth && new Date(body.dateOfBirth) > new Date()) {
+      return NextResponse.json({ success: false, message: "Date of birth cannot be in the future." }, { status: 400 });
+    }
+    if (body.admissionDate && new Date(body.admissionDate) > new Date()) {
+      return NextResponse.json({ success: false, message: "Admission date cannot be a future date." }, { status: 400 });
+    }
+    if (body.aadhaarNumber && !/^\d{12}$/.test(body.aadhaarNumber)) {
+      return NextResponse.json({ success: false, message: "Aadhaar must be exactly 12 digits." }, { status: 400 });
+    }
+    if (body.emergencyPhone && !/^\d{10}$/.test(body.emergencyPhone)) {
+      return NextResponse.json({ success: false, message: "Emergency phone must be exactly 10 digits." }, { status: 400 });
+    }
+    if (body.parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.parentEmail)) {
+      return NextResponse.json({ success: false, message: "Invalid parent email format." }, { status: 400 });
+    }
+    if (body.parentPhone && !/^\d{10}$/.test(body.parentPhone)) {
+      return NextResponse.json({ success: false, message: "Parent phone must be exactly 10 digits." }, { status: 400 });
+    }
+    if (body.motherPhone && !/^\d{10}$/.test(body.motherPhone)) {
+      return NextResponse.json({ success: false, message: "Mother's phone must be exactly 10 digits." }, { status: 400 });
+    }
+
     const updates: Record<string, unknown> = {};
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) updates[key] = body[key];
