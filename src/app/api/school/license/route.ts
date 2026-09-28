@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { School } from "@/models/School";
 import { Plan } from "@/models/Plan";
+import { getUserLimitStatus } from "@/lib/userLimit";
 
 // Only schools registered through the Super Admin flow have a School
 // document (self-signup schools don't) — absent is a normal, silent case,
@@ -26,6 +27,11 @@ export async function GET(req: Request) {
     const { endDate, extraUsers, includedUsers, status, planName, planId } = school.license;
     const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
+    // Usage counts only matter for the schooladmin-facing seat indicator --
+    // skip the extra queries for teacher/parent callers, who only use this
+    // route for feature gating.
+    const usersUsed = auth.role === "schooladmin" ? (await getUserLimitStatus(auth.schoolId)).used : null;
+
     const plan = planId ? await Plan.findById(planId).select("features") : null;
 
     return NextResponse.json({
@@ -35,6 +41,7 @@ export async function GET(req: Request) {
         daysLeft,
         status,
         planName,
+        usersUsed,
         usersTotal: (includedUsers || 0) + (extraUsers || 0),
         features: plan?.features || [],
       },

@@ -107,6 +107,25 @@ export function DashboardTopBar({
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const lastSeenKey = `notif_lastSeen_${user.id}`;
 
+  // Only set for schools with a Super Admin-configured seat cap -- most
+  // (self-signup) schools have none, and this stays null for them so the
+  // usage line just doesn't render.
+  const [seats, setSeats] = useState<{ used: number; total: number } | null>(null);
+
+  useEffect(() => {
+    if (user.role !== "schooladmin") return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { usersUsed: number | null; usersTotal: number } | null }>("/school/license", token)
+      .then((res) => {
+        if (res.data && res.data.usersUsed != null && res.data.usersTotal > 0) {
+          setSeats({ used: res.data.usersUsed, total: res.data.usersTotal });
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -376,6 +395,12 @@ export function DashboardTopBar({
                 <span className="inline-flex items-center mt-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                   {ROLE_LABEL[user.role] || user.role}
                 </span>
+                {seats && (
+                  <p className="text-[11px] mt-1">
+                    <span className={seats.used >= seats.total ? "text-destructive font-semibold" : "text-foreground font-semibold"}>{seats.used}</span>
+                    <span className="text-muted-foreground"> / {seats.total} users</span>
+                  </p>
+                )}
                 {user.role === "teacher" && user.classTeacherOf && user.classTeacherOf.length > 0 && (
                   <p className="text-[11px] text-muted-foreground mt-1 truncate">
                     Class Teacher of {user.classTeacherOf.map((c) => `Class ${c}`).join(", ")}

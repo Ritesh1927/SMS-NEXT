@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, type LucideIcon } from "lucide-react";
+import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, Users, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -95,12 +95,23 @@ export default function SettingsPage() {
 
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Only set for schools with a Super Admin-configured seat cap -- most
+  // (self-signup) schools have none, and this card just doesn't render.
+  const [seats, setSeats] = useState<{ used: number; total: number } | null>(null);
+
   useEffect(() => {
     const token = getToken();
     if (!token) return;
     apiGet<ProfileResponse>("/school/profile", token)
       .then((res) => setProfile(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile."));
+    apiGet<{ success: boolean; data: { usersUsed: number | null; usersTotal: number } | null }>("/school/license", token)
+      .then((res) => {
+        if (res.data && res.data.usersUsed != null && res.data.usersTotal > 0) {
+          setSeats({ used: res.data.usersUsed, total: res.data.usersTotal });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,7 +235,27 @@ export default function SettingsPage() {
             <TabsTrigger value="fees" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Fees</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="school" className="mt-4">
+          <TabsContent value="school" className="mt-4 space-y-4">
+            {seats && (
+              <Panel icon={Users} title="Plan Users">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    <span className={`text-lg font-bold ${seats.used >= seats.total ? "text-destructive" : "text-foreground"}`}>{seats.used}</span>
+                    <span className="text-muted-foreground"> / {seats.total} users on your plan</span>
+                  </p>
+                  {seats.used >= seats.total && (
+                    <span className="text-xs font-medium text-destructive">Limit reached — contact the platform admin to add more.</span>
+                  )}
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${seats.used >= seats.total ? "bg-destructive" : seats.used / seats.total >= 0.8 ? "bg-warning" : "bg-success"}`}
+                    style={{ width: `${Math.min(100, Math.round((seats.used / seats.total) * 100))}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Counts your admin account, teaching &amp; non-teaching staff, and students. Parent accounts don&apos;t count toward this limit.</p>
+              </Panel>
+            )}
             <Panel icon={School} title="School Information">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Your Name">
