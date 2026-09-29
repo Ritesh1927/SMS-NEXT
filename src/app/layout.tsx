@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans, DM_Sans, Lora } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -35,6 +35,17 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "EduNivo",
   description: "School Management System",
+};
+
+// viewportFit: "cover" lets the mobile dashboard chrome (sticky top bar,
+// fixed bottom nav) paint under the iOS notch/home-indicator safe areas
+// and use env(safe-area-inset-*) padding to stay clear of them, instead of
+// leaving a plain white bar there. No visible effect on desktop or on
+// devices without a safe-area inset.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

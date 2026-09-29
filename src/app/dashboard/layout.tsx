@@ -8,6 +8,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar";
 import { PageLoader } from "@/components/PageLoader";
+import { MobileShell } from "@/components/mobile/MobileShell";
 
 interface UnreadResponse {
   success: boolean;
@@ -75,8 +76,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <AppSidebar user={user} unreadCount={unread} onLogout={handleLogout} />
       <div className="flex-1 flex flex-col min-w-0 bg-background">
-        <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
-        <main className="flex-1 p-6 overflow-auto">
+        {/* Desktop (≥768px): unchanged sidebar-topbar shell. */}
+        <div className="hidden md:block">
+          <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
+        </div>
+
+        {/* Mobile (<768px): sticky top bar, fixed bottom nav, and the
+            sheets they open -- a separate chrome layer, not a restyle of
+            the desktop one. See components/mobile/MobileShell.tsx. */}
+        <MobileShell user={user} unreadChat={unread} licenseWarning={licenseWarning} onLogout={handleLogout} />
+
+        <main className="flex-1 overflow-auto px-4 py-4 pb-28 md:p-6">
           <div className="mx-auto max-w-6xl w-full space-y-6">{children}</div>
         </main>
       </div>
