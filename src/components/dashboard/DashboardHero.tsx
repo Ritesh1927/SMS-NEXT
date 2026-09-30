@@ -34,10 +34,10 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
 
   return (
     <>
-      {/* Desktop/tablet hero (≥768px) -- unchanged from before the mobile
-          layer was added; just gated behind `hidden md:block` so it and the
+      {/* Desktop hero (≥1024px) -- unchanged from before the mobile
+          layer was added; just gated behind `hidden lg:block` so it and the
           mobile banner below never render at the same time. */}
-      <div className="hidden md:block relative overflow-hidden rounded-[22px] border border-border bg-gradient-to-br from-primary/10 via-accent/5 to-white">
+      <div className="hidden lg:block relative overflow-hidden rounded-[22px] border border-border bg-gradient-to-br from-primary/10 via-accent/5 to-white">
         <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
 
@@ -75,8 +75,8 @@ export function DashboardHero({ name, subtitle }: { name: string; subtitle: stri
         </div>
       </div>
 
-      {/* Mobile hero (<768px) -- separate component, own stacked layout. */}
-      <div className="md:hidden">
+      {/* Mobile/tablet hero (<1024px) -- separate component, own stacked layout. */}
+      <div className="lg:hidden">
         <MobileHeroBanner greeting={getGreeting()} name={name} subtitle={subtitle} quote={quote} />
       </div>
     </>

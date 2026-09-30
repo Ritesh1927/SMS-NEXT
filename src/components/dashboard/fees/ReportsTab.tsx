@@ -132,9 +132,9 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
     <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
       <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-base font-semibold text-foreground">Outstanding Dues ({filtered.length})</h3>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "all")}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Classes</SelectItem>
               {classes.map((c) => <SelectItem key={c._id} value={`${c.name}-${c.section}`}>Class {c.name}-{c.section}</SelectItem>)}
@@ -149,7 +149,7 @@ function RptOutstandingDues({ classFilter, setClassFilter, classes, students }: 
             inputValue={studentQuery}
             onInputValueChange={(v) => setStudentQuery(v)}
           >
-            <ComboboxInputGroup className="w-64">
+            <ComboboxInputGroup className="w-full sm:w-64">
               <ComboboxInput placeholder="All Students" />
             </ComboboxInputGroup>
             <ComboboxContent>
@@ -373,13 +373,18 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
 
   return (
     <div className="space-y-4">
-      <div className="inline-flex w-fit flex-wrap items-center justify-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
+      {/* max-lg:* only ever applies below the 1024px mobile/tablet cutoff
+          (see AGENTS/CLAUDE notes: desktop must stay pixel-identical) -- it
+          turns the flex-wrap pill row, which wrapped onto two cramped lines
+          on a phone, into a horizontally scrollable single row instead, the
+          same fix as the shared Tabs primitive. */}
+      <div className="inline-flex w-fit flex-wrap items-center justify-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] max-lg:w-full max-lg:flex-nowrap max-lg:justify-start max-lg:overflow-x-auto max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden">
         {REPORT_TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setRptTab(t.id)}
-            className={`relative inline-flex items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
+            className={`relative inline-flex items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 max-lg:shrink-0 ${
               rptTab === t.id
                 ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_14px_-2px_rgba(79,70,229,0.45)]"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
@@ -395,10 +400,10 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
       {rptTab === "classwise" && <RptClassWise />}
       {rptTab === "ledger" && (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-          <div className="p-4 border-b border-border flex items-center gap-3 flex-wrap">
+          <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3 sm:flex-wrap">
             <h3 className="text-base font-semibold text-foreground">Student Ledger</h3>
             <Select value={rptClass} onValueChange={(v) => { setRptClass(v || "all"); setRptStudent(""); setLedgerStudentQuery(""); }}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
                 {classes.map((c) => <SelectItem key={c._id} value={`${c.name}-${c.section}`}>Class {c.name}-{c.section}</SelectItem>)}
@@ -413,7 +418,7 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
               inputValue={ledgerStudentQuery}
               onInputValueChange={(v) => setLedgerStudentQuery(v)}
             >
-              <ComboboxInputGroup className="w-64">
+              <ComboboxInputGroup className="w-full sm:w-64">
                 <ComboboxInput placeholder="Select student..." />
               </ComboboxInputGroup>
               <ComboboxContent>

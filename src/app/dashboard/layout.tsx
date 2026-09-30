@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -24,13 +24,26 @@ const UNREAD_POLL_MS = 15000;
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [unread, setUnread] = useState(0);
   const [licenseWarning, setLicenseWarning] = useState<{ daysLeft: number; endDate: string } | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.replace("/login");
   }, [loading, isAuthenticated, router]);
+
+  // <main> (below) is `overflow-auto`, which makes it its own scrolling
+  // element rather than the page/window -- Next's built-in "reset scroll on
+  // navigate" only resets window scroll, not a custom scroll container like
+  // this one. Left alone, navigating away from a page you'd scrolled down on
+  // (e.g. Home) carries that scroll offset into the next page, so its
+  // heading loads already partway under the fixed mobile top bar. Force it
+  // back to the top on every route change instead.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [pathname]);
 
   useEffect(() => {
     if (!user) return;
@@ -74,19 +87,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <AppSidebar user={user} unreadCount={unread} onLogout={handleLogout} />
+      {/* Desktop (≥1024px): unchanged sidebar. Wrapped in `hidden lg:block`
+          rather than left to AppSidebar's own internal mobile detection --
+          that's hardcoded to the old 768px breakpoint (components/ui/sidebar.tsx
+          -> use-mobile.ts), which is now *below* our 1024px mobile/tablet
+          cutoff. Left unwrapped, AppSidebar rendered its "desktop" branch for
+          the whole 768-1023px band (since 768px-and-up looked like desktop to
+          its own check), showing at the same time as MobileShell's bottom
+          nav below. This outer wrapper is the single source of truth for
+          "is the sidebar visible" and overrides that regardless of what
+          AppSidebar's own hook thinks. */}
+      <div className="hidden lg:block">
+        <AppSidebar user={user} unreadCount={unread} onLogout={handleLogout} />
+      </div>
       <div className="flex-1 flex flex-col min-w-0 bg-background">
-        {/* Desktop (≥768px): unchanged sidebar-topbar shell. */}
-        <div className="hidden md:block">
+        {/* Desktop (≥1024px): unchanged sidebar-topbar shell. */}
+        <div className="hidden lg:block">
           <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
         </div>
 
-        {/* Mobile (<768px): sticky top bar, fixed bottom nav, and the
+        {/* Mobile/tablet (<1024px): sticky top bar, fixed bottom nav, and the
             sheets they open -- a separate chrome layer, not a restyle of
             the desktop one. See components/mobile/MobileShell.tsx. */}
         <MobileShell user={user} unreadChat={unread} licenseWarning={licenseWarning} onLogout={handleLogout} />
 
-        <main className="flex-1 overflow-auto px-4 py-4 pb-28 md:p-6">
+        <main ref={mainRef} className="flex-1 overflow-auto px-4 py-4 pb-28 lg:p-6">
           <div className="mx-auto max-w-6xl w-full space-y-6">{children}</div>
         </main>
       </div>

@@ -55,7 +55,7 @@ export function MobileQuickActions({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} className="gap-0 rounded-t-[26px] border-none p-0 pb-6">
+      <SheetContent side="bottom" showCloseButton={false} className="gap-0 overflow-hidden rounded-t-[26px] border-none p-0 pb-6">
         <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-border" />
         <div className="px-5 pb-3 pt-3">
           <h2 className="text-lg font-extrabold tracking-tight text-foreground">Quick Actions</h2>

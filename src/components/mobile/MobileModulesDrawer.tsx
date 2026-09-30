@@ -81,7 +81,7 @@ export function MobileModulesDrawer({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="flex h-[92vh] flex-col gap-0 rounded-t-[26px] border-none p-0"
+        className="flex h-[92vh] flex-col gap-0 overflow-hidden rounded-t-[26px] border-none p-0"
       >
         <div className="flex shrink-0 flex-col gap-3 border-b border-border/70 px-4 pb-3 pt-2.5" style={{ paddingTop: "calc(env(safe-area-inset-top) * 0 + 10px)" }}>
           <div className="mx-auto h-1.5 w-10 rounded-full bg-border" />

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, LogOut, School, Settings, ShieldCheck, X } from "lucide-react";
+import { ChevronRight, GraduationCap, LogOut, School, Settings, ShieldCheck, Users, X } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
@@ -28,6 +28,7 @@ export function MobileProfileSheet({
   const router = useRouter();
   const [seats, setSeats] = useState<{ used: number; total: number } | null>(null);
   const initials = user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U";
+  const hasStats = Boolean(seats || (user.role === "teacher" && user.classTeacherOf?.length) || (user.role === "parent" && user.children?.length));
 
   useEffect(() => {
     if (!open || user.role !== "schooladmin") return;
@@ -49,59 +50,76 @@ export function MobileProfileSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" showCloseButton={false} className="flex h-[92vh] flex-col gap-0 rounded-t-[26px] border-none p-0">
-        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-primary/15 via-accent/10 to-transparent px-5 pb-6 pt-2.5">
-          <div className="mx-auto h-1.5 w-10 rounded-full bg-border/80" />
+      <SheetContent side="bottom" showCloseButton={false} className="flex h-[92vh] flex-col gap-0 overflow-hidden rounded-t-[26px] border-none p-0">
+        <div className="relative shrink-0 overflow-hidden rounded-t-[26px] bg-gradient-to-br from-primary to-accent px-5 pb-4 pt-2.5">
+          <div className="mx-auto h-1.5 w-10 rounded-full bg-white/30" />
           <button
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="absolute right-3 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-black/5"
+            className="absolute right-3 top-3.5 flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition-colors active:bg-white/15"
           >
-            <X className="h-4.5 w-4.5" />
+            <X className="h-4 w-4" />
           </button>
 
-          <div className="mt-4 flex flex-col items-center text-center">
-            <Avatar className="h-20 w-20 ring-4 ring-white shadow-[0_8px_24px_-6px_rgba(79,70,229,0.4)]">
-              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xl font-bold text-white">{initials}</AvatarFallback>
+          <div className="mt-3.5 flex items-center gap-3.5">
+            <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white/60 shadow-[0_4px_14px_-2px_rgba(0,0,0,0.3)]">
+              <AvatarFallback className="bg-white/15 text-base font-bold text-white">{initials}</AvatarFallback>
             </Avatar>
-            <p className="mt-3 text-lg font-extrabold tracking-tight text-foreground">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
-            <div className="mt-2.5 flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                <ShieldCheck className="h-3 w-3" /> {ROLE_LABEL[user.role]}
-              </span>
-              {user.schoolName && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-foreground/80 ring-1 ring-border/60">
-                  <School className="h-3 w-3" /> {user.schoolName}
+            <div className="min-w-0 text-left">
+              <p className="truncate text-[15px] font-bold leading-tight text-white">{user.name}</p>
+              <p className="truncate text-[11.5px] leading-tight text-white/70">{user.email}</p>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white ring-1 ring-white/25">
+                  <ShieldCheck className="h-2.5 w-2.5" /> {ROLE_LABEL[user.role]}
                 </span>
-              )}
+                {user.schoolName && (
+                  <span className="inline-flex max-w-[140px] items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white ring-1 ring-white/25">
+                    <School className="h-2.5 w-2.5 shrink-0" /> <span className="truncate">{user.schoolName}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {(seats || (user.role === "teacher" && user.classTeacherOf?.length) || (user.role === "parent" && user.children?.length)) && (
-            <div className="mb-4 grid grid-cols-2 gap-2.5">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
+          {hasStats && (
+            <div className="mb-5 grid grid-cols-2 gap-2.5">
               {seats && (
-                <div className="rounded-2xl border border-border/60 bg-card p-3.5">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Seats Used</p>
-                  <p className={`mt-1 text-xl font-extrabold ${seats.used >= seats.total ? "text-destructive" : "text-foreground"}`}>
-                    {seats.used}
-                    <span className="text-sm font-semibold text-muted-foreground"> / {seats.total}</span>
-                  </p>
+                <div className="flex items-start gap-2.5 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-500 text-white shadow-sm">
+                    <Users className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Seats Used</p>
+                    <p className={`text-base font-extrabold leading-tight ${seats.used >= seats.total ? "text-destructive" : "text-foreground"}`}>
+                      {seats.used}
+                      <span className="text-xs font-semibold text-muted-foreground"> / {seats.total}</span>
+                    </p>
+                  </div>
                 </div>
               )}
               {user.role === "teacher" && user.classTeacherOf && user.classTeacherOf.length > 0 && (
-                <div className="rounded-2xl border border-border/60 bg-card p-3.5">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Class Teacher Of</p>
-                  <p className="mt-1 text-sm font-bold text-foreground truncate">{user.classTeacherOf.map((c) => `Class ${c}`).join(", ")}</p>
+                <div className="flex items-start gap-2.5 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-sm">
+                    <GraduationCap className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Class Teacher Of</p>
+                    <p className="truncate text-sm font-bold leading-tight text-foreground">{user.classTeacherOf.map((c) => `Class ${c}`).join(", ")}</p>
+                  </div>
                 </div>
               )}
               {user.role === "parent" && user.children && user.children.length > 0 && (
-                <div className="rounded-2xl border border-border/60 bg-card p-3.5 col-span-2">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">Children</p>
-                  <p className="mt-1 text-sm font-bold text-foreground truncate">{user.children.map((c) => c.name).join(", ")}</p>
+                <div className="col-span-2 flex items-start gap-2.5 rounded-2xl border border-border/60 bg-card p-3 shadow-sm">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-sm">
+                    <Users className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Children</p>
+                    <p className="truncate text-sm font-bold leading-tight text-foreground">{user.children.map((c) => c.name).join(", ")}</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -113,9 +131,9 @@ export function MobileProfileSheet({
               <button
                 type="button"
                 onClick={goSettings}
-                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left transition-colors active:bg-muted/60"
+                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.98] active:bg-muted/60"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-white shadow-md shadow-black/10">
                   <Settings className="h-4.5 w-4.5" />
                 </span>
                 <span className="flex-1 text-sm font-semibold text-foreground">Settings</span>
@@ -126,9 +144,9 @@ export function MobileProfileSheet({
             <button
               type="button"
               onClick={onLogout}
-              className="flex items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3.5 text-left transition-colors active:bg-destructive/10"
+              className="flex items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.98] active:bg-destructive/10"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-black/10">
                 <LogOut className="h-4.5 w-4.5" />
               </span>
               <span className="flex-1 text-sm font-semibold text-destructive">Log out</span>

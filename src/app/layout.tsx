@@ -54,7 +54,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${dmSans.variable} ${plusJakartaSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* suppressHydrationWarning: some browser extensions (e.g. ColorZilla)
+          inject attributes like cz-shortcut-listen onto <body> before React
+          hydrates. That's a real DOM mismatch but not a bug in our markup --
+          without this, React logs a scary (and misleading) hydration error
+          for an attribute we never rendered and don't control. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AuthProvider>
           {children}
           <Toaster />

@@ -53,7 +53,15 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-6 text-sm text-popover-foreground shadow-2xl duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // max-lg:* only ever applies below the 1024px mobile/tablet
+          // cutoff (see AGENTS/CLAUDE notes: desktop must stay
+          // pixel-identical). A centered box with a fixed max-width is fine
+          // on a laptop screen, but on a phone it either has to squeeze a
+          // form's content into ~300px or -- as with a 2-column field grid
+          // or a wrapping pill row -- spill past the edge of the screen.
+          // Below lg, it becomes a full-width sheet pinned to the bottom
+          // instead, the same shape as the rest of the mobile UI's sheets.
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-6 text-sm text-popover-foreground shadow-2xl duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 max-lg:top-auto max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:max-w-none max-lg:w-full max-lg:translate-x-0 max-lg:translate-y-0 max-lg:rounded-b-none max-lg:rounded-t-[26px] max-lg:max-h-[88vh] max-lg:overflow-y-auto max-lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
           className
         )}
         {...props}

@@ -395,7 +395,7 @@ export default function CollectFeeTab() {
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <Select value={classFilter} onValueChange={(v) => setClassFilter(v || "all")}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="All Classes" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
                 {classes.map((c) => (
@@ -416,7 +416,7 @@ export default function CollectFeeTab() {
               inputValue={studentQuery}
               onInputValueChange={(v) => setStudentQuery(v)}
             >
-              <ComboboxInputGroup className="w-72">
+              <ComboboxInputGroup className="w-full sm:w-72">
                 <ComboboxInput placeholder="Search student by name or ID..." />
               </ComboboxInputGroup>
               <ComboboxContent>

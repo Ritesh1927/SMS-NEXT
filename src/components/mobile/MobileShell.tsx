@@ -27,8 +27,8 @@ interface NoticesResponse {
 // The entire mobile chrome layer for the dashboard: sticky top bar, fixed
 // bottom navigation, and the full-screen sheets they open (modules,
 // quick actions, notifications, profile, search). Everything here is
-// gated `md:hidden` (or, for the sheets, simply closed by default) so it
-// never affects the ≥768px desktop layout -- see AGENTS/CLAUDE notes on
+// gated `lg:hidden` (or, for the sheets, simply closed by default) so it
+// never affects the ≥1024px desktop layout -- see AGENTS/CLAUDE notes on
 // this task: desktop stays on AppSidebar + DashboardTopBar, untouched.
 export function MobileShell({
   user,
@@ -88,12 +88,12 @@ export function MobileShell({
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-40 md:hidden">{header}</div>
-      <div className="invisible md:hidden" aria-hidden="true">
+      <div className="fixed inset-x-0 top-0 z-40 lg:hidden">{header}</div>
+      <div className="invisible lg:hidden" aria-hidden="true">
         {header}
       </div>
 
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileBottomNavigation
           activeSheet={activeSheet}
           unreadNotices={unreadNotices}

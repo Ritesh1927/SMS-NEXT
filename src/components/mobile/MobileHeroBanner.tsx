@@ -5,7 +5,7 @@ import schoolIllustration from "@/assets/inner-banner.png";
 // Mobile-only stacked layout for the dashboard hero -- same greeting, quote
 // and date as the desktop DashboardHero, just reflowed top-to-bottom so
 // nothing gets cramped or clipped at phone widths. Rendered by
-// DashboardHero itself (md:hidden sibling of the desktop markup), so it
+// DashboardHero itself (lg:hidden sibling of the desktop markup), so it
 // never mounts on desktop and never touches desktop layout.
 export function MobileHeroBanner({
   greeting,
