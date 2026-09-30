@@ -218,7 +218,7 @@ export default function SettingsPage() {
         subtitle="Manage your school configuration and preferences."
         accent="slate"
         actions={
-          <Button form="settings-form" type="submit" className="gap-1.5" disabled={saving}>
+          <Button form="settings-form" type="submit" className="gap-1.5 max-md:h-11 max-md:rounded-2xl max-md:px-5 max-md:shadow-lg max-md:shadow-primary/25" disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Changes
           </Button>
         }
@@ -237,7 +237,7 @@ export default function SettingsPage() {
 
           <TabsContent value="school" className="mt-4 space-y-4">
             {seats && (
-              <Panel icon={Users} title="Plan Users">
+              <Panel icon={Users} title="Plan Users" tint="blue">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-muted-foreground">
                     <span className={`text-lg font-bold ${seats.used >= seats.total ? "text-destructive" : "text-foreground"}`}>{seats.used}</span>
@@ -285,12 +285,12 @@ export default function SettingsPage() {
               </div>
 
               <Field label="School Logo">
-                <div className="flex items-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                <div className="flex items-center gap-4 rounded-xl border border-dashed border-border bg-muted/20 p-4 max-md:gap-3.5 max-md:rounded-2xl max-md:border-2 max-md:bg-muted/30 max-md:p-3.5">
                   {profile.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element -- data-URI/arbitrary remote logo, not an optimizable static asset.
-                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-xl object-cover border border-border shadow-sm shrink-0" />
+                    <img src={profile.logo} alt="Logo" className="h-16 w-16 rounded-xl object-cover border border-border shadow-sm shrink-0 max-md:h-14 max-md:w-14 max-md:rounded-2xl max-md:shadow-md" />
                   ) : (
-                    <div className="icon-chip h-16 w-16 shrink-0 bg-primary/10 text-primary">
+                    <div className="icon-chip h-16 w-16 shrink-0 bg-primary/10 text-primary max-md:h-14 max-md:w-14 max-md:rounded-2xl max-md:bg-gradient-to-br max-md:from-primary max-md:to-accent max-md:text-white max-md:shadow-md">
                       <School className="h-6 w-6" />
                     </div>
                   )}
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => logoInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90 transition-opacity max-md:rounded-xl max-md:px-3.5 max-md:py-2.5 max-md:shadow-md max-md:shadow-primary/25 max-md:active:scale-95"
                     >
                       <Upload className="h-4 w-4" /> {profile.logo ? "Change Logo" : "Upload Logo"}
                     </button>
@@ -341,7 +341,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="academic" className="mt-4">
-            <Panel icon={SlidersHorizontal} title="Academic Settings">
+            <Panel icon={SlidersHorizontal} title="Academic Settings" tint="violet">
               {sessionRange.label && (
                 <div className="px-4 py-2.5 rounded-lg text-white text-sm font-semibold bg-gradient-to-br from-primary to-accent">
                   {sessionRange.label}
@@ -426,7 +426,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="notifications" className="mt-4">
-            <Panel icon={Bell} title="Notification Preferences">
+            <Panel icon={Bell} title="Notification Preferences" tint="rose">
               {(
                 [
                   ["emailAlerts", Mail, "bg-blue-500/10 text-blue-600", "Email Alerts", "Receive notifications via email"],
@@ -450,7 +450,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="security" className="mt-4 space-y-4">
-            <Panel icon={Shield} title="Security">
+            <Panel icon={Shield} title="Security" tint="slate">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Session Timeout (minutes)">
                   <Input
@@ -481,7 +481,7 @@ export default function SettingsPage() {
               </div>
             </Panel>
 
-            <Panel icon={Shield} title="Change Password">
+            <Panel icon={Shield} title="Change Password" tint="primary">
               <Field label="Current Password">
                 <Input
                   type="password"
@@ -512,14 +512,14 @@ export default function SettingsPage() {
                   />
                 </Field>
               </div>
-              <Button type="button" onClick={handleChangePassword} className="gap-1.5 bg-primary hover:bg-primary/90" disabled={changingPassword}>
+              <Button type="button" onClick={handleChangePassword} className="gap-1.5 bg-primary hover:bg-primary/90 max-md:h-11 max-md:w-full max-md:rounded-2xl max-md:shadow-lg max-md:shadow-primary/25" disabled={changingPassword}>
                 {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />} Change Password
               </Button>
             </Panel>
           </TabsContent>
 
           <TabsContent value="fees" className="mt-4">
-            <Panel icon={DollarSign} title="Late Fee Configuration">
+            <Panel icon={DollarSign} title="Late Fee Configuration" tint="amber">
               <div className="pb-1 border-b border-border">
                 <ToggleRow
                   icon={AlarmClock}
@@ -594,11 +594,37 @@ export default function SettingsPage() {
   );
 }
 
-function Panel({ icon: Icon, title, children }: { icon: typeof School; title: string; children: React.ReactNode }) {
+// Gradient tints for the Panel icon chip -- max-md:* only, so this is a
+// mobile-only upgrade (flat bg-primary/10 chip stays exactly as-is on
+// desktop, ≥768px). Each utility is spelled out in full so Tailwind's
+// static analysis can find it; a template string built from a bare color
+// name wouldn't get picked up at build time.
+const PANEL_TINTS = {
+  primary: "max-md:from-primary max-md:to-accent",
+  blue: "max-md:from-sky-500 max-md:to-blue-500",
+  violet: "max-md:from-violet-500 max-md:to-purple-500",
+  amber: "max-md:from-amber-500 max-md:to-orange-500",
+  rose: "max-md:from-rose-500 max-md:to-pink-500",
+  slate: "max-md:from-slate-700 max-md:to-slate-900",
+} as const;
+
+function Panel({
+  icon: Icon,
+  title,
+  children,
+  tint = "primary",
+}: {
+  icon: typeof School;
+  title: string;
+  children: React.ReactNode;
+  tint?: keyof typeof PANEL_TINTS;
+}) {
   return (
-    <div className="rounded-2xl bg-card border border-border shadow-sm p-5 sm:p-6 space-y-4">
+    <div className="rounded-2xl bg-card border border-border shadow-sm p-5 sm:p-6 space-y-4 max-md:rounded-[26px] max-md:border-border/60 max-md:shadow-[0_2px_16px_rgba(15,23,42,0.06)]">
       <h2 className="text-sm font-bold text-foreground flex items-center gap-2.5 pb-3 border-b border-border">
-        <div className="icon-chip h-9 w-9 bg-primary/10 text-primary">
+        <div
+          className={`icon-chip h-9 w-9 bg-primary/10 text-primary max-md:h-10 max-md:w-10 max-md:rounded-2xl max-md:bg-gradient-to-br max-md:text-white max-md:shadow-md max-md:shadow-black/10 ${PANEL_TINTS[tint]}`}
+        >
           <Icon className="h-4 w-4" />
         </div>
         {title}
@@ -621,9 +647,9 @@ function ToggleRow({
   icon: Icon, colorClass, label, description, checked, onCheckedChange,
 }: { icon: LucideIcon; colorClass: string; label: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between gap-4 -mx-2 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40">
+    <div className="flex items-center justify-between gap-4 -mx-2 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/40 max-md:rounded-2xl max-md:py-3 max-md:active:bg-muted/50">
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`icon-chip h-9 w-9 shrink-0 ${colorClass}`}>
+        <div className={`icon-chip h-9 w-9 shrink-0 max-md:h-10 max-md:w-10 max-md:rounded-2xl max-md:shadow-sm ${colorClass}`}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">

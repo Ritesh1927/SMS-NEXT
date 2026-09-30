@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
-  BookOpen, CalendarCheck, IndianRupee, Library, Megaphone, UserPlus,
+  ArrowUpRight, BookOpen, CalendarCheck, IndianRupee, Library, Megaphone, UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -57,22 +57,26 @@ export function MobileQuickActions({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" showCloseButton={false} className="gap-0 rounded-t-[26px] border-none p-0 pb-6">
         <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-border" />
-        <div className="px-5 pb-1 pt-3">
+        <div className="px-5 pb-3 pt-3">
           <h2 className="text-lg font-extrabold tracking-tight text-foreground">Quick Actions</h2>
           <p className="text-xs text-muted-foreground">Jump straight to what you need next.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 px-5 pt-3" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {actions.map((action) => (
+        <div className="h-px bg-border/70" />
+        <div className="grid grid-cols-2 gap-3.5 px-5 pt-4" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {actions.map((action, i) => (
             <button
               key={action.label}
               type="button"
               onClick={() => go(action.href)}
-              className="flex flex-col items-start gap-3 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition-transform active:scale-[0.96]"
+              className={`group relative flex min-h-[124px] w-full flex-col items-center justify-center gap-2.5 overflow-hidden rounded-[22px] border border-border/60 bg-card p-4 text-center shadow-[0_2px_10px_rgba(15,23,42,0.04)] transition-all active:scale-[0.96] active:border-border active:shadow-none ${
+                actions.length % 2 === 1 && i === actions.length - 1 ? "col-span-2" : ""
+              }`}
             >
-              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${action.tint} text-white shadow-sm`}>
-                <action.icon className="h-5 w-5" />
+              <ArrowUpRight className="absolute right-3.5 top-3.5 h-3.5 w-3.5 text-muted-foreground/30 transition-colors group-active:text-muted-foreground/60" />
+              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${action.tint} text-white shadow-md shadow-black/10`}>
+                <action.icon className="h-5.5 w-5.5" />
               </span>
-              <span className="text-sm font-bold leading-tight text-foreground">{action.label}</span>
+              <span className="w-full text-[13.5px] font-bold leading-snug text-foreground">{action.label}</span>
             </button>
           ))}
         </div>

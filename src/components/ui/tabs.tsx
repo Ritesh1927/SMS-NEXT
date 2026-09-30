@@ -23,7 +23,12 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-full p-1.5 gap-1 text-muted-foreground border border-border/60 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] group-data-horizontal/tabs:h-auto group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  // max-md:* here only ever applies below the 768px mobile-shell breakpoint
+  // (see AGENTS/CLAUDE notes: desktop must stay pixel-identical) -- it turns
+  // an inline-flex row that would otherwise clip trailing tabs off-screen on
+  // a phone into a horizontally scrollable one instead, with no effect at
+  // md and up.
+  "group/tabs-list inline-flex w-fit items-center justify-center rounded-full p-1.5 gap-1 text-muted-foreground border border-border/60 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] group-data-horizontal/tabs:h-auto group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none max-md:group-data-horizontal/tabs:w-full max-md:group-data-horizontal/tabs:justify-start max-md:group-data-horizontal/tabs:overflow-x-auto max-md:group-data-horizontal/tabs:[scrollbar-width:none] max-md:group-data-horizontal/tabs:[&::-webkit-scrollbar]:hidden",
   {
     variants: {
       variant: {
@@ -57,7 +62,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-all duration-300 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:transition-transform [&_svg]:duration-300 [&_svg:not([class*='size-'])]:size-4",
+        "relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap text-muted-foreground transition-all duration-300 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:transition-transform [&_svg]:duration-300 [&_svg:not([class*='size-'])]:size-4 max-md:group-data-horizontal/tabs:flex-none max-md:group-data-horizontal/tabs:shrink-0",
         "group-data-[variant=default]/tabs-list:hover:bg-card/60",
         "group-data-[variant=default]/tabs-list:data-active:bg-gradient-to-br group-data-[variant=default]/tabs-list:data-active:from-primary group-data-[variant=default]/tabs-list:data-active:to-accent group-data-[variant=default]/tabs-list:data-active:text-white group-data-[variant=default]/tabs-list:data-active:shadow-[0_4px_14px_-2px_rgba(79,70,229,0.45)] group-data-[variant=default]/tabs-list:data-active:[&_svg]:scale-110",
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:text-primary group-data-[variant=line]/tabs-list:data-active:shadow-none",
