@@ -7,6 +7,7 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { PageLoader } from "@/components/PageLoader";
 import { StatFilterCard } from "@/components/StatFilterCard";
+import { getHolidayInfo, type HolidayConfig } from "@/lib/holidays";
 
 type Status = "present" | "absent" | "late";
 
@@ -52,6 +53,7 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
   const [year, setYear] = useState(now.getFullYear());
   const [data, setData] = useState<StudentAttendanceResponse["data"] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [holidayConfig, setHolidayConfig] = useState<HolidayConfig | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -64,6 +66,17 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [studentId, month, year]);
+
+  // One-off holiday dates can fall in any month and the list is small, so
+  // fetch it once per mount rather than re-fetching as the admin pages
+  // through months.
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: HolidayConfig }>("/school/holidays", token)
+      .then((res) => setHolidayConfig(res.data))
+      .catch(() => {});
+  }, []);
 
   const changeMonth = (delta: number) => {
     let m = month + delta;
@@ -112,11 +125,18 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
             <div className="grid grid-cols-7 gap-2">
               {cells.map((day, i) => {
                 const status = day ? recordByDay.get(day) : undefined;
+                // A declared holiday wins over any attendance status -- the
+                // only way a day can have both is a holiday added after the
+                // fact onto an already-marked date, and the holiday is the
+                // more useful thing to see at a glance here (the actual
+                // status is still visible below in Daily Records).
+                const holiday = day && holidayConfig ? getHolidayInfo(new Date(year, month - 1, day), holidayConfig) : null;
                 return (
                   <div
                     key={i}
+                    title={holiday?.name}
                     className={`h-14 rounded-lg flex items-center justify-center text-sm font-semibold transition-colors ${
-                      day ? (status ? CELL_STYLES[status] : "bg-muted/50 text-foreground") : ""
+                      day ? (holiday ? "bg-slate-200 border-2 border-slate-400 text-slate-600" : status ? CELL_STYLES[status] : "bg-muted/50 text-foreground") : ""
                     }`}
                   >
                     {day}
@@ -124,9 +144,10 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
                 );
               })}
             </div>
-            <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" /> Present</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Absent</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Holiday</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /> Late</span>
             </div>
           </>

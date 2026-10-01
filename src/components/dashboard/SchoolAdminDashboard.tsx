@@ -16,6 +16,7 @@ import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 import { DashboardHero } from "./DashboardHero";
 import { PageLoader } from "@/components/PageLoader";
+import { getHolidayInfo, type HolidayConfig } from "@/lib/holidays";
 
 interface DashboardStats {
   totalStudents: number;
@@ -657,6 +658,15 @@ function SchoolCalendar() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+  const [holidayConfig, setHolidayConfig] = useState<HolidayConfig | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: HolidayConfig }>("/school/holidays", token)
+      .then((res) => setHolidayConfig(res.data))
+      .catch(() => {});
+  }, []);
 
   const changeMonth = (delta: number) => {
     let m = month + delta;
@@ -698,16 +708,20 @@ function SchoolCalendar() {
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1 mb-4">
-        {cells.map((day, i) => (
-          <div
-            key={i}
-            className={`h-9 rounded-lg flex items-center justify-center text-sm ${
-              day ? (isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
-            }`}
-          >
-            {day}
-          </div>
-        ))}
+        {cells.map((day, i) => {
+          const holiday = day && holidayConfig ? getHolidayInfo(new Date(year, month, day), holidayConfig) : null;
+          return (
+            <div
+              key={i}
+              title={holiday?.name}
+              className={`h-9 rounded-lg flex items-center justify-center text-sm ${
+                day ? (holiday ? "bg-slate-200 text-slate-600 font-semibold" : isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
+              }`}
+            >
+              {day}
+            </div>
+          );
+        })}
       </div>
       <p className="text-sm text-muted-foreground text-center py-2">No upcoming events.</p>
       </div>

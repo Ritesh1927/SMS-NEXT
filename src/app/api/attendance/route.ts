@@ -9,6 +9,7 @@ import { Admin } from "@/models/Admin";
 import "@/models/Parent";
 import { sendAbsentAlertMail } from "@/lib/mail";
 import { computeStreak, pointsForStreakCrossing } from "@/lib/attendanceStreak";
+import { getHolidayInfo } from "@/lib/holidays";
 
 // POST /api/attendance — bulk-mark a class's roster for one date.
 // Body: { classId, date, attendance: [{ studentId, status }] }
@@ -42,6 +43,21 @@ export async function POST(req: Request) {
 
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
+
+    // Attendance can't be marked on a holiday at all -- checked before any
+    // lock-check or write, so a holiday is rejected the same way whether or
+    // not the date already has records.
+    const adminForHoliday = await Admin.findById(auth.schoolId).select("settings.holidays").lean();
+    const holiday = getHolidayInfo(normalizedDate, adminForHoliday?.settings?.holidays || { weeklyOffDays: [0], dates: [] });
+    if (holiday) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: holiday.type === "custom" ? `Cannot mark attendance — ${holiday.name} is a declared holiday.` : "Cannot mark attendance on a weekly holiday.",
+        },
+        { status: 400 },
+      );
+    }
 
     // Editing an already-saved date is blocked for teachers outright, and
     // for admins unless the superadmin has flipped their allowAttendanceEdit

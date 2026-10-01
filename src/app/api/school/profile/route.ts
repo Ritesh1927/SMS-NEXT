@@ -50,6 +50,7 @@ export async function PATCH(req: Request) {
         notifications: { ...(current?.settings?.notifications || {}), ...(settings.notifications || {}) },
         security: { ...(current?.settings?.security || {}), ...(settings.security || {}) },
         lateFee: { ...(current?.settings?.lateFee || {}), ...(settings.lateFee || {}) },
+        holidays: { ...(current?.settings?.holidays || {}), ...(settings.holidays || {}) },
       };
     }
 

@@ -52,6 +52,10 @@ export interface IAdmin extends Document {
       maxAmount: number;
       applyEvery: "once" | "weekly";
     };
+    holidays: {
+      weeklyOffDays: number[];
+      dates: { _id: mongoose.Types.ObjectId; date: Date; name: string }[];
+    };
   };
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -107,6 +111,10 @@ const adminSchema = new Schema<IAdmin>(
         percent: { type: Number, default: 2 },
         maxAmount: { type: Number, default: 500 },
         applyEvery: { type: String, enum: ["once", "weekly"], default: "once" },
+      },
+      holidays: {
+        weeklyOffDays: { type: [Number], default: [0] },
+        dates: [{ date: { type: Date, required: true }, name: { type: String, required: true, trim: true } }],
       },
     },
   },

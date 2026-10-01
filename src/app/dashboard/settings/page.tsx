@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, Users, type LucideIcon } from "lucide-react";
+import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, Users, CalendarOff, Plus, Trash2, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -53,6 +53,10 @@ interface SchoolProfile {
       percent: number;
       maxAmount: number;
     };
+    holidays: {
+      weeklyOffDays: number[];
+      dates: { _id?: string; date: string; name: string }[];
+    };
   };
 }
 
@@ -67,6 +71,7 @@ interface ApiMessageResponse {
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function getSessionRange(sessionStartMonth: string) {
   const startIdx = MONTHS.indexOf(sessionStartMonth);
@@ -94,6 +99,9 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const [newHolidayDate, setNewHolidayDate] = useState("");
+  const [newHolidayName, setNewHolidayName] = useState("");
 
   // Only set for schools with a Super Admin-configured seat cap -- most
   // (self-signup) schools have none, and this card just doesn't render.
@@ -124,6 +132,37 @@ export default function SettingsPage() {
     const reader = new FileReader();
     reader.onload = () => setProfile((p) => p && { ...p, logo: reader.result as string });
     reader.readAsDataURL(file);
+  };
+
+  const toggleWeeklyOff = (day: number) => {
+    setProfile((p) => {
+      if (!p) return p;
+      const current = p.settings.holidays.weeklyOffDays;
+      const weeklyOffDays = current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort();
+      return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, weeklyOffDays } } };
+    });
+  };
+
+  const addHoliday = () => {
+    if (!newHolidayDate || !newHolidayName.trim()) {
+      toast.error("Enter both a date and a name for the holiday.");
+      return;
+    }
+    setProfile((p) => {
+      if (!p) return p;
+      const dates = [...p.settings.holidays.dates, { date: newHolidayDate, name: newHolidayName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
+      return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+    });
+    setNewHolidayDate("");
+    setNewHolidayName("");
+  };
+
+  const removeHoliday = (index: number) => {
+    setProfile((p) => {
+      if (!p) return p;
+      const dates = p.settings.holidays.dates.filter((_, i) => i !== index);
+      return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+    });
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -233,6 +272,7 @@ export default function SettingsPage() {
             <TabsTrigger value="notifications" className="gap-1.5"><Bell className="h-3.5 w-3.5" /> Notifications</TabsTrigger>
             <TabsTrigger value="security" className="gap-1.5"><Shield className="h-3.5 w-3.5" /> Security</TabsTrigger>
             <TabsTrigger value="fees" className="gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Fees</TabsTrigger>
+            <TabsTrigger value="holidays" className="gap-1.5"><CalendarOff className="h-3.5 w-3.5" /> Holidays</TabsTrigger>
           </TabsList>
 
           <TabsContent value="school" className="mt-4 space-y-4">
@@ -584,6 +624,60 @@ export default function SettingsPage() {
                     />
                     <p className="text-xs text-muted-foreground/70 mt-1">Cap on late fee amount</p>
                   </Field>
+                </div>
+              )}
+            </Panel>
+          </TabsContent>
+
+          <TabsContent value="holidays" className="mt-4 space-y-4">
+            <Panel icon={CalendarOff} title="Weekly Off Days" tint="slate">
+              <p className="text-xs text-muted-foreground mb-3">Select the days of the week that are regular holidays for your school (e.g. Sunday only, or Saturday &amp; Sunday).</p>
+              <div className="flex flex-wrap gap-2">
+                {WEEKDAY_LABELS.map((label, day) => {
+                  const selected = profile.settings.holidays.weeklyOffDays.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleWeeklyOff(day)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${selected ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Panel>
+
+            <Panel icon={CalendarOff} title="Specific Holidays" tint="slate">
+              <p className="text-xs text-muted-foreground mb-3">Mark specific dates (festivals, events, etc.) as holidays. Attendance cannot be marked on these dates.</p>
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <Input type="date" value={newHolidayDate} onChange={(e) => setNewHolidayDate(e.target.value)} className="sm:w-48" />
+                <Input placeholder="Holiday name (e.g. Diwali)" value={newHolidayName} onChange={(e) => setNewHolidayName(e.target.value)} maxLength={100} className="flex-1" />
+                <Button type="button" onClick={addHoliday} className="gap-1.5 shrink-0"><Plus className="h-4 w-4" /> Add</Button>
+              </div>
+              {profile.settings.holidays.dates.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No holidays added yet.</p>
+              ) : (
+                <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+                  {profile.settings.holidays.dates.map((h, i) => (
+                    <div key={h._id || `${h.date}-${i}`} className="flex items-center justify-between px-4 py-2.5">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{h.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(h.date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeHoliday(i)}
+                        aria-label={`Remove ${h.name}`}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-lg hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </Panel>
