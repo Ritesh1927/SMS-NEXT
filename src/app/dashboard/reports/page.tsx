@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   BarChart3, Users, CalendarCheck, DollarSign, Download, FileText,
-  GraduationCap, TrendingUp, Loader2, BookOpen, AlertCircle,
+  GraduationCap, TrendingUp, Loader2, BookOpen, AlertCircle, CheckCircle2, Clock, XCircle,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useAuth, getToken } from "@/contexts/AuthContext";
@@ -400,18 +400,21 @@ export default function ReportsPage() {
                               style={{ width: `${d.rate}%` }}
                             />
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="text-foreground font-medium">{d.total}</span> students marked
-                            <span className="text-border">·</span>
-                            <span className="text-success font-medium">{d.present}</span> present
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              <Users className="h-2.5 w-2.5" /> {d.total} marked
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> {d.present} present
+                            </span>
                             {d.late > 0 && (
-                              <>
-                                <span className="text-border">·</span>
-                                <span className="text-warning font-medium">{d.late}</span> late
-                              </>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+                                <Clock className="h-2.5 w-2.5" /> {d.late} late
+                              </span>
                             )}
-                            <span className="text-border">·</span>
-                            <span className="text-destructive font-medium">{d.absent}</span> absent
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                              <XCircle className="h-2.5 w-2.5" /> {d.absent} absent
+                            </span>
                           </div>
                         </div>
                       );
