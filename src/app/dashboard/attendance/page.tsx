@@ -63,10 +63,6 @@ export default function AttendancePage() {
   const [classId, setClassId] = useState<string>("");
   const [date, setDate] = useState(today());
   const [roster, setRoster] = useState<RosterEntry[] | null>(null);
-  // Whether ANY student already had a saved record for this class+date,
-  // captured before the roster's null statuses get defaulted to "present"
-  // below — otherwise an untouched day and an already-saved-all-present day
-  // render identically, with no way to tell them apart.
   const [alreadyMarked, setAlreadyMarked] = useState(false);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -102,7 +98,11 @@ export default function AttendancePage() {
     apiGet<RosterResponse>(`/attendance/class/${classId}?date=${date}`, token)
       .then((res) => {
         setAlreadyMarked(res.data.some((r) => r.status !== null));
-        setRoster(res.data.map((r) => ({ ...r, status: r.status || "present" })));
+        // Leave unmarked students' status as null rather than defaulting to
+        // "present" -- that silently pre-selected Present for everyone on
+        // an untouched day, with no visible difference from a deliberate
+        // choice. "Mark All Present" already exists for the fast path.
+        setRoster(res.data);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load roster."))
       .finally(() => setLoadingRoster(false));
@@ -124,6 +124,11 @@ export default function AttendancePage() {
   const handleSave = async () => {
     const token = getToken();
     if (!token || !roster || !classId) return;
+    const unmarkedCount = roster.filter((r) => r.status === null).length;
+    if (unmarkedCount > 0) {
+      toast.error(`Mark attendance for all students first — ${unmarkedCount} student${unmarkedCount === 1 ? "" : "s"} still unmarked.`);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/attendance", {
@@ -226,7 +231,7 @@ export default function AttendancePage() {
                   <Button variant="outline" onClick={() => markAll("absent")} className="text-destructive border-destructive/30 hover:bg-destructive/10">
                     Mark All Absent
                   </Button>
-                  <Button onClick={handleSave} disabled={saving} className="gap-1.5 ml-auto">
+                  <Button onClick={handleSave} disabled={saving || roster.some((r) => r.status === null)} className="gap-1.5 ml-auto">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Attendance
                   </Button>
                 </>
