@@ -67,6 +67,10 @@ export default function AttendancePage() {
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Defaults false (locked) until we actually know otherwise -- matches the
+  // backend's own default-deny, so a slow/failed fetch can't briefly show
+  // editable controls for a school that isn't actually allowed to edit.
+  const [allowAttendanceEdit, setAllowAttendanceEdit] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -75,6 +79,13 @@ export default function AttendancePage() {
       apiGet<ClassesResponse>("/classes", token)
         .then((res) => setClassOptions(res.data.map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` }))))
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
+      // Only the admin role can ever edit a saved date (teachers are always
+      // locked below), and whether THIS admin can depends on a superadmin
+      // toggle this page previously had no idea about -- it let every click
+      // through and only found out the save was rejected after the fact.
+      apiGet<{ success: boolean; data: { settings: { allowAttendanceEdit: boolean } } }>("/school/profile", token)
+        .then((res) => setAllowAttendanceEdit(!!res.data.settings.allowAttendanceEdit))
+        .catch(() => {});
     } else if (user.role === "teacher") {
       // /api/attendance/class/[classId] only allows the class's actual
       // classTeacher, not every class a teacher is merely assigned to
@@ -162,9 +173,12 @@ export default function AttendancePage() {
   }
 
   // Matches the backend: a teacher can mark a date once, but never re-edit
-  // it afterward (whether that's yesterday or earlier today) -- only an
-  // admin (with allowAttendanceEdit on) can revise an already-saved day.
-  const locked = user.role === "teacher" && alreadyMarked;
+  // it afterward (whether that's yesterday or earlier today). An admin can
+  // only revise an already-saved day if the superadmin has allowAttendanceEdit
+  // switched on for this school -- otherwise they're locked out too, same as
+  // a teacher, instead of the page letting every click through and only
+  // discovering the rejection when Save is clicked.
+  const locked = alreadyMarked && (user.role === "teacher" || !allowAttendanceEdit);
 
   return (
     <div>
