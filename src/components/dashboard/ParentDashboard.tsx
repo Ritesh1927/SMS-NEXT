@@ -11,6 +11,7 @@ import { apiGet } from "@/lib/api";
 import { DashboardHero } from "./DashboardHero";
 import { PageLoader } from "@/components/PageLoader";
 import { Badge } from "@/components/ui/badge";
+import { SchoolCalendar } from "./SchoolCalendarWidget";
 
 interface Child {
   _id: string;
@@ -501,6 +502,10 @@ function ChildOverview({ child }: { child: Child }) {
             View Notices <Megaphone className="h-3.5 w-3.5" />
           </Link>
         </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SchoolCalendar />
       </div>
     </div>
   );

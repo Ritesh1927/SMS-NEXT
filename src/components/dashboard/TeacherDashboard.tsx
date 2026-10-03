@@ -10,6 +10,7 @@ import { DashboardHero } from "./DashboardHero";
 import { EmptyStateCompact } from "@/components/EmptyState";
 import { statusPillClass, type StatusTone } from "@/lib/statusStyles";
 import { PageLoader } from "@/components/PageLoader";
+import { SchoolCalendar } from "./SchoolCalendarWidget";
 
 interface TeacherDashboardData {
   teacher: {
@@ -193,22 +194,26 @@ export function TeacherDashboard() {
         </div>
       )}
 
-      <div className={panelClass}>
-        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-primary" /> My Classes
-        </h2>
-        {classBreakdown.length === 0 ? (
-          <EmptyStateCompact message="No classes assigned yet. Ask your school admin to assign classes on your profile." />
-        ) : (
-          <div className="space-y-3">
-            {classBreakdown.map((c) => (
-              <div key={c.label} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
-                <span className="text-sm font-medium text-foreground">{c.label}</span>
-                <span className="text-xs text-muted-foreground">{c.studentCount} students</span>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className={panelClass}>
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" /> My Classes
+          </h2>
+          {classBreakdown.length === 0 ? (
+            <EmptyStateCompact message="No classes assigned yet. Ask your school admin to assign classes on your profile." />
+          ) : (
+            <div className="space-y-3">
+              {classBreakdown.map((c) => (
+                <div key={c.label} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
+                  <span className="text-sm font-medium text-foreground">{c.label}</span>
+                  <span className="text-xs text-muted-foreground">{c.studentCount} students</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <SchoolCalendar />
       </div>
 
       {fees && fees.data.length > 0 && (
