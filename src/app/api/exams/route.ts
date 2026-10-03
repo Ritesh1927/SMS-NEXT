@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
+import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
 import "@/models/Admin";
@@ -44,13 +45,6 @@ export async function POST(req: Request) {
   try {
     await connectDB();
 
-    if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      if (!teacher?.permissions?.canCreateExam) {
-        return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
-      }
-    }
-
     const { title, class: cls, section, subject, subjects, date, startTime, endTime, totalMarks, passingMarks, examType, instructions } =
       await req.json();
     // A "Test" can now be created for several subjects at once, each on its
@@ -72,6 +66,29 @@ export async function POST(req: Request) {
         { success: false, message: "Title, class, at least one subject with a date, totalMarks and passingMarks are required." },
         { status: 400 },
       );
+    }
+
+    if (auth.role === "teacher") {
+      const teacher = await Teacher.findById(auth.id).select("permissions");
+      if (!teacher?.permissions?.canCreateExam) {
+        // No blanket grant -- fall back to per-subject Timetable access, the
+        // same auto-grant isSubjectTeacherOf already gives for marks entry
+        // (see /api/exams/[id]/marks). Every subject in this request must
+        // pass, not just one, since a single Test submission can cover
+        // several subjects at once. Scoped to standalone Tests only -- a
+        // multi-subject Exam term (/api/scheduled-exams) still requires the
+        // blanket grant, unchanged.
+        const uniqueSubjects = [...new Set(subjectList.map((s) => s.name))];
+        const checks = await Promise.all(
+          uniqueSubjects.map((name) => isSubjectTeacherOf(auth.id, auth.schoolId, cls, section || "", name)),
+        );
+        if (!checks.every(Boolean)) {
+          return NextResponse.json(
+            { success: false, message: "You can only create tests for a class and subject you teach." },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     const created = await Promise.all(

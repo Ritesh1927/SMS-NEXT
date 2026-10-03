@@ -308,6 +308,17 @@ export function AdminTeacherExams() {
   const canEnterMarksFor = (className?: string, section?: string, subject?: string) =>
     hasBlanketMarksPermission || (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject)));
 
+  // Same two-path shape as marks entry: the blanket canCreateExam grant
+  // (Roles & Permissions → Exams), or -- without needing that grant at all --
+  // for any subject/class the teacher actually teaches per the Timetable,
+  // reusing the same subjectTeacherOf set already fetched above. Matches
+  // what POST /api/exams enforces server-side. Scoped to standalone Tests
+  // only, not multi-subject Exam terms, which still require the blanket
+  // grant -- same split the backend makes.
+  const hasBlanketExamCreatePermission = isAdmin || Boolean((user?.permissions as { canCreateExam?: boolean } | undefined)?.canCreateExam);
+  const canCreateTestFor = (className?: string, section?: string, subject?: string) =>
+    hasBlanketExamCreatePermission || (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject)));
+
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [terms, setTerms] = useState<TermRow[] | null>(null);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -1834,9 +1845,15 @@ export function AdminTeacherExams() {
                     </span>
                   )}
                 </div>
-                {subjectOptions.length > 0 ? (
+                {(() => {
+                  // A teacher without the blanket canCreateExam grant only
+                  // sees the subjects they actually teach in this class --
+                  // checking one they don't would just be rejected on
+                  // submit, so don't offer it at all.
+                  const creatableSubjectOptions = isAdmin ? subjectOptions : subjectOptions.filter((s) => canCreateTestFor(form.class, form.section, s.name));
+                  return creatableSubjectOptions.length > 0 ? (
                   <div className="border border-border rounded-xl divide-y divide-border max-h-72 overflow-y-auto">
-                    {subjectOptions.map((s) => {
+                    {creatableSubjectOptions.map((s) => {
                       const checked = form.subjects.includes(s.name);
                       const slot = form.subjectSlots[s.name];
                       const toggle = (next: boolean) =>
@@ -1876,9 +1893,16 @@ export function AdminTeacherExams() {
                       );
                     })}
                   </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground py-2">{form.class ? "No subjects assigned to this class." : "Select a class first."}</p>
-                )}
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-2">
+                      {!form.class
+                        ? "Select a class first."
+                        : subjectOptions.length === 0
+                          ? "No subjects assigned to this class."
+                          : "You don't teach any subjects in this class."}
+                    </p>
+                  );
+                })()}
                 {form.subjects.length > 1 && (
                   <div className="mt-2.5 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2 text-xs text-primary/90">
                     A separate test will be created for each of the {form.subjects.length} subjects, on its own date and time.
