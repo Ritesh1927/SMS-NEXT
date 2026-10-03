@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, Users, CalendarOff, Plus, Trash2, type LucideIcon } from "lucide-react";
+import { Loader2, Save, Shield, School, SlidersHorizontal, Bell, DollarSign, Upload, Mail, MessageSquare, CalendarCheck, BookOpen, Lock, AlarmClock, Users, CalendarOff, Trash2, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -12,8 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/PageLoader";
+import { getHolidayInfo, getEventInfo } from "@/lib/holidays";
 
 interface SchoolProfile {
   schoolName: string;
@@ -57,6 +59,7 @@ interface SchoolProfile {
       weeklyOffDays: number[];
       dates: { _id?: string; date: string; name: string }[];
     };
+    events: { _id?: string; date: string; name: string }[];
   };
 }
 
@@ -100,8 +103,12 @@ export default function SettingsPage() {
 
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const [newHolidayDate, setNewHolidayDate] = useState("");
-  const [newHolidayName, setNewHolidayName] = useState("");
+  const calToday = new Date();
+  const [calMonth, setCalMonth] = useState(calToday.getMonth());
+  const [calYear, setCalYear] = useState(calToday.getFullYear());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dialogType, setDialogType] = useState<"holiday" | "event">("holiday");
+  const [dialogName, setDialogName] = useState("");
 
   // Only set for schools with a Super Admin-configured seat cap -- most
   // (self-signup) schools have none, and this card just doesn't render.
@@ -134,6 +141,17 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  const calDateKey = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  const changeCalMonth = (delta: number) => {
+    let m = calMonth + delta;
+    let y = calYear;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    setCalMonth(m);
+    setCalYear(y);
+  };
+
   const toggleWeeklyOff = (day: number) => {
     setProfile((p) => {
       if (!p) return p;
@@ -143,26 +161,56 @@ export default function SettingsPage() {
     });
   };
 
-  const addHoliday = () => {
-    if (!newHolidayDate || !newHolidayName.trim()) {
-      toast.error("Enter both a date and a name for the holiday.");
+  // A given date holds at most one entry (either a holiday or an event, not
+  // both) -- clicking an empty day shows an add form, clicking a day that
+  // already has one shows it with a Remove button instead. `.slice(0, 10)`
+  // normalizes both freshly-added "YYYY-MM-DD" strings and already-saved
+  // ISO timestamps from the DB to the same comparable form.
+  const findCalendarEntry = (p: SchoolProfile, dateStr: string): { type: "holiday" | "event"; index: number; name: string } | null => {
+    const hIdx = p.settings.holidays.dates.findIndex((h) => h.date.slice(0, 10) === dateStr);
+    if (hIdx !== -1) return { type: "holiday", index: hIdx, name: p.settings.holidays.dates[hIdx].name };
+    const eIdx = p.settings.events.findIndex((ev) => ev.date.slice(0, 10) === dateStr);
+    if (eIdx !== -1) return { type: "event", index: eIdx, name: p.settings.events[eIdx].name };
+    return null;
+  };
+
+  const openDayDialog = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setDialogType("holiday");
+    setDialogName("");
+  };
+
+  const saveCalendarEntry = () => {
+    if (!selectedDate || !dialogName.trim()) {
+      toast.error("Enter a name.");
       return;
     }
     setProfile((p) => {
       if (!p) return p;
-      const dates = [...p.settings.holidays.dates, { date: newHolidayDate, name: newHolidayName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
-      return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+      if (dialogType === "holiday") {
+        const dates = [...p.settings.holidays.dates, { date: selectedDate, name: dialogName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
+        return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+      }
+      const events = [...p.settings.events, { date: selectedDate, name: dialogName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
+      return { ...p, settings: { ...p.settings, events } };
     });
-    setNewHolidayDate("");
-    setNewHolidayName("");
+    setSelectedDate(null);
   };
 
-  const removeHoliday = (index: number) => {
+  const removeCalendarEntry = () => {
+    if (!selectedDate) return;
     setProfile((p) => {
       if (!p) return p;
-      const dates = p.settings.holidays.dates.filter((_, i) => i !== index);
-      return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+      const existing = findCalendarEntry(p, selectedDate);
+      if (!existing) return p;
+      if (existing.type === "holiday") {
+        const dates = p.settings.holidays.dates.filter((_, i) => i !== existing.index);
+        return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
+      }
+      const events = p.settings.events.filter((_, i) => i !== existing.index);
+      return { ...p, settings: { ...p.settings, events } };
     });
+    setSelectedDate(null);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -248,6 +296,11 @@ export default function SettingsPage() {
   }
 
   const sessionRange = getSessionRange(profile.settings.sessionStartMonth);
+
+  const calFirstWeekday = new Date(calYear, calMonth, 1).getDay();
+  const calDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const calCells: (number | null)[] = [...Array(calFirstWeekday).fill(null), ...Array.from({ length: calDaysInMonth }, (_, i) => i + 1)];
+  const dialogEntry = selectedDate ? findCalendarEntry(profile, selectedDate) : null;
 
   return (
     <div>
@@ -649,41 +702,107 @@ export default function SettingsPage() {
               </div>
             </Panel>
 
-            <Panel icon={CalendarOff} title="Specific Holidays" tint="slate">
-              <p className="text-xs text-muted-foreground mb-3">Mark specific dates (festivals, events, etc.) as holidays. Attendance cannot be marked on these dates.</p>
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <Input type="date" value={newHolidayDate} onChange={(e) => setNewHolidayDate(e.target.value)} className="sm:w-48" />
-                <Input placeholder="Holiday name (e.g. Diwali)" value={newHolidayName} onChange={(e) => setNewHolidayName(e.target.value)} maxLength={100} className="flex-1" />
-                <Button type="button" onClick={addHoliday} className="gap-1.5 shrink-0"><Plus className="h-4 w-4" /> Add</Button>
+            <Panel icon={CalendarOff} title="School Calendar" tint="slate">
+              <p className="text-xs text-muted-foreground mb-3">Click a date to declare it a holiday or an event. Attendance cannot be marked on holiday dates; events are informational only.</p>
+              <div className="flex items-center justify-between mb-3">
+                <button type="button" onClick={() => changeCalMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Previous month">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <p className="text-sm font-semibold text-foreground">{MONTHS[calMonth]} {calYear}</p>
+                <button type="button" onClick={() => changeCalMonth(1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Next month">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-              {profile.settings.holidays.dates.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">No holidays added yet.</p>
-              ) : (
-                <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-                  {profile.settings.holidays.dates.map((h, i) => (
-                    <div key={h._id || `${h.date}-${i}`} className="flex items-center justify-between px-4 py-2.5">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{h.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(h.date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeHoliday(i)}
-                        aria-label={`Remove ${h.name}`}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-lg hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {WEEKDAY_LABELS.map((d) => (
+                  <p key={d} className="text-center text-[11px] font-medium text-muted-foreground/70">{d}</p>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {calCells.map((day, i) => {
+                  if (!day) return <div key={i} />;
+                  const dateStr = calDateKey(calYear, calMonth, day);
+                  const holiday = getHolidayInfo(new Date(calYear, calMonth, day), profile.settings.holidays);
+                  const event = !holiday ? getEventInfo(new Date(calYear, calMonth, day), profile.settings.events) : null;
+                  const cellStyle =
+                    holiday?.type === "custom"
+                      ? "bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200"
+                      : holiday?.type === "weekly"
+                        ? "bg-slate-200 text-slate-600 font-semibold hover:bg-slate-300"
+                        : event
+                          ? "bg-sky-100 text-sky-700 font-semibold hover:bg-sky-200"
+                          : "text-foreground hover:bg-muted";
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => openDayDialog(dateStr)}
+                      title={holiday?.name || event?.name}
+                      className={`h-9 rounded-lg flex items-center justify-center text-sm transition-colors ${cellStyle}`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Weekly Off</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Holiday</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" /> Event</span>
+              </div>
             </Panel>
           </TabsContent>
         </Tabs>
       </form>
+
+      <Dialog open={!!selectedDate} onOpenChange={(o) => { if (!o) setSelectedDate(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDate && new Date(selectedDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}
+            </DialogTitle>
+          </DialogHeader>
+
+          {dialogEntry ? (
+            <div className="py-2">
+              <p className="text-xs text-muted-foreground mb-1">{dialogEntry.type === "holiday" ? "Holiday" : "Event"}</p>
+              <p className="text-sm font-medium text-foreground">{dialogEntry.name}</p>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="flex gap-2">
+                {(["holiday", "event"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setDialogType(t)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border capitalize ${dialogType === t ? "bg-primary text-white border-transparent" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <Input
+                placeholder={dialogType === "holiday" ? "Holiday name (e.g. Diwali)" : "Event name (e.g. Annual Sports Day)"}
+                value={dialogName}
+                onChange={(e) => setDialogName(e.target.value)}
+                maxLength={100}
+                autoFocus
+              />
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            {dialogEntry ? (
+              <Button type="button" variant="destructive" onClick={removeCalendarEntry} className="gap-1.5">
+                <Trash2 className="h-4 w-4" /> Remove
+              </Button>
+            ) : (
+              <Button type="button" onClick={saveCalendarEntry}>Save</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

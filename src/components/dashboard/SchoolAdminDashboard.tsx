@@ -16,7 +16,7 @@ import { apiGet } from "@/lib/api";
 import { DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderWaveGlyph, HeaderPulseGlyph, HeaderDotGridGlyph } from "./DashboardSectionHeader";
 import { DashboardHero } from "./DashboardHero";
 import { PageLoader } from "@/components/PageLoader";
-import { getHolidayInfo, type HolidayConfig } from "@/lib/holidays";
+import { getHolidayInfo, getEventInfo, type CalendarData } from "@/lib/holidays";
 
 interface DashboardStats {
   totalStudents: number;
@@ -620,11 +620,37 @@ function RecentActivities({ items }: { items: ActivityItem[] }) {
   );
 }
 
-// sms-next has no Event/Calendar model yet (a real school-events feature is
-// separate scope from matching the original's dashboard *look*), so this
-// mirrors the original's own empty state exactly rather than fabricating
-// event data.
+interface UpcomingEntry {
+  date: string;
+  name: string;
+  type: "holiday" | "event";
+}
+
+// Pulls from the same /school/holidays endpoint SchoolCalendar already uses
+// (it also returns events despite the route's name -- see that route's own
+// comment). Fetched independently here rather than threaded through the
+// dashboard's aggregate endpoint, matching SchoolCalendar's existing
+// self-contained pattern on this same page.
 function UpcomingEvents() {
+  const [entries, setEntries] = useState<UpcomingEntry[] | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: CalendarData }>("/school/holidays", token)
+      .then((res) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isUpcoming = (d: string) => new Date(d) >= today;
+        const combined: UpcomingEntry[] = [
+          ...res.data.dates.filter((h) => isUpcoming(String(h.date))).map((h) => ({ date: String(h.date), name: h.name, type: "holiday" as const })),
+          ...res.data.events.filter((e) => isUpcoming(String(e.date))).map((e) => ({ date: String(e.date), name: e.name, type: "event" as const })),
+        ].sort((a, b) => a.date.localeCompare(b.date));
+        setEntries(combined.slice(0, 8));
+      })
+      .catch(() => setEntries([]));
+  }, []);
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
       <DashboardSectionHeader
@@ -636,13 +662,29 @@ function UpcomingEvents() {
         decoration={<HeaderDotGridGlyph />}
       />
       <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
-        <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
-            <CalendarDays className="h-5 w-5 text-muted-foreground" />
+        {!entries || entries.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+              <CalendarDays className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-muted-foreground">No Upcoming Events</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
           </div>
-          <p className="text-sm font-semibold text-muted-foreground">No Upcoming Events</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
-        </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {entries.map((e, i) => (
+              <div key={`${e.type}-${e.date}-${i}`} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                <span className={`h-2 w-2 rounded-full shrink-0 ${e.type === "event" ? "bg-sky-500" : "bg-violet-500"}`} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{e.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(e.date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -651,19 +693,19 @@ function UpcomingEvents() {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-// Same rationale as UpcomingEvents: a real month-grid calendar, just with no
-// events wired up yet since there's no Event backend — matches the
-// original's own empty ("No upcoming events") state honestly.
+// Month-grid calendar colored from the same /school/holidays data
+// UpcomingEvents uses -- weekly off-days and declared holidays in their
+// established colors, plus events in a third, distinct color.
 function SchoolCalendar() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
-  const [holidayConfig, setHolidayConfig] = useState<HolidayConfig | null>(null);
+  const [holidayConfig, setHolidayConfig] = useState<CalendarData | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: HolidayConfig }>("/school/holidays", token)
+    apiGet<{ success: boolean; data: CalendarData }>("/school/holidays", token)
       .then((res) => setHolidayConfig(res.data))
       .catch(() => {});
   }, []);
@@ -710,13 +752,25 @@ function SchoolCalendar() {
       <div className="grid grid-cols-7 gap-1 mb-4">
         {cells.map((day, i) => {
           const holiday = day && holidayConfig ? getHolidayInfo(new Date(year, month, day), holidayConfig) : null;
+          // Holiday takes visual priority over event -- a day can only have
+          // one entry by design (see Settings calendar), but this keeps the
+          // render defensive either way.
+          const event = day && holidayConfig && !holiday ? getEventInfo(new Date(year, month, day), holidayConfig.events) : null;
           const holidayStyle = holiday?.type === "custom" ? "bg-violet-100 text-violet-700 font-semibold" : "bg-slate-200 text-slate-600 font-semibold";
           return (
             <div
               key={i}
-              title={holiday?.name}
+              title={holiday?.name || event?.name}
               className={`h-9 rounded-lg flex items-center justify-center text-sm ${
-                day ? (holiday ? holidayStyle : isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
+                day
+                  ? holiday
+                    ? holidayStyle
+                    : event
+                      ? "bg-sky-100 text-sky-700 font-semibold"
+                      : isToday(day)
+                        ? "bg-primary text-white font-semibold"
+                        : "text-foreground hover:bg-muted"
+                  : ""
               }`}
             >
               {day}
@@ -724,13 +778,13 @@ function SchoolCalendar() {
           );
         })}
       </div>
-      {holidayConfig && (holidayConfig.weeklyOffDays.length > 0 || holidayConfig.dates.length > 0) && (
-        <div className="flex items-center gap-3 mb-3 text-[11px] text-muted-foreground">
+      {holidayConfig && (holidayConfig.weeklyOffDays.length > 0 || holidayConfig.dates.length > 0 || holidayConfig.events.length > 0) && (
+        <div className="flex items-center gap-3 mb-1 text-[11px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Weekly Off</span>
           <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Holiday</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-500" /> Event</span>
         </div>
       )}
-      <p className="text-sm text-muted-foreground text-center py-2">No upcoming events.</p>
       </div>
     </div>
   );

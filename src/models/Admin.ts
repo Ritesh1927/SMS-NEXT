@@ -56,6 +56,10 @@ export interface IAdmin extends Document {
       weeklyOffDays: number[];
       dates: { _id: mongoose.Types.ObjectId; date: Date; name: string }[];
     };
+    // Informational calendar entries -- unlike holidays, these never block
+    // attendance marking. Kept as a separate array rather than folded into
+    // holidays.dates so the two stay independently meaningful.
+    events: { _id: mongoose.Types.ObjectId; date: Date; name: string }[];
   };
   comparePassword(candidate: string): Promise<boolean>;
 }
@@ -116,6 +120,7 @@ const adminSchema = new Schema<IAdmin>(
         weeklyOffDays: { type: [Number], default: [0] },
         dates: [{ date: { type: Date, required: true }, name: { type: String, required: true, trim: true } }],
       },
+      events: [{ date: { type: Date, required: true }, name: { type: String, required: true, trim: true } }],
     },
   },
   { timestamps: true },
