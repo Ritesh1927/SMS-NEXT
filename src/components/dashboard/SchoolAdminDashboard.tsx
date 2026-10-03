@@ -710,12 +710,13 @@ function SchoolCalendar() {
       <div className="grid grid-cols-7 gap-1 mb-4">
         {cells.map((day, i) => {
           const holiday = day && holidayConfig ? getHolidayInfo(new Date(year, month, day), holidayConfig) : null;
+          const holidayStyle = holiday?.type === "custom" ? "bg-violet-100 text-violet-700 font-semibold" : "bg-slate-200 text-slate-600 font-semibold";
           return (
             <div
               key={i}
               title={holiday?.name}
               className={`h-9 rounded-lg flex items-center justify-center text-sm ${
-                day ? (holiday ? "bg-slate-200 text-slate-600 font-semibold" : isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
+                day ? (holiday ? holidayStyle : isToday(day) ? "bg-primary text-white font-semibold" : "text-foreground hover:bg-muted") : ""
               }`}
             >
               {day}
@@ -723,6 +724,12 @@ function SchoolCalendar() {
           );
         })}
       </div>
+      {holidayConfig && (holidayConfig.weeklyOffDays.length > 0 || holidayConfig.dates.length > 0) && (
+        <div className="flex items-center gap-3 mb-3 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Weekly Off</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Holiday</span>
+        </div>
+      )}
       <p className="text-sm text-muted-foreground text-center py-2">No upcoming events.</p>
       </div>
     </div>

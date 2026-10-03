@@ -131,12 +131,16 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
                 // more useful thing to see at a glance here (the actual
                 // status is still visible below in Daily Records).
                 const holiday = day && holidayConfig ? getHolidayInfo(new Date(year, month - 1, day), holidayConfig) : null;
+                const holidayStyle =
+                  holiday?.type === "custom"
+                    ? "bg-violet-100 border-2 border-violet-400 text-violet-700"
+                    : "bg-slate-200 border-2 border-slate-400 text-slate-600";
                 return (
                   <div
                     key={i}
                     title={holiday?.name}
                     className={`h-14 rounded-lg flex items-center justify-center text-sm font-semibold transition-colors ${
-                      day ? (holiday ? "bg-slate-200 border-2 border-slate-400 text-slate-600" : status ? CELL_STYLES[status] : "bg-muted/50 text-foreground") : ""
+                      day ? (holiday ? holidayStyle : status ? CELL_STYLES[status] : "bg-muted/50 text-foreground") : ""
                     }`}
                   >
                     {day}
@@ -147,8 +151,9 @@ export function StudentAttendanceCalendar({ studentId, showDailyRecords = true }
             <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" /> Present</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Absent</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Holiday</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /> Late</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Weekly Off</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-500" /> Holiday</span>
             </div>
           </>
         )}
