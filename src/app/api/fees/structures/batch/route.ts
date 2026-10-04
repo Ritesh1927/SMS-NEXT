@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { requireFeeManager } from "@/lib/auth-server";
-import { FeeStructure, type FeeFrequency } from "@/models/FeeStructure";
+import { FeeStructure, findDuplicateFeeStructures, type FeeFrequency } from "@/models/FeeStructure";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
 
@@ -37,6 +37,33 @@ export async function POST(req: Request) {
       if (!f.title || !f.amount) {
         return NextResponse.json({ success: false, message: "Each fee head needs title and amount." }, { status: 400 });
       }
+      f.title = String(f.title).trim();
+    }
+
+    // All-or-nothing duplicate guard — nothing is created if any check
+    // fails, so a partial batch can never slip through. Same rule as the
+    // single-create endpoint: one active head per class+title.
+    const norm = (t: string) => t.trim().toLowerCase();
+    const seen = new Set<string>();
+    for (const f of fees) {
+      const key = norm(f.title);
+      if (seen.has(key)) {
+        return NextResponse.json(
+          { success: false, message: `Duplicate fee head "${f.title}" appears more than once in this list.` },
+          { status: 400 },
+        );
+      }
+      seen.add(key);
+    }
+    const dups = await findDuplicateFeeStructures(auth.schoolId, cls, fees.map((f) => f.title));
+    if (dups.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Fee head(s) already exist for Class ${cls}: ${dups.map((d) => d.title).join(", ")}. Edit or delete them instead.`,
+        },
+        { status: 409 },
+      );
     }
 
     const students = await Student.find({ school: auth.schoolId, class: cls, isActive: true }).select("_id");

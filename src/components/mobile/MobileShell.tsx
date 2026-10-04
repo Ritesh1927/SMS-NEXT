@@ -38,7 +38,7 @@ export function MobileShell({
 }: {
   user: AuthUser;
   unreadChat: number;
-  licenseWarning: { daysLeft: number; endDate: string } | null;
+  licenseWarning: { state: "countdown" | "expired" | "suspended"; daysLeft: number | null; endDate: string | null } | null;
   onLogout: () => void;
 }) {
   const [activeSheet, setActiveSheet] = useState<MobileSheet>(null);
@@ -76,10 +76,24 @@ export function MobileShell({
         onOpenProfile={() => setActiveSheet("profile")}
       />
       {licenseWarning && (
-        <div className="flex items-center gap-2.5 border-b border-amber-200 bg-amber-50 px-4 py-2">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-          <p className="text-[11px] font-semibold leading-tight text-amber-800">
-            License expires in {licenseWarning.daysLeft} day{licenseWarning.daysLeft !== 1 ? "s" : ""} ({licenseWarning.endDate})
+        <div
+          className={`flex items-center gap-2.5 border-b px-4 py-2 ${
+            licenseWarning.state === "countdown" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"
+          }`}
+        >
+          <AlertTriangle
+            className={`h-3.5 w-3.5 shrink-0 ${licenseWarning.state === "countdown" ? "text-amber-600" : "text-red-600"}`}
+          />
+          <p
+            className={`text-[11px] font-semibold leading-tight ${
+              licenseWarning.state === "countdown" ? "text-amber-800" : "text-red-800"
+            }`}
+          >
+            {licenseWarning.state === "countdown"
+              ? `License expires in ${licenseWarning.daysLeft} day${licenseWarning.daysLeft !== 1 ? "s" : ""} (${licenseWarning.endDate})`
+              : licenseWarning.state === "suspended"
+                ? `License suspended${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`
+                : `License expired${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`}
           </p>
         </div>
       )}

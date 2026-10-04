@@ -98,7 +98,17 @@ const CHART_TOOLTIP_STYLE = {
   boxShadow: "0 8px 24px -8px rgba(15,23,42,0.15)",
 };
 
-const CLASS_BAR_COLORS = ["#4F46E5", "#14B8A6", "#8B5CF6", "#F97316", "#EC4899", "#06B6D4", "#6366F1", "#84CC16", "#EAB308", "#3B82F6"];
+// Classes-page palette — the same color→colorDark pairs the Classes page
+// cards use in their 135deg badges, cycled per bar so the chart matches
+// the Classes page exactly.
+const CLASS_BAR_GRADIENTS: [string, string][] = [
+  ["#4F46E5", "#4338CA"],
+  ["#0EA5E9", "#0284C7"],
+  ["#8B5CF6", "#7C3AED"],
+  ["#16A34A", "#15803D"],
+  ["#F59E0B", "#D97706"],
+  ["#EC4899", "#DB2777"],
+];
 
 export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: string; schoolName?: string }) {
   const router = useRouter();
@@ -437,13 +447,22 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
             <div className="bg-card p-6">
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={studentsByClass} margin={{ top: 16, left: -16, right: 8 }}>
+                  <defs>
+                    {/* One 135deg gradient per palette pair — same look as the Classes page badges. */}
+                    {CLASS_BAR_GRADIENTS.map(([top, bottom], i) => (
+                      <linearGradient key={i} id={`clsBar${i}`} x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor={top} />
+                        <stop offset="100%" stopColor={bottom} />
+                      </linearGradient>
+                    ))}
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                   <XAxis dataKey="name" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={studentsByClass.length > 8 ? -30 : 0} textAnchor={studentsByClass.length > 8 ? "end" : "middle"} height={studentsByClass.length > 8 ? 56 : 30} />
                   <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`${v} Students`, "Count"]} />
                   <Bar dataKey="count" name="Students" radius={[6, 6, 0, 0]} maxBarSize={48} label={{ position: "top", fill: "#334155", fontSize: 12, fontWeight: 600 }}>
                     {studentsByClass.map((_, i) => (
-                      <Cell key={i} fill={CLASS_BAR_COLORS[i % CLASS_BAR_COLORS.length]} />
+                      <Cell key={i} fill={`url(#clsBar${i % CLASS_BAR_GRADIENTS.length})`} />
                     ))}
                   </Bar>
                 </BarChart>

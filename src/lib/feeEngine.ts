@@ -8,7 +8,6 @@ export interface LateFeeConfig {
   type?: "fixed" | "percentage";
   amount?: number;
   percent?: number;
-  maxAmount?: number;
 }
 
 export interface ConcessionLike {
@@ -43,7 +42,7 @@ export function concessionAmount(base: number, c: { isPct: boolean; value: numbe
   return Math.min(base, c.isPct ? Math.round((base * c.value) / 100) : c.value);
 }
 
-// Late fee = daily charge × days after grace period, capped at maxAmount
+// Late fee = daily charge × days after grace period (no cap)
 export function calcProjectedLateFee(
   lateFeeConfig: LateFeeConfig,
   baseAmount: number,
@@ -61,9 +60,7 @@ export function calcProjectedLateFee(
   const type = lateFeeConfig.type || "fixed";
   const fixedPerDay = lateFeeConfig.amount ?? 100;
   const pctPerDay = lateFeeConfig.percent ?? 2;
-  const maxCap = lateFeeConfig.maxAmount ?? 500;
-  const fee = type === "fixed" ? fixedPerDay * chargeableDays : Math.round((baseAmount * pctPerDay) / 100 * chargeableDays);
-  return Math.min(fee, maxCap);
+  return type === "fixed" ? fixedPerDay * chargeableDays : Math.round((baseAmount * pctPerDay) / 100 * chargeableDays);
 }
 
 // Generates the 12 months of the current academic session (e.g. Apr 2026 –

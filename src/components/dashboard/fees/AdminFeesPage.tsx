@@ -55,6 +55,9 @@ const FREQ_OPTS: Frequency[] = ["monthly", "quarterly", "yearly", "one-time"];
 const CON_TYPES: ConcessionType[] = ["Sibling", "Merit", "SC/ST", "Staff Ward", "Custom"];
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString("en-IN") : "—");
+// Title comparison used by the duplicate guards — same trimmed,
+// case-insensitive rule the API enforces (409 on collision).
+const normTitle = (t: string) => t.trim().toLowerCase();
 
 const ALL_TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -222,6 +225,25 @@ export default function AdminFeesPage() {
           return;
         }
       }
+      // Duplicate guards — instant feedback before any network call; the API
+      // enforces the same rule (409) as a backstop for stale state. Blocked
+      // outright (nothing skipped) so the result is always predictable.
+      const seenTitles = new Set<string>();
+      for (const f of validFees) {
+        const key = normTitle(f.title);
+        if (seenTitles.has(key)) {
+          toast.error(`Duplicate fee head in the list: "${f.title.trim()}" appears twice.`);
+          return;
+        }
+        seenTitles.add(key);
+        const hits = [...structClasses]
+          .filter((cls) => structures.some((s) => s.class === cls && normTitle(s.title) === key))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        if (hits.length > 0) {
+          toast.error(`"${f.title.trim()}" already exists for Class ${hits.join(", ")} — edit or delete it instead.`);
+          return;
+        }
+      }
       setStructSaving(true);
       try {
         const feesPayload = validFees.map((f) => ({
@@ -264,6 +286,21 @@ export default function AdminFeesPage() {
     const needsDueDate = structForm.frequency === "yearly" || structForm.frequency === "one-time" || structForm.frequency === "quarterly";
     if (needsDueDate && !structForm.dueDate) {
       toast.error("Due date is required for yearly / one-time / quarterly fees");
+      return;
+    }
+    // Duplicate guard — same rule as batch; the API enforces it too (409).
+    if (structModal.editing) {
+      const editing = structModal.editing;
+      if (
+        structures.some(
+          (s) => s.class === editing.class && s._id !== editing._id && normTitle(s.title) === normTitle(structForm.title),
+        )
+      ) {
+        toast.error(`"${structForm.title.trim()}" already exists for Class ${editing.class} — edit or delete it instead.`);
+        return;
+      }
+    } else if (structures.some((s) => s.class === structClass && normTitle(s.title) === normTitle(structForm.title))) {
+      toast.error(`"${structForm.title.trim()}" already exists for Class ${structClass} — edit or delete it instead.`);
       return;
     }
     setStructSaving(true);
@@ -391,6 +428,28 @@ export default function AdminFeesPage() {
 
   const validBatchCount = batchFees.filter((f) => f.title.trim() && f.amount).length;
   const uniqueStructClassNames = [...new Set(classes.map((c) => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  // Live "already exists" hints under the Title field(s) — same rule as the
+  // save guard, updating as the title is typed and classes are toggled.
+  const classesWithHead = (title: string, candidates: string[], excludeId?: string) => {
+    const t = normTitle(title);
+    if (!t) return [];
+    return candidates
+      .filter((cls) => structures.some((s) => s.class === cls && s._id !== excludeId && normTitle(s.title) === t))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  };
+  const structFormDupHits = structForm.title.trim()
+    ? classesWithHead(structForm.title, [structModal.editing ? structModal.editing.class : structClass], structModal.editing?._id)
+    : [];
+  const structFormDup = structFormDupHits.length > 0 ? `Already exists for Class ${structFormDupHits.join(", ")}` : "";
+  const batchDupHints = batchFees.map((f) => {
+    const hits = classesWithHead(f.title, [...structClasses]);
+    return hits.length > 0 ? `Already exists for Class ${hits.join(", ")}` : "";
+  });
+  const batchRepeated = batchFees.map((f, i) => {
+    const t = normTitle(f.title);
+    return !!t && batchFees.some((g, j) => j !== i && normTitle(g.title) === t);
+  });
   const conStudentOptions = students.filter((s) => conClassFilter === "all" || `${s.class}-${s.section || ""}` === conClassFilter);
   const selectedConStudent = students.find((s) => s._id === conForm.studentId);
   const conFeeStructureOptions = structures.filter((s) => s.class === selectedConStudent?.class);
@@ -676,6 +735,11 @@ export default function AdminFeesPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <Field label="Title" required>
                         <Input value={f.title} onChange={(e) => updateBatchRow(idx, "title", e.target.value)} placeholder="e.g. Tuition Fee" />
+                        {(batchRepeated[idx] || batchDupHints[idx]) && (
+                          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+                            {batchRepeated[idx] ? "Repeated in this list" : batchDupHints[idx]}
+                          </p>
+                        )}
                       </Field>
                       <Field label="Amount (₹)" required>
                         <Input type="number" value={f.amount} onChange={(e) => updateBatchRow(idx, "amount", e.target.value)} placeholder="0" />
@@ -706,6 +770,11 @@ export default function AdminFeesPage() {
               <>
                 <Field label="Title" required>
                   <Input value={structForm.title} onChange={(e) => setStructForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Tuition Fee" />
+                  {structFormDup && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+                      {structFormDup}
+                    </p>
+                  )}
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Amount (₹)" required>

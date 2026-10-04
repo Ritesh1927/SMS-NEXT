@@ -70,10 +70,17 @@ export async function GET(req: Request) {
     const totalConcessions = yearPayments.reduce((s, p) => s + (p.concession || 0), 0);
     const classWise = classWiseRaw.map((c) => ({ class: String(c._id), collected: Math.round(c.collected) }));
 
+    // Outstanding dues grouped by the student's class — pairs with classWise
+    // (collected) for the per-class snapshot table on Reports → Overview.
+    const pendingClassMap = new Map<string, number>();
+    for (const d of dues) pendingClassMap.set(d.class || "", (pendingClassMap.get(d.class || "") || 0) + d.amount);
+    const pendingByClass = [...pendingClassMap].map(([cls, pending]) => ({ class: cls, pending: Math.round(pending) }));
+
     return NextResponse.json({
       success: true,
       data,
       classWise,
+      pendingByClass,
       summary: {
         totalCollected: Math.round(totalCollected),
         totalPending: Math.round(totalPending),

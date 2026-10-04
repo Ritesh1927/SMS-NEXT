@@ -17,7 +17,16 @@ interface UnreadResponse {
 
 interface LicenseResponse {
   success: boolean;
-  data: { endDate: string | null; daysLeft: number | null } | null;
+  data: { endDate: string | null; daysLeft: number | null; status?: "trial" | "active" | "expired" | "suspended" | null } | null;
+}
+
+// countdown = amber "expires in N days" (final week before expiry);
+// expired/suspended = red notice — shown even past endDate, where the old
+// daysLeft > 0 condition used to silently drop the banner entirely.
+interface LicenseWarning {
+  state: "countdown" | "expired" | "suspended";
+  daysLeft: number | null;
+  endDate: string | null;
 }
 
 const UNREAD_POLL_MS = 15000;
@@ -27,7 +36,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [unread, setUnread] = useState(0);
-  const [licenseWarning, setLicenseWarning] = useState<{ daysLeft: number; endDate: string } | null>(null);
+  const [licenseWarning, setLicenseWarning] = useState<LicenseWarning | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -65,12 +74,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (!token) return;
     apiGet<LicenseResponse>("/school/license", token)
       .then((res) => {
-        if (!res.data?.endDate || res.data.daysLeft == null) return;
-        if (res.data.daysLeft > 0 && res.data.daysLeft <= 7) {
-          setLicenseWarning({
-            daysLeft: res.data.daysLeft,
-            endDate: new Date(res.data.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
-          });
+        if (!res.data) return;
+        const { endDate, daysLeft, status } = res.data;
+        const endDateLabel = endDate
+          ? new Date(endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+          : null;
+        if (status === "suspended") {
+          setLicenseWarning({ state: "suspended", daysLeft, endDate: endDateLabel });
+          return;
+        }
+        if (status === "expired" || (endDate && daysLeft != null && daysLeft <= 0)) {
+          setLicenseWarning({ state: "expired", daysLeft, endDate: endDateLabel });
+          return;
+        }
+        if (endDate && daysLeft != null && daysLeft > 0 && daysLeft <= 7) {
+          setLicenseWarning({ state: "countdown", daysLeft, endDate: endDateLabel });
         }
       })
       .catch(() => {});

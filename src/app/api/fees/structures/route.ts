@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
-import { FeeStructure } from "@/models/FeeStructure";
+import { FeeStructure, findDuplicateFeeStructures } from "@/models/FeeStructure";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
 
@@ -40,6 +40,18 @@ export async function POST(req: Request) {
     if (!cls || !title || !amount) {
       return NextResponse.json({ success: false, message: "Class, title and amount are required." }, { status: 400 });
     }
+    const trimmedTitle = String(title).trim();
+
+    // One active head per class+title — a duplicate would double the
+    // auto-assigned pending payments below and the dues computed from
+    // structures. 409 so the client can show "edit or delete instead".
+    const dups = await findDuplicateFeeStructures(auth.schoolId, cls, [trimmedTitle]);
+    if (dups.length > 0) {
+      return NextResponse.json(
+        { success: false, message: `A "${dups[0].title}" fee head already exists for Class ${cls}. Edit or delete it instead.` },
+        { status: 409 },
+      );
+    }
 
     const resolvedDueDate =
       dueDate ||
@@ -54,7 +66,7 @@ export async function POST(req: Request) {
     const fee = await FeeStructure.create({
       school: auth.schoolId,
       class: cls,
-      title,
+      title: trimmedTitle,
       amount,
       dueDate: resolvedDueDate,
       frequency: frequency || "monthly",
@@ -72,7 +84,7 @@ export async function POST(req: Request) {
         school: auth.schoolId,
         student: s._id,
         feeStructure: fee._id,
-        title,
+        title: trimmedTitle,
         amount: parseFloat(amount),
         paidAmount: 0,
         dueDate: new Date(resolvedDueDate),

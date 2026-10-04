@@ -8,13 +8,29 @@ import { Class } from "@/models/Class";
 import { generateToken } from "@/lib/helpers";
 import { logLogin } from "@/lib/loginLog";
 import { checkAuthRateLimit } from "@/lib/rateLimit";
+import { School } from "@/models/School";
 
 // Simplified port of SMS-BACKEND's resolveSchools: the same email+password
 // can match a schooladmin, teacher and/or parent account across schools, so
 // every matching role is checked and the caller either gets a single
-// auto-login or a list of accounts to choose from. The School/Plan
-// license-gating subsystem from the original is deliberately left out of
-// this initial pass.
+// auto-login or a list of accounts to choose from.
+//
+// License gating (previously "deliberately left out") is now enforced here:
+// a School document with an expired/suspended license, or an endDate that
+// has passed, refuses to issue a token. Expiry counts as the END of the
+// endDate's day so the license works through its final day. Schools with no
+// School document (self-signup) have nothing to enforce and pass through.
+async function licenseBlockMessage(schoolId: string): Promise<string | null> {
+  const school = await School.findOne({ adminUserId: schoolId }).select("license.endDate license.status");
+  if (!school) return null;
+  const { endDate, status } = school.license || {};
+  if (status === "suspended") return "School license is suspended. Contact the super-admin.";
+  if (status === "expired") return "School license expired. Contact the super-admin to renew.";
+  if (endDate && new Date(endDate).setHours(23, 59, 59, 999) < Date.now()) {
+    return "School license expired. Contact the super-admin to renew.";
+  }
+  return null;
+}
 interface ResolvedAccount {
   schoolId: string;
   schoolName: string;
@@ -69,6 +85,10 @@ export async function POST(req: Request) {
       const parent = await Parent.findById(student.parent).populate("students", "name studentId class section");
       if (!parent || !parent.isActive) {
         return NextResponse.json({ success: false, message: "Parent account is deactivated." }, { status: 403 });
+      }
+      const parentLicenseBlock = await licenseBlockMessage(String(parent.school));
+      if (parentLicenseBlock) {
+        return NextResponse.json({ success: false, message: parentLicenseBlock }, { status: 403 });
       }
       const token = generateToken(parent.id, "parent", String(parent.school));
       logLogin(req, { school: String(parent.school), userId: parent.id, userName: parent.name, email: parent.email, role: "parent" });
@@ -185,6 +205,10 @@ export async function POST(req: Request) {
 
     if (results.length === 1) {
       const r = results[0];
+      const blocked = await licenseBlockMessage(r.schoolId);
+      if (blocked) {
+        return NextResponse.json({ success: false, message: blocked }, { status: 403 });
+      }
       const token = generateToken(r.userId, r.role, r.schoolId);
       logLogin(req, { school: r.schoolId, userId: r.userId, userName: r.userName, email: r.email || identifier.toLowerCase(), role: r.role });
       return NextResponse.json({
@@ -206,7 +230,23 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, single: false, schools: results });
+    // Account chooser: list only schools whose license still allows login,
+    // so an expired school never appears as a pickable option. If every
+    // matched school is blocked, return the license message directly.
+    const allowed: ResolvedAccount[] = [];
+    let firstBlocked: string | null = null;
+    for (const r of results) {
+      const blocked = await licenseBlockMessage(r.schoolId);
+      if (blocked) {
+        if (!firstBlocked) firstBlocked = blocked;
+        continue;
+      }
+      allowed.push(r);
+    }
+    if (allowed.length === 0) {
+      return NextResponse.json({ success: false, message: firstBlocked || "Login not allowed." }, { status: 403 });
+    }
+    return NextResponse.json({ success: true, single: false, schools: allowed });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Login failed." },

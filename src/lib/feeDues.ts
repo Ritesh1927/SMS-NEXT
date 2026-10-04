@@ -17,6 +17,10 @@ export interface FeeDueEntry {
   month: string;
   dueDate: Date | null;
   amount: number;
+  // Class name of the student the entry is for — optional so existing
+  // consumers stay type-compatible; used to group dues per class in
+  // /api/fees/analytics (class snapshot on Reports → Overview).
+  class?: string;
 }
 
 export async function computeFeeDues(schoolId: string): Promise<FeeDueEntry[]> {
@@ -73,24 +77,24 @@ export async function computeFeeDues(schoolId: string): Promise<FeeDueEntry[]> {
         const quarters = resolveFeeMonths("quarterly", sessionMonths, sessionMonths, fs.dueDate);
         for (const q of quarters) {
           if (hasPaid(st._id, fs._id, q) || isMonthUpcoming(fs.dueDate, q, now)) continue;
-          entries.push({ month: q, dueDate: dueDateForMonth(fs.dueDate, q), amount: netAmount(q) });
+          entries.push({ month: q, dueDate: dueDateForMonth(fs.dueDate, q), amount: netAmount(q), class: st.class });
         }
       } else if (fs.frequency === "one-time") {
         if (hasPaid(st._id, fs._id, "one-time")) continue;
-        entries.push({ month: "one-time", dueDate: fs.dueDate ? new Date(fs.dueDate) : null, amount: netAmount("one-time") });
+        entries.push({ month: "one-time", dueDate: fs.dueDate ? new Date(fs.dueDate) : null, amount: netAmount("one-time"), class: st.class });
       } else if (fs.frequency === "yearly") {
         const dueMonth = fs.dueDate
           ? `${new Date(fs.dueDate).getFullYear()}-${String(new Date(fs.dueDate).getMonth() + 1).padStart(2, "0")}`
           : applicable[0] || currentMonth;
         if (hasPaid(st._id, fs._id, dueMonth) || isMonthUpcoming(fs.dueDate, dueMonth, now)) continue;
-        entries.push({ month: dueMonth, dueDate: dueDateForMonth(fs.dueDate, dueMonth), amount: netAmount(dueMonth) });
+        entries.push({ month: dueMonth, dueDate: dueDateForMonth(fs.dueDate, dueMonth), amount: netAmount(dueMonth), class: st.class });
       } else {
         // Monthly: every applicable month whose period has started (not
         // just the current one) counts as due until paid, so a student
         // who's fallen behind shows the whole backlog, not just this month.
         for (const monthKey of applicable) {
           if (hasPaid(st._id, fs._id, monthKey) || isMonthUpcoming(fs.dueDate, monthKey, now)) continue;
-          entries.push({ month: monthKey, dueDate: dueDateForMonth(fs.dueDate, monthKey), amount: netAmount(monthKey) });
+          entries.push({ month: monthKey, dueDate: dueDateForMonth(fs.dueDate, monthKey), amount: netAmount(monthKey), class: st.class });
         }
       }
     }
