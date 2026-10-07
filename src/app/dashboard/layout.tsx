@@ -10,6 +10,7 @@ import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar";
 import { PageLoader } from "@/components/PageLoader";
 import { MobileShell } from "@/components/mobile/MobileShell";
 import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
+import { ReportBugButton } from "@/components/bugs/ReportBugButton";
 
 interface UnreadResponse {
   success: boolean;
@@ -136,6 +137,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
       {/* Offers "Install app" a few seconds after login, for every role. */}
       <InstallPromptGate />
+      {/* Floating "Report a Bug" tab on every dashboard page, every role. */}
+      <ReportBugButton track="school" />
     </SidebarProvider>
   );
 }

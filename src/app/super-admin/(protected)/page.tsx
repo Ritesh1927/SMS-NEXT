@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { statusPillClass } from "@/lib/statusStyles";
 import { getSuperAdminToken, clearSuperAdminAuth } from "@/lib/superAdminAuth";
+import { TicketsNavButton } from "@/components/bugs/admin/TicketsNavButton";
 
 interface PlanRecord {
   _id: string;
@@ -346,6 +347,7 @@ export default function SuperAdminDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <TicketsNavButton />
             <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={() => router.push("/super-admin/plans")}>Plans</Button>
             <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={handleLogout}>Logout</Button>
           </div>

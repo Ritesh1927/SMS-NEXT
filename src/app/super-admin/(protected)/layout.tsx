@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getSuperAdminToken } from "@/lib/superAdminAuth";
 import { PageLoader } from "@/components/PageLoader";
 import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
+import { ReportBugButton } from "@/components/bugs/ReportBugButton";
 
 export default function SuperAdminProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function SuperAdminProtectedLayout({ children }: { children: Reac
     <>
       {children}
       <InstallPromptGate />
+      <ReportBugButton track="superadmin" />
     </>
   );
 }

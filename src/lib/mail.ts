@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
 
 const FROM_NAME = "EduNivo";
 
-async function sendMail(to: string, subject: string, html: string): Promise<void> {
+export async function sendMail(to: string, subject: string, html: string): Promise<void> {
   if (!process.env.EMAIL_USER) {
     console.log("[Mail skipped — EMAIL_USER not set]", { to, subject });
     return;

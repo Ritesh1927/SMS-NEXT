@@ -23,23 +23,36 @@ export async function checkAuthRateLimit(req: Request): Promise<NextResponse | n
   // No IP available (e.g. a same-origin request with the header stripped) —
   // fail open rather than lock out every caller behind a misconfigured proxy.
   if (!ip) return null;
+  return checkRateLimit({
+    key: `auth:${ip}`,
+    windowMs: WINDOW_MS,
+    max: MAX_REQUESTS,
+    message: "Too many attempts. Please try again in a few minutes.",
+  });
+}
 
+/**
+ * General fixed-window limiter on the same Mongo-backed counter. `key`
+ * identifies who/what is limited (e.g. `bug-create:<userId>`); the window
+ * index is appended here. Fails open on DB errors, like the auth limiter.
+ */
+export async function checkRateLimit(opts: {
+  key: string;
+  windowMs: number;
+  max: number;
+  message: string;
+}): Promise<NextResponse | null> {
   try {
     await connectDB();
-    const windowIndex = Math.floor(Date.now() / WINDOW_MS);
-    const key = `auth:${ip}:${windowIndex}`;
-
+    const windowIndex = Math.floor(Date.now() / opts.windowMs);
     const hit = await RateLimitHit.findOneAndUpdate(
-      { _id: key },
-      { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date(Date.now() + WINDOW_MS * 2) } },
+      { _id: `${opts.key}:${windowIndex}` },
+      { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date(Date.now() + opts.windowMs * 2) } },
       { upsert: true, new: true },
     );
 
-    if (hit.count > MAX_REQUESTS) {
-      return NextResponse.json(
-        { success: false, message: "Too many attempts. Please try again in a few minutes." },
-        { status: 429 },
-      );
+    if (hit.count > opts.max) {
+      return NextResponse.json({ success: false, message: opts.message }, { status: 429 });
     }
     return null;
   } catch {

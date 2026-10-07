@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle, Bell, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2, Settings as SettingsIcon,
+  AlertTriangle, Bell, Bug, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2, Settings as SettingsIcon,
 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
@@ -474,6 +474,12 @@ export function DashboardTopBar({
                   onClick={() => router.push("/dashboard/settings")}
                 />
               )}
+              <ProfileMenuItem
+                icon={Bug}
+                title="My Reported Bugs"
+                description="Track issues you reported to support"
+                onClick={() => router.push("/dashboard/my-bugs")}
+              />
               <InstallButton variant="menu" />
             </div>
 

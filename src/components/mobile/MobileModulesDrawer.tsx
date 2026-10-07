@@ -9,6 +9,7 @@ import type { LucideIcon } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import type { NavSection } from "@/config/mobileNav";
+import { useSheetSnap } from "@/hooks/useSheetSnap";
 
 // A distinct icon + gradient tint per section -- reads noticeably richer
 // than one flat primary-tinted chip repeated eight times, same idea as the
@@ -41,6 +42,8 @@ export function MobileModulesDrawer({
   const [query, setQuery] = useState("");
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
   const [touched, setTouched] = useState(false);
+  // Swipe the handle up to expand to full height, down to collapse / close.
+  const sheet = useSheetSnap({ open, onClose: () => onOpenChange(false) });
 
   // Auto-expand the section containing the current page the first time real
   // (permission-filtered) sections arrive. Set during render rather than an
@@ -81,20 +84,31 @@ export function MobileModulesDrawer({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="flex h-[92vh] flex-col gap-0 overflow-hidden rounded-t-[26px] border-none p-0"
+        className="flex flex-col gap-0 overflow-hidden rounded-t-[26px] border-none p-0"
+        style={sheet.sheetStyle}
       >
-        <div className="flex shrink-0 flex-col gap-3 border-b border-border/70 px-4 pb-3 pt-2.5" style={{ paddingTop: "calc(env(safe-area-inset-top) * 0 + 10px)" }}>
-          <div className="mx-auto h-1.5 w-10 rounded-full bg-border" />
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold tracking-tight text-foreground">Modules</h2>
+        <div className="flex shrink-0 flex-col gap-3 border-b border-border/70 px-4 pb-3">
+          {/* Drag area: handle + title row. The search box below stays out of it. */}
+          <div {...sheet.handleProps} className="-mx-4 cursor-grab touch-none px-4 pt-2.5 select-none active:cursor-grabbing">
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+              onClick={sheet.toggle}
+              aria-label={sheet.snap === "peek" ? "Expand modules" : "Collapse modules"}
+              className="mx-auto mb-2.5 flex h-4 w-16 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <X className="h-4.5 w-4.5" />
+              <span className={`block h-1.5 rounded-full bg-border transition-all duration-200 ${sheet.isDragging ? "w-14 bg-muted-foreground/40" : "w-10"}`} />
             </button>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold tracking-tight text-foreground">Modules</h2>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -107,7 +121,7 @@ export function MobileModulesDrawer({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-6 pt-2">
+        <div {...sheet.listProps} className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           {filtered.length === 0 && (
             <p className="py-10 text-center text-sm text-muted-foreground">No modules match &quot;{query}&quot;.</p>
           )}

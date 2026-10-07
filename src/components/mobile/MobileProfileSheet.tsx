@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, GraduationCap, LogOut, School, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { Bug, ChevronRight, GraduationCap, LogOut, School, Settings, ShieldCheck, Users, X } from "lucide-react";
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -141,6 +141,21 @@ export function MobileProfileSheet({
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false);
+                router.push("/dashboard/my-bugs");
+              }}
+              className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.98] active:bg-muted/60"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-white shadow-md shadow-black/10">
+                <Bug className="h-4.5 w-4.5" />
+              </span>
+              <span className="flex-1 text-sm font-semibold text-foreground">My Reported Bugs</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
 
             {/* Close this sheet first so the install sheet isn't stacked on it. */}
             <InstallButton variant="sheet" onSelect={() => onOpenChange(false)} />
