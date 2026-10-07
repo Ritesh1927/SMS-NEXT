@@ -21,10 +21,8 @@ import { BUG_REPORTS_CHANGED_EVENT } from "@/lib/bugReports/events";
 
 const STATUS_EXPLAINERS: Record<string, string> = {
   open: "Your report is in the support queue and will be reviewed shortly.",
-  assigned: "A support engineer has picked up your report.",
   in_progress: "The team is actively working on this.",
   waiting: "The team needs something from you. Please reply below.",
-  testing: "A fix is being tested.",
   resolved: "This has been fixed. Let us know below if it still happens.",
   closed: "This report is closed.",
   rejected: "This report was closed without a change. See the timeline for why.",

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState, type ComponentType } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  AlertOctagon, AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, ChevronDown, CircleDot, Clock, Film, FlaskConical, Hourglass,
-  ImageIcon, Inbox, MoreHorizontal, RefreshCw, RotateCcw, Search, ShieldX, UserCheck, Wrench, X, XCircle, Minus,
+  AlertOctagon, AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, ChevronDown, CircleDot, Clock, Film, Hourglass,
+  ImageIcon, Inbox, MoreHorizontal, RefreshCw, RotateCcw, Search, ShieldX, Wrench, X, XCircle, Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -52,14 +52,12 @@ const statusesIn = (group: TicketStatusGroup) => TICKET_STATUSES.filter((s) => s
 
 const STATUS_CARDS: { label: string; group: TicketStatusGroup; icon: ComponentType<{ className?: string }>; tone: string }[] = [
   { label: "Open", group: "open", icon: Inbox, tone: "text-info bg-info/10" },
-  { label: "Assigned", group: "assigned", icon: UserCheck, tone: "text-primary bg-primary/10" },
   { label: "In Progress", group: "in_progress", icon: Wrench, tone: "text-accent bg-accent/10" },
-  { label: "Waiting", group: "waiting", icon: Hourglass, tone: "text-warning bg-warning/15" },
-  { label: "Testing", group: "testing", icon: FlaskConical, tone: "text-chart-3 bg-chart-3/10" },
+  { label: "Waiting for Info", group: "waiting", icon: Hourglass, tone: "text-warning bg-warning/15" },
+  { label: "Reopened", group: "reopened", icon: RotateCcw, tone: "text-coral bg-coral/10" },
   { label: "Resolved", group: "resolved", icon: CheckCircle2, tone: "text-success bg-success/10" },
   { label: "Closed", group: "closed", icon: XCircle, tone: "text-muted-foreground bg-muted" },
   { label: "Rejected", group: "rejected", icon: ShieldX, tone: "text-destructive bg-destructive/10" },
-  { label: "Reopened", group: "reopened", icon: RotateCcw, tone: "text-coral bg-coral/10" },
 ];
 
 const PRIORITY_CARDS = [
@@ -168,7 +166,7 @@ export default function TicketsPage() {
     >
       {/* Overview cards */}
       <section aria-label="Ticket overview" className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
           <StatCard
             label="Total Tickets"
             value={stats?.total}
@@ -374,7 +372,7 @@ export default function TicketsPage() {
                                 <DropdownMenuItem onClick={() => quickUpdate(t, { assignedTo: me.id }, "Assigned to you")}>Assign to me</DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              {(["acknowledged", "in_progress", "waiting_for_information", "resolved", "closed"] as TicketStatus[])
+                              {(["in_progress", "waiting_for_information", "resolved", "closed", "rejected"] as TicketStatus[])
                                 .filter((s) => s !== t.status)
                                 .map((s) => (
                                   <DropdownMenuItem key={s} onClick={() => quickUpdate(t, { status: s }, `Marked ${TICKET_STATUSES.find((x) => x.value === s)?.label}`)}>

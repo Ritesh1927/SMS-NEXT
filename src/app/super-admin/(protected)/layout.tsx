@@ -6,6 +6,7 @@ import { getSuperAdminToken } from "@/lib/superAdminAuth";
 import { PageLoader } from "@/components/PageLoader";
 import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
 import { ReportBugButton } from "@/components/bugs/ReportBugButton";
+import { SuperAdminShell } from "@/components/super-admin/SuperAdminShell";
 
 export default function SuperAdminProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -24,9 +25,10 @@ export default function SuperAdminProtectedLayout({ children }: { children: Reac
     return <PageLoader fullScreen dark />;
   }
 
+  // Sidebar + header chrome for every protected Super Admin page.
   return (
     <>
-      {children}
+      <SuperAdminShell>{children}</SuperAdminShell>
       <InstallPromptGate />
       <ReportBugButton track="superadmin" />
     </>

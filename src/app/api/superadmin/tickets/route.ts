@@ -5,7 +5,7 @@ import { BugTicket, type IBugTicket } from "@/models/BugTicket";
 import { requireSuperAdminActor } from "@/lib/bugReports/auth";
 import { CATEGORY_VALUES, PRIORITY_VALUES, REPORTER_ROLES, STATUS_VALUES } from "@/lib/bugReports/constants";
 import { csvFilter, escapeRegex, firstIssue, listQuerySchema } from "@/lib/bugReports/validation";
-import { jsonError, runRetentionSweep } from "@/lib/bugReports/service";
+import { jsonError, migrateLegacyStatuses, runRetentionSweep } from "@/lib/bugReports/service";
 
 // GET /api/superadmin/tickets -- the ticket table: filters, search, sort,
 // pagination. Projection keeps rows light (no timeline/description).
@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     const parsed = listQuerySchema.safeParse(Object.fromEntries(new URL(req.url).searchParams));
     if (!parsed.success) return jsonError(firstIssue(parsed.error));
     const q = parsed.data;
+    await migrateLegacyStatuses();
 
     // Cheap and throttled to once an hour: keeps auto-archiving current
     // without needing a cron job.

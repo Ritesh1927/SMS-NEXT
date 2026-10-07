@@ -3,40 +3,49 @@ import { cn } from "@/lib/utils";
 import { categoryLabel, priorityLabel, statusGroup, statusLabel, type TicketStatusGroup } from "@/lib/bugReports/constants";
 
 // Status / priority / category pills. Colours come from the theme tokens
-// (success, warning, info, destructive, primary...), so they follow the
-// app's light/dark palette automatically.
+// (info, accent, warning, success, destructive, coral...), so they follow
+// the app's light/dark palette automatically. One distinct colour per status:
+//   Open = blue, In Progress = violet, Waiting for Info = amber,
+//   Resolved = green, Closed = grey, Rejected = red, Reopened = orange.
 
-const GROUP_STYLES: Record<TicketStatusGroup, string> = {
-  open: "bg-info/12 text-info ring-info/25",
-  assigned: "bg-primary/10 text-primary ring-primary/25",
-  in_progress: "bg-accent/12 text-accent ring-accent/25",
-  waiting: "bg-warning/15 text-[color-mix(in_oklch,var(--warning),black_25%)] ring-warning/30 dark:text-warning",
-  testing: "bg-chart-3/12 text-chart-3 ring-chart-3/25",
-  resolved: "bg-success/12 text-success ring-success/25",
-  closed: "bg-muted text-muted-foreground ring-border",
-  rejected: "bg-destructive/10 text-destructive ring-destructive/20",
-  reopened: "bg-coral/12 text-coral ring-coral/25",
-};
-
-const DOT_STYLES: Record<TicketStatusGroup, string> = {
-  open: "bg-info",
-  assigned: "bg-primary",
-  in_progress: "bg-accent",
-  waiting: "bg-warning",
-  testing: "bg-chart-3",
-  resolved: "bg-success",
-  closed: "bg-muted-foreground",
-  rejected: "bg-destructive",
-  reopened: "bg-coral",
+export const STATUS_STYLES: Record<TicketStatusGroup, { pill: string; dot: string }> = {
+  open: {
+    pill: "bg-info/12 text-info ring-info/25",
+    dot: "bg-info",
+  },
+  in_progress: {
+    pill: "bg-accent/12 text-accent ring-accent/25",
+    dot: "bg-accent",
+  },
+  waiting: {
+    pill: "bg-warning/15 text-[color-mix(in_oklch,var(--warning),black_25%)] ring-warning/30 dark:text-warning",
+    dot: "bg-warning",
+  },
+  resolved: {
+    pill: "bg-success/12 text-success ring-success/25",
+    dot: "bg-success",
+  },
+  closed: {
+    pill: "bg-muted text-muted-foreground ring-border",
+    dot: "bg-muted-foreground",
+  },
+  rejected: {
+    pill: "bg-destructive/10 text-destructive ring-destructive/20",
+    dot: "bg-destructive",
+  },
+  reopened: {
+    pill: "bg-coral/12 text-coral ring-coral/25",
+    dot: "bg-coral",
+  },
 };
 
 const pill = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset";
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const group = statusGroup(status);
+  const style = STATUS_STYLES[statusGroup(status)];
   return (
-    <span className={cn(pill, GROUP_STYLES[group], className)}>
-      <span className={cn("h-1.5 w-1.5 rounded-full", DOT_STYLES[group])} aria-hidden />
+    <span className={cn(pill, style.pill, className)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} aria-hidden />
       {statusLabel(status)}
     </span>
   );

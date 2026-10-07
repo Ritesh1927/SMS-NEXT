@@ -75,9 +75,9 @@ export async function PATCH(req: Request, { params }: Params) {
           to: assignee ? assignee.name : "unassigned",
           message: assignee ? `Assigned to ${assignee.name}.` : "Unassigned.",
         });
-        // Assigning a fresh ticket moves it along the workflow.
-        if (assignee && ["new", "open", "acknowledged"].includes(ticket.status) && !input.status) {
-          applyStatusChange(ticket, "assigned", actor);
+        // Picking up an open ticket starts work on it.
+        if (assignee && ticket.status === "open" && !input.status) {
+          applyStatusChange(ticket, "in_progress", actor);
         }
       }
     }

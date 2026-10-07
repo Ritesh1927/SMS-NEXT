@@ -11,16 +11,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { getSuperAdminToken } from "@/lib/superAdminAuth";
 import {
-  FIELD_LIMITS, ROLE_LABELS, TERMINAL_STATUSES, TICKET_PRIORITIES, TICKET_STATUSES, type TicketPriority, type TicketStatus, type TimelineType,
+  FIELD_LIMITS, ROLE_LABELS, STATUS_PHASES, TERMINAL_STATUSES, TICKET_PRIORITIES, TICKET_STATUSES, type TicketPriority, type TicketStatus, type TimelineType,
 } from "@/lib/bugReports/constants";
 import { formatDateTime, ticketFetch, timeAgo } from "@/lib/bugReports/client";
 import type { AdminTicketDTO, TeamMember, TicketConfig } from "@/lib/bugReports/types";
-import { CategoryChip, PriorityBadge, StatusBadge } from "@/components/bugs/TicketBadges";
+import { CategoryChip, PriorityBadge, STATUS_STYLES, StatusBadge } from "@/components/bugs/TicketBadges";
 import { MediaGallery } from "@/components/bugs/MediaGallery";
 import { TicketTimeline } from "@/components/bugs/TicketTimeline";
 import { CommentComposer, type CommentPayload } from "@/components/bugs/CommentComposer";
@@ -35,11 +35,6 @@ const TIMELINE_FILTERS: { value: string; label: string; types: TimelineType[] | 
   { value: "internal", label: "Internal notes", types: ["internal_note"] },
   { value: "developer", label: "Developer notes", types: ["developer_note"] },
 ];
-
-const STATUS_GROUP_LABELS: Record<string, string> = {
-  open: "Intake", assigned: "Assigned", in_progress: "Working", waiting: "Waiting / paused", testing: "Testing & release",
-  resolved: "Done", closed: "Done", rejected: "Closed without fix", reopened: "Reopened",
-};
 
 // Super Admin: one ticket, everything about it, and the controls to move it.
 export default function AdminTicketDetailPage() {
@@ -130,15 +125,6 @@ export default function AdminTicketDetailPage() {
     const entries = types ? ticket.timeline.filter((e) => types.includes(e.type)) : ticket.timeline;
     return entries;
   }, [ticket, timelineFilter]);
-
-  const statusGroups = useMemo(() => {
-    const groups = new Map<string, typeof TICKET_STATUSES[number][]>();
-    TICKET_STATUSES.forEach((s) => {
-      const label = STATUS_GROUP_LABELS[s.group];
-      groups.set(label, [...(groups.get(label) ?? []), s]);
-    });
-    return [...groups.entries()];
-  }, []);
 
   if (error) {
     return (
@@ -288,14 +274,42 @@ export default function AdminTicketDetailPage() {
             <div className="space-y-4">
               {/* Status */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Status</span>
-                <Select items={TICKET_STATUSES.map((s) => ({ value: s.value, label: s.label }))} value={status} onValueChange={(v) => setStatus(v as TicketStatus)}>
-                  <SelectTrigger className="h-10 data-[size=default]:h-10 w-full rounded-xl" aria-label="Status"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusGroups.map(([group, list]) => (
-                      <SelectGroup key={group}>
-                        <SelectLabel>{group}</SelectLabel>
-                        {list.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                <span id="status-picker-label" className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Status</span>
+                <Select
+                  items={TICKET_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+                  value={status}
+                  onValueChange={(v) => v && setStatus(v as TicketStatus)}
+                >
+                  <SelectTrigger className="h-10 data-[size=default]:h-10 w-full rounded-xl" aria-labelledby="status-picker-label">
+                    <SelectValue>
+                      {(value: TicketStatus) => {
+                        const s = TICKET_STATUSES.find((x) => x.value === value);
+                        return s ? (
+                          <span className="flex items-center gap-2">
+                            <span className={cn("h-2 w-2 rounded-full", STATUS_STYLES[s.group].dot)} aria-hidden />
+                            {s.label}
+                          </span>
+                        ) : null;
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-72">
+                    {STATUS_PHASES.map((phase, index) => (
+                      <SelectGroup key={phase.key}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="text-[10.5px] font-semibold tracking-wide uppercase">{phase.label}</SelectLabel>
+                        {TICKET_STATUSES.filter((s) => s.phase === phase.key).map((s) => (
+                          <SelectItem key={s.value} value={s.value} className="py-2">
+                            <span className={cn("mt-0.5 h-2 w-2 shrink-0 self-start rounded-full", STATUS_STYLES[s.group].dot)} aria-hidden />
+                            <span className="flex min-w-0 flex-col">
+                              <span className="font-medium">
+                                {s.label}
+                                {s.value === ticket.status && <span className="ml-1.5 text-[10.5px] font-normal text-muted-foreground">(current)</span>}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">{s.description}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
                       </SelectGroup>
                     ))}
                   </SelectContent>

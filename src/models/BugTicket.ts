@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 import {
-  CATEGORY_VALUES, PRIORITY_VALUES, REPORTER_ROLES, STATUS_VALUES, TIMELINE_TYPES,
+  CATEGORY_VALUES, PRIORITY_VALUES, REPORTER_ROLES, STATUS_VALUES, TIMELINE_TYPES, normalizeStatus,
   type AttachmentKind, type ReporterRole, type TicketCategory, type TicketPriority, type TicketStatus, type TimelineType,
 } from "@/lib/bugReports/constants";
 
@@ -176,7 +176,7 @@ const bugTicketSchema = new Schema<IBugTicket>(
     category: { type: String, enum: CATEGORY_VALUES, required: true },
     priority: { type: String, enum: PRIORITY_VALUES, default: "medium" },
     priorityRank: { type: Number, default: 2 },
-    status: { type: String, enum: STATUS_VALUES, default: "new" },
+    status: { type: String, enum: STATUS_VALUES, default: "open" },
     reporter: { type: reporterSchema, required: true },
     context: { type: contextSchema, default: () => ({}) },
     attachments: { type: [attachmentSchema], default: [] },
@@ -198,6 +198,8 @@ const bugTicketSchema = new Schema<IBugTicket>(
 const PRIORITY_RANK: Record<TicketPriority, number> = { low: 1, medium: 2, high: 3, critical: 4 };
 bugTicketSchema.pre("validate", function () {
   this.priorityRank = PRIORITY_RANK[this.priority] ?? 2;
+  // Safety net for documents saved before the status migration ran.
+  this.status = normalizeStatus(this.status) as TicketStatus;
 });
 
 // Super Admin list: filters by status/priority/school/role, newest first.

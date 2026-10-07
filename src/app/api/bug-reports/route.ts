@@ -8,7 +8,7 @@ import { appOrigin, requireTicketUser } from "@/lib/bugReports/auth";
 import { resolveReporter } from "@/lib/bugReports/reporter";
 import { AttachmentError, isCloudinaryConfigured, verifyAttachments } from "@/lib/bugReports/attachments";
 import { createTicketSchema, firstIssue } from "@/lib/bugReports/validation";
-import { APP_VERSION, jsonError, pushTimeline } from "@/lib/bugReports/service";
+import { APP_VERSION, jsonError, migrateLegacyStatuses, pushTimeline } from "@/lib/bugReports/service";
 import { sendNewTicketEmail } from "@/lib/bugReports/emails";
 
 const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    await migrateLegacyStatuses();
     const filter = { "reporter.userId": auth.id, "reporter.role": auth.role };
     const [items, total] = await Promise.all([
       BugTicket.find(filter)
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
       description: input.description,
       category: input.category,
       priority: input.priority,
-      status: "new",
+      status: "open",
       reporter,
       context: {
         ...input.context,

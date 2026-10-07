@@ -35,13 +35,25 @@ Vercel caps function request bodies at 4.5 MB, which rules out screen recordings
 
 ## Workflow
 
-There are 19 statuses (see `src/lib/bugReports/constants.ts`). For the dashboard cards and badge colours they're grouped into Open, Assigned, In Progress, Waiting, Testing, Resolved, Closed, Rejected and Reopened.
+There are seven statuses (see `src/lib/bugReports/constants.ts`), each with its own colour. They are ordered by workflow: **Active** (Open → In Progress → Waiting for Info → Reopened), then **Completed** (Resolved → Closed → Rejected). That order is used by the status dropdown (under those two headings), the dashboard cards and the filters.
+
+| Status | Colour | Meaning |
+|---|---|---|
+| Open | Blue | New ticket, not started yet |
+| In Progress | Violet | Being worked on |
+| Waiting for Info | Amber | Needs details or files from the reporter |
+| Reopened | Orange | Came back after being resolved |
+| Resolved | Green | Fixed |
+| Closed | Grey | Done, no further action |
+| Rejected | Red | Not a bug, duplicate or can't be reproduced |
+
+The original 19-status workflow is migrated automatically. `migrateLegacyStatuses()` runs once per server process from the list and stats endpoints, remaps stored statuses and their status-history entries using `LEGACY_STATUS_MAP` (for example New/Acknowledged → Open, Testing/Investigation → In Progress, Duplicate → Rejected), and is idempotent. A model hook also normalizes any legacy value on save.
 
 - **Every change adds a timeline entry:** status, priority, assignee, resolution, comments and archiving.
-- **Terminal statuses** (resolved, closed, rejected, duplicate, cannot reproduce) set `closedAt`, which starts the retention clock. Moving a ticket back to a non-terminal status clears it and takes the ticket out of the archive.
+- **Terminal statuses** (resolved, closed, rejected) set `closedAt`, which starts the retention clock. Moving a ticket back to a non-terminal status clears it and takes the ticket out of the archive.
 - **Resolved / closed** set `resolvedAt` and `resolvedBy`. Only these tickets appear in the Solved Archive and the duplicate search.
-- **Assigning** a new ticket moves it to *Assigned* automatically.
-- **Waiting for Information / Waiting for Customer:** only in these states may the reporter attach files to a comment.
+- **Assigning** an *Open* ticket moves it to *In Progress* automatically. Who it's assigned to is the `assignedTo` field, not a status.
+- **Waiting for Info:** only in this state may the reporter attach files to a comment.
 
 ### Comments
 

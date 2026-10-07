@@ -1,800 +1,363 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Shield, School, Users, GraduationCap, Heart, Plus, Search,
-  Pencil, Trash2, Power, Key, RefreshCw, Loader2, Crown, Calendar, CalendarCheck,
+  ArrowRight, BarChart3, CalendarClock, Crown, GraduationCap, Heart, HeartPulse, IndianRupee, LifeBuoy, Plus, RefreshCw, School,
+  ShieldCheck, Sparkles, TrendingUp, Users,
 } from "lucide-react";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import { statusPillClass } from "@/lib/statusStyles";
-import { getSuperAdminToken, clearSuperAdminAuth } from "@/lib/superAdminAuth";
-import { TicketsNavButton } from "@/components/bugs/admin/TicketsNavButton";
+import { cn } from "@/lib/utils";
+import { getSuperAdminUser } from "@/lib/superAdminAuth";
+import {
+  daysUntil, formatDate, formatINR, licenseHealth, saRequest, setPendingAction,
+  type LicenseHealth, type PlanRecord, type PlatformStats, type SchoolRecord,
+} from "@/lib/superAdminApi";
+import { timeAgo } from "@/lib/bugReports/client";
+import { PriorityBadge, StatusBadge } from "@/components/bugs/TicketBadges";
+import { AdminPanel, EmptyBlock, KpiCard, Meter, PRIMARY_CTA, StatusPill } from "@/components/super-admin/ui";
+import { PlansChart, RegistrationsChart } from "@/components/super-admin/dashboard/DashboardCharts";
 
-interface PlanRecord {
+interface TicketStats {
+  total: number;
+  unread: number;
+  byStatus: Record<string, number>;
+}
+
+interface TicketRow {
   _id: string;
-  name: string;
-  pricePerUser: number;
-  includedUsers: number;
-  features: string[];
-  isActive: boolean;
+  ticketNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  lastActivityAt: string;
+  adminUnread: boolean;
+  reporter: { name: string; schoolName: string };
 }
 
-interface SchoolRecord {
-  _id: string; name: string; code: string; address: string; phone: string;
-  email: string; adminName: string; adminEmail: string; adminPhone: string;
-  isActive: boolean; isVerified: boolean; allowAttendanceEdit?: boolean;
-  license: {
-    planName: string; includedUsers: number; extraUsers: number; totalUsers: number;
-    pricePerUser: number; months: number; totalAmount: number;
-    startDate: string | null; endDate: string | null; status: string;
-  };
-  userCounts: { admin: number; teachers: number; students: number; parents: number; usersUsed: number; usersTotal: number };
-  createdAt: string;
-}
+const HEALTH_ROWS: { key: LicenseHealth; label: string }[] = [
+  { key: "active", label: "Active" },
+  { key: "trial", label: "Trial" },
+  { key: "expiring", label: "Expiring soon" },
+  { key: "expired", label: "Expired" },
+  { key: "suspended", label: "Suspended" },
+  { key: "none", label: "No license" },
+];
 
-function authHeaders(token: string, json = false): HeadersInit {
-  return json ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { Authorization: `Bearer ${token}` };
-}
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+};
 
-async function parseJson(res: Response) {
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.success === false) throw new Error(json.message || "Something went wrong.");
-  return json;
-}
-
-// Strips non-digits and any leading zeros (keeping a lone "0") so typing
-// into a field that starts at 0 replaces it instead of prefixing "0" onto
-// whatever gets typed next.
-function parseCountInput(raw: string): number {
-  const digitsOnly = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-  return digitsOnly === "" ? 0 : Number(digitsOnly);
-}
-
-// A count field bound to a number that defaults to 0 should show blank
-// while at 0, not a literal "0" the user has to delete before typing.
-function countInputValue(n: number): string {
-  return n === 0 ? "" : String(n);
-}
-
+// Super Admin dashboard: platform KPIs, trends, license health, expiring
+// licenses, latest tickets and recent schools. Read-only -- every number
+// comes from the existing stats / schools / plans / tickets endpoints.
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
-
-  const [schools, setSchools] = useState<SchoolRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [stats, setStats] = useState({ totalSchools: 0, activeSchools: 0, totalTeachers: 0, totalStudents: 0, totalParents: 0 });
+  const [admin] = useState(() => getSuperAdminUser());
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [schools, setSchools] = useState<SchoolRecord[] | null>(null);
   const [plans, setPlans] = useState<PlanRecord[]>([]);
+  const [ticketStats, setTicketStats] = useState<TicketStats | null>(null);
+  const [tickets, setTickets] = useState<TicketRow[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<PlanRecord | null>(null);
-  const [createForm, setCreateForm] = useState({
-    name: "", address: "", phone: "", email: "",
-    adminName: "", adminEmail: "", adminPhone: "",
-    startDate: "", endDate: "", extraUsers: 0,
-  });
-  const [creating, setCreating] = useState(false);
-  const [createdResult, setCreatedResult] = useState<{ code: string; password: string } | null>(null);
-
-  const [editOpen, setEditOpen] = useState(false);
-  const [editSchool, setEditSchool] = useState<SchoolRecord | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", address: "", phone: "", email: "", adminName: "", adminPhone: "" });
-  const [saving, setSaving] = useState(false);
-
-  const [renewOpen, setRenewOpen] = useState(false);
-  const [renewSchool, setRenewSchool] = useState<SchoolRecord | null>(null);
-  const [renewForm, setRenewForm] = useState({ endDate: "", extraUsers: 0 });
-
-  const [resetPasswordTarget, setResetPasswordTarget] = useState<{ id: string; name: string } | null>(null);
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [deletingSchool, setDeletingSchool] = useState(false);
-
-  const fetchStats = useCallback(async () => {
-    const token = getSuperAdminToken();
-    if (!token) return;
-    try {
-      const res = await fetch("/api/superadmin/stats", { headers: authHeaders(token) });
-      const json = await parseJson(res);
-      setStats(json.data);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const fetchSchools = useCallback(async () => {
-    const token = getSuperAdminToken();
-    if (!token) return;
-    setLoading(true);
-    try {
-      const qs = search ? `?search=${encodeURIComponent(search)}` : "";
-      const res = await fetch(`/api/superadmin/schools${qs}`, { headers: authHeaders(token) });
-      const json = await parseJson(res);
-      setSchools(json.data || []);
-    } catch {
-      toast.error("Error", { description: "Failed to load schools." });
-    } finally {
-      setLoading(false);
-    }
-  }, [search]);
-
-  const fetchPlans = useCallback(async () => {
-    const token = getSuperAdminToken();
-    if (!token) return;
-    try {
-      const res = await fetch("/api/superadmin/plans", { headers: authHeaders(token) });
-      const json = await parseJson(res);
-      setPlans(json.data || []);
-    } catch {
-      // ignore
-    }
+  const load = useCallback(() => {
+    setRefreshing(true);
+    Promise.allSettled([
+      saRequest<{ data: PlatformStats }>("/superadmin/stats").then((r) => setStats(r.data)),
+      saRequest<{ data: SchoolRecord[] }>("/superadmin/schools").then((r) => setSchools(r.data || [])),
+      saRequest<{ data: PlanRecord[] }>("/superadmin/plans").then((r) => setPlans(r.data || [])),
+      saRequest<{ data: TicketStats }>("/superadmin/tickets/stats").then((r) => setTicketStats(r.data)),
+      saRequest<{ data: TicketRow[] }>("/superadmin/tickets?limit=5&sort=lastActivityAt&order=desc&archived=false").then((r) => setTickets(r.data)),
+    ]).finally(() => setRefreshing(false));
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: initial data load on mount.
-    fetchStats(); fetchSchools(); fetchPlans();
-  }, [fetchStats, fetchSchools, fetchPlans]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
+    load();
+  }, [load]);
 
-  const calcMonths = () => {
-    if (!createForm.startDate || !createForm.endDate) return 0;
-    const start = new Date(createForm.startDate);
-    const end = new Date(createForm.endDate);
-    const diffMs = end.getTime() - start.getTime();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)) || 1;
+  const derived = useMemo(() => {
+    const list = schools ?? [];
+    const health = Object.fromEntries(HEALTH_ROWS.map((r) => [r.key, 0])) as Record<LicenseHealth, number>;
+    list.forEach((s) => (health[licenseHealth(s)] += 1));
+
+    // Last 12 months of registrations.
+    const now = new Date();
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString("en-IN", { month: "short" }), value: 0 };
+    });
+    list.forEach((s) => {
+      const d = new Date(s.createdAt);
+      const m = months.find((x) => x.key === `${d.getFullYear()}-${d.getMonth()}`);
+      if (m) m.value += 1;
+    });
+
+    const byPlan = new Map<string, number>();
+    list.forEach((s) => byPlan.set(s.license?.planName || "No plan", (byPlan.get(s.license?.planName || "No plan") ?? 0) + 1));
+
+    const expiring = list
+      .filter((s) => licenseHealth(s) === "expiring" || licenseHealth(s) === "expired")
+      .sort((a, b) => new Date(a.license.endDate ?? 0).getTime() - new Date(b.license.endDate ?? 0).getTime())
+      .slice(0, 5);
+
+    const recent = [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+    const contractValue = list.reduce((sum, s) => sum + (s.license?.totalAmount || 0), 0);
+    const seatsUsed = list.reduce((sum, s) => sum + (s.userCounts?.usersUsed || 0), 0);
+    const seatsTotal = list.reduce((sum, s) => sum + (s.userCounts?.usersTotal || s.license?.totalUsers || 0), 0);
+
+    return {
+      health,
+      months,
+      plans: [...byPlan.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value),
+      expiring,
+      recent,
+      contractValue,
+      seatsUsed,
+      seatsTotal,
+      newThisMonth: months[months.length - 1].value,
+    };
+  }, [schools]);
+
+  const openTickets = ticketStats
+    ? ["open", "in_progress", "waiting_for_information", "reopened"].reduce((n, s) => n + (ticketStats.byStatus[s] ?? 0), 0)
+    : undefined;
+
+  const registerWith = (planId?: string) => {
+    setPendingAction({ type: "register-school", planId });
+    router.push("/super-admin/schools");
   };
 
-  const calcTotal = () => calcMonths() * (createForm.extraUsers || 0) * (selectedPlan?.pricePerUser || 0);
-  const calcTotalUsers = () => (selectedPlan?.includedUsers || 0) + (createForm.extraUsers || 0);
-
-  const openRegister = (plan: PlanRecord) => {
-    setSelectedPlan(plan);
-    setCreateForm({ name: "", address: "", phone: "", email: "", adminName: "", adminEmail: "", adminPhone: "", startDate: "", endDate: "", extraUsers: 0 });
-    setCreatedResult(null);
-    setRegisterOpen(true);
-  };
-
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault();
-    const token = getSuperAdminToken();
-    if (!token) return;
-    if (!createForm.startDate || !createForm.endDate) {
-      toast.error("Required", { description: "License start and end dates are required." });
-      return;
-    }
-    setCreating(true);
-    try {
-      const payload = {
-        ...createForm,
-        planId: selectedPlan?._id,
-        planName: selectedPlan?.name,
-        months: calcMonths(),
-        totalAmount: calcTotal(),
-        totalUsers: calcTotalUsers(),
-        includedUsers: selectedPlan?.includedUsers || 0,
-        pricePerUser: selectedPlan?.pricePerUser || 0,
-      };
-      const res = await fetch("/api/superadmin/schools", {
-        method: "POST", headers: authHeaders(token, true), body: JSON.stringify(payload),
-      });
-      const json = await parseJson(res);
-      setCreatedResult({ code: json.data.code, password: json.data.generatedPassword });
-      toast.success("School Created!", { description: `${createForm.name} has been registered.` });
-      fetchSchools(); fetchStats();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleEdit = async (e: FormEvent) => {
-    e.preventDefault();
-    const token = getSuperAdminToken();
-    if (!token || !editSchool) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/superadmin/schools/${editSchool._id}`, {
-        method: "PUT", headers: authHeaders(token, true), body: JSON.stringify(editForm),
-      });
-      await parseJson(res);
-      toast.success("Updated", { description: "School details updated." });
-      setEditOpen(false); fetchSchools();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleToggle = async (school: SchoolRecord) => {
-    const token = getSuperAdminToken();
-    if (!token) return;
-    try {
-      const res = await fetch(`/api/superadmin/schools/${school._id}/toggle`, {
-        method: "PATCH", headers: authHeaders(token),
-      });
-      const json = await parseJson(res);
-      setSchools((prev) => prev.map((s) => (s._id === school._id ? { ...s, isActive: json.isActive } : s)));
-      toast.success("Success", { description: json.message });
-      fetchStats();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    }
-  };
-
-  const handleToggleAttendanceEdit = async (school: SchoolRecord) => {
-    const token = getSuperAdminToken();
-    if (!token) return;
-    try {
-      const res = await fetch(`/api/superadmin/schools/${school._id}/allow-attendance-edit`, {
-        method: "PATCH", headers: authHeaders(token),
-      });
-      const json = await parseJson(res);
-      setSchools((prev) => prev.map((s) => (s._id === school._id ? { ...s, allowAttendanceEdit: json.allowAttendanceEdit } : s)));
-      toast.success("Success", { description: json.message });
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    }
-  };
-
-  const handleResetPassword = async () => {
-    if (!resetPasswordTarget) return;
-    const token = getSuperAdminToken();
-    if (!token) return;
-    setResettingPassword(true);
-    try {
-      const res = await fetch(`/api/superadmin/schools/${resetPasswordTarget.id}/reset-password`, { method: "POST", headers: authHeaders(token) });
-      const json = await parseJson(res);
-      toast.success("Password Reset", { description: `New password: ${json.newPassword}` });
-      setResetPasswordTarget(null);
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setResettingPassword(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    const token = getSuperAdminToken();
-    if (!token) return;
-    setDeletingSchool(true);
-    try {
-      const res = await fetch(`/api/superadmin/schools/${deleteTarget.id}`, { method: "DELETE", headers: authHeaders(token) });
-      await parseJson(res);
-      toast.success("Deleted", { description: "School deleted." });
-      setDeleteTarget(null);
-      fetchSchools(); fetchStats();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setDeletingSchool(false);
-    }
-  };
-
-  const openRenew = (school: SchoolRecord) => {
-    setRenewSchool(school);
-    const lastEnd = school.license?.endDate ? school.license.endDate.split("T")[0] : new Date().toISOString().split("T")[0];
-    setRenewForm({ endDate: lastEnd, extraUsers: school.license?.extraUsers || 0 });
-    setRenewOpen(true);
-  };
-
-  const handleRenew = async () => {
-    const token = getSuperAdminToken();
-    if (!token || !renewSchool) return;
-    if (!renewForm.endDate) {
-      toast.error("Required", { description: "New end date is required." });
-      return;
-    }
-    setSaving(true);
-    try {
-      const startDate = renewSchool.license?.endDate || new Date().toISOString().split("T")[0];
-      const start = new Date(startDate);
-      const end = new Date(renewForm.endDate);
-      const diffMs = end.getTime() - start.getTime();
-      const months = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)));
-      const newExtra = renewForm.extraUsers;
-      const pricePerUser = renewSchool.license?.pricePerUser || 0;
-      const includedUsers = renewSchool.license?.includedUsers || 0;
-      const totalAmount = months * newExtra * pricePerUser;
-      const totalUsers = includedUsers + newExtra;
-
-      const res = await fetch(`/api/superadmin/schools/${renewSchool._id}`, {
-        method: "PUT",
-        headers: authHeaders(token, true),
-        body: JSON.stringify({
-          license: { endDate: renewForm.endDate, extraUsers: newExtra, totalUsers, months, totalAmount, status: "active" },
-        }),
-      });
-      await parseJson(res);
-      toast.success("License Renewed", { description: `License extended to ${renewForm.endDate}.` });
-      setRenewOpen(false); fetchSchools();
-    } catch (err) {
-      toast.error("Error", { description: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLogout = () => {
-    clearSuperAdminAuth();
-    router.push("/super-admin/login");
-  };
-
-  const months = calcMonths();
-  const totalAmount = calcTotal();
-  const totalUsers = calcTotalUsers();
+  const loadingSchools = schools === null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A]">
-      <div className="border-b border-white/10 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">EduNivo</h1>
-              <p className="text-[11px] text-white/50">Super Admin Dashboard</p>
-            </div>
+    <div className="space-y-6">
+      {/* Welcome */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-[color-mix(in_oklch,var(--primary),var(--accent)_45%)] to-accent p-6 text-white shadow-[0_24px_60px_-28px_rgba(80,72,229,0.6)] sm:p-8">
+        <div className="pointer-events-none absolute -top-20 -right-16 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-fuchsia-300/20 blur-3xl" />
+        <div className="relative flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11.5px] font-semibold ring-1 ring-white/25 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" /> {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="mt-3 font-heading text-[26px] leading-tight font-bold tracking-tight sm:text-3xl">
+              {greeting()}, {admin?.name?.split(" ")[0] || "Admin"}
+            </h1>
+            <p className="mt-1.5 max-w-xl text-[14px] text-white/85">
+              {loadingSchools
+                ? "Loading your platform overview…"
+                : `${stats?.activeSchools ?? 0} active schools · ${derived.newThisMonth} new this month · ${derived.health.expiring} license${derived.health.expiring === 1 ? "" : "s"} expiring soon`}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <TicketsNavButton />
-            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={() => router.push("/super-admin/plans")}>Plans</Button>
-            <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" onClick={handleLogout}>Logout</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => registerWith()} className="h-10 rounded-xl bg-white px-4 font-semibold text-primary shadow-md hover:bg-white/90">
+              <Plus /> Register school
+            </Button>
+            <Button nativeButton={false} render={<Link href="/super-admin/tickets" />} className="h-10 rounded-xl bg-white/15 px-4 font-semibold text-white ring-1 ring-white/30 backdrop-blur hover:bg-white/25">
+              <LifeBuoy /> Tickets {ticketStats?.unread ? <span className="rounded-full bg-white px-1.5 text-[10px] font-bold text-primary">{ticketStats.unread}</span> : null}
+            </Button>
+            <Button onClick={load} aria-label="Refresh dashboard" className="h-10 w-10 rounded-xl bg-white/15 text-white ring-1 ring-white/30 backdrop-blur hover:bg-white/25">
+              <RefreshCw className={cn(refreshing && "animate-spin")} />
+            </Button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[
-            { label: "Total Schools", value: stats.totalSchools, icon: School },
-            { label: "Active", value: stats.activeSchools, icon: School },
-            { label: "Teachers", value: stats.totalTeachers, icon: GraduationCap },
-            { label: "Students", value: stats.totalStudents, icon: Users },
-            { label: "Parents", value: stats.totalParents, icon: Heart },
-          ].map((s) => (
-            <div key={s.label} className="bg-white/5 backdrop-blur rounded-xl border border-white/10 p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-white/10 flex items-center justify-center">
-                  <s.icon className="h-4 w-4 text-white/70" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-white">{s.value}</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">{s.label}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* KPIs */}
+      <section aria-label="Key metrics" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <KpiCard label="Total schools" value={stats?.totalSchools ?? 0} icon={School} href="/super-admin/schools" loading={!stats} hint={stats ? `${stats.activeSchools} active` : undefined} />
+        <KpiCard label="Active schools" value={stats?.activeSchools ?? 0} icon={ShieldCheck} tone="success" loading={!stats} hint={stats && stats.totalSchools ? `${Math.round((stats.activeSchools / stats.totalSchools) * 100)}% of all schools` : undefined} />
+        <KpiCard label="Teachers" value={(stats?.totalTeachers ?? 0).toLocaleString("en-IN")} icon={GraduationCap} tone="info" loading={!stats} />
+        <KpiCard label="Students" value={(stats?.totalStudents ?? 0).toLocaleString("en-IN")} icon={Users} tone="accent" loading={!stats} />
+        <KpiCard label="Parents" value={(stats?.totalParents ?? 0).toLocaleString("en-IN")} icon={Heart} tone="coral" loading={!stats} />
+        <KpiCard label="Open tickets" value={openTickets ?? 0} icon={LifeBuoy} tone="warning" href="/super-admin/tickets" loading={!ticketStats} hint={ticketStats ? `${ticketStats.unread} unread` : undefined} />
+      </section>
 
-        <div className="bg-white/5 backdrop-blur rounded-xl p-5 border border-white/10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Available Plans</h3>
-            <span className="text-xs text-white/40">Choose a plan to register a school</span>
-          </div>
-          {plans.length === 0 ? (
-            <div className="text-center py-10">
-              <Crown className="h-10 w-10 text-white/20 mx-auto mb-3" />
-              <p className="text-sm text-white/50">No plans created yet.</p>
-              <p className="text-xs text-white/30 mt-1">Go to <strong>Plans</strong> to create subscription plans.</p>
-            </div>
+      {/* Trend + license health */}
+      <div className="grid gap-6 xl:grid-cols-3">
+        <AdminPanel title="School registrations" description="New schools per month, last 12 months" icon={TrendingUp} className="xl:col-span-2">
+          {loadingSchools ? <Skeleton className="h-64 w-full rounded-xl" /> : <RegistrationsChart data={derived.months} />}
+        </AdminPanel>
+
+        <AdminPanel title="License health" description={`${schools?.length ?? 0} schools`} icon={HeartPulse}>
+          {loadingSchools ? (
+            <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {plans.filter((p) => p.isActive).map((plan) => (
-                <div key={plan._id} className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all p-4 flex flex-col">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Crown className="h-4 w-4 text-white/50" />
-                    <span className="text-sm font-semibold text-white">{plan.name}</span>
+            <div className="space-y-3.5">
+              {HEALTH_ROWS.map((row) => (
+                <div key={row.key} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[13px]">
+                    <StatusPill status={row.key} label={row.label} />
+                    <span className="font-semibold tabular-nums">{derived.health[row.key]}</span>
                   </div>
-                  <div className="space-y-1 text-xs text-white/50 mb-4">
-                    <p>₹{plan.pricePerUser}/user/month</p>
-                    <p>{plan.includedUsers} free users included</p>
-                    <p>{plan.features.length} features</p>
-                  </div>
-                  <Button size="sm" className="mt-auto w-full h-8 rounded-lg bg-gradient-to-r from-primary to-accent border-0 text-white text-xs"
-                    onClick={() => openRegister(plan)}>
-                    <Plus className="h-3 w-3 mr-1" /> Choose Plan
-                  </Button>
+                  <Meter value={derived.health[row.key]} max={Math.max(1, schools?.length ?? 1)} className="h-1" />
                 </div>
               ))}
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/60 pt-3.5 text-[12px]">
+                <div>
+                  <p className="text-muted-foreground">Total license value</p>
+                  <p className="font-heading text-[16px] font-bold text-foreground">{formatINR(derived.contractValue)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Seats in use</p>
+                  <p className="font-heading text-[16px] font-bold text-foreground tabular-nums">
+                    {derived.seatsUsed.toLocaleString("en-IN")} <span className="text-[12px] font-medium text-muted-foreground">/ {derived.seatsTotal.toLocaleString("en-IN")}</span>
+                  </p>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search schools..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 rounded-xl w-72" />
-          </div>
-          <Button variant="outline" onClick={() => { fetchSchools(); fetchStats(); }} className="gap-2 rounded-xl">
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </Button>
-        </div>
-
-        <div className="bg-card rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50/80">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">School</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Users</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">License</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}><td colSpan={8} className="px-4 py-3"><Skeleton className="h-10 w-full rounded-lg" /></td></tr>
-                  ))
-                ) : schools.length === 0 ? (
-                  <tr><td colSpan={8}><EmptyState icon={School} message="No schools found." /></td></tr>
-                ) : schools.map((s) => {
-                  const totalU = s.userCounts.usersTotal || s.license?.totalUsers || 0;
-                  const usersUsed = s.userCounts.usersUsed || 0;
-                  const usagePercent = totalU > 0 ? Math.round((usersUsed / totalU) * 100) : 0;
-                  return (
-                    <tr key={s._id} className="hover:bg-gray-50/50 transition-colors border-t border-gray-100">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{s.name}</p>
-                          <p className="text-xs text-gray-400">{s.adminEmail}</p>
-                          {s.phone && <p className="text-xs text-gray-400">{s.phone}</p>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">{s.code}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-gray-600">{s.adminName}</p>
-                        {s.adminPhone && <p className="text-xs text-gray-400">{s.adminPhone}</p>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          <span className="font-semibold text-gray-900">{usersUsed}</span>
-                          <span className="text-gray-400"> / {totalU}</span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1">
-                          <div className={`h-1.5 rounded-full ${usagePercent > 90 ? "bg-red-500" : usagePercent > 70 ? "bg-amber-500" : "bg-primary"}`}
-                            style={{ width: `${Math.min(usagePercent, 100)}%` }} />
-                        </div>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          {s.userCounts.admin || 0}A · {s.userCounts.teachers}T · {s.userCounts.students}S
-                          {s.userCounts.parents > 0 && <span> · {s.userCounts.parents}P</span>}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[10px] px-2.5 py-1 rounded-full border font-medium capitalize bg-primary/10 text-primary border-primary/20">
-                          {s.license?.planName || "No Plan"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {s.license?.endDate ? (
-                          <div>
-                            <p className="text-xs text-gray-900 font-medium">
-                              {new Date(s.license.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            </p>
-                            <p className="text-[10px] text-gray-400">
-                              {s.license.startDate && `From ${new Date(s.license.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
-                              {s.license.startDate && (() => {
-                                const days = Math.ceil((new Date(s.license.endDate!).getTime() - new Date(s.license.startDate!).getTime()) / 86400000);
-                                return days > 0 ? ` · ${days < 30 ? `${days} days` : `${Math.round(days / 30)} mo`}` : "";
-                              })()}
-                            </p>
-                            {s.license.totalAmount > 0 && (
-                              <p className="text-[10px] text-gray-400">₹{s.license.totalAmount} total</p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">No License</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={statusPillClass(s.isActive ? "success" : "destructive")}>
-                          {s.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:bg-green-50"
-                            title="Renew License" onClick={() => openRenew(s)}>
-                            <Calendar className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10"
-                            title="Edit" onClick={() => { setEditSchool(s); setEditForm({ name: s.name, address: s.address, phone: s.phone, email: s.email, adminName: s.adminName, adminPhone: s.adminPhone }); setEditOpen(true); }}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50"
-                            title="Reset Admin Password" onClick={() => setResetPasswordTarget({ id: s._id, name: s.name })}>
-                            <Key className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className={`h-8 w-8 ${s.allowAttendanceEdit ? "text-purple-500 hover:bg-purple-50" : "text-gray-400 hover:bg-gray-100"}`}
-                            title={s.allowAttendanceEdit ? "Disable Attendance Edit" : "Enable Attendance Edit"} onClick={() => handleToggleAttendanceEdit(s)}>
-                            <CalendarCheck className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className={`h-8 w-8 ${s.isActive ? "text-amber-500 hover:bg-amber-50" : "text-green-500 hover:bg-green-50"}`}
-                            title={s.isActive ? "Deactivate" : "Activate"} onClick={() => handleToggle(s)}>
-                            <Power className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50"
-                            title="Delete" onClick={() => setDeleteTarget({ id: s._id, name: s.name })}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </AdminPanel>
       </div>
 
-      {/* Register School Dialog */}
-      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <School className="h-5 w-5 text-primary" /> Register New School
-            </DialogTitle>
-          </DialogHeader>
-          {createdResult ? (
-            <div className="space-y-4 mt-2">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <p className="text-sm font-medium text-green-800 mb-2">School Created Successfully!</p>
-                <div className="space-y-1 text-sm text-green-700">
-                  <p>School Code: <span className="font-mono font-bold">{createdResult.code}</span></p>
-                  <p>Admin Password: <span className="font-mono font-bold">{createdResult.password}</span></p>
-                </div>
-                <p className="text-xs text-green-600 mt-2">Share these credentials with the school admin. Password cannot be recovered.</p>
-              </div>
-              <Button className="w-full rounded-xl" onClick={() => setRegisterOpen(false)}>Done</Button>
-            </div>
+      {/* Plans + expiring + tickets */}
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        <AdminPanel title="Schools by plan" icon={BarChart3} actions={<Link href="/super-admin/plans" className="text-[12.5px] font-semibold text-primary hover:underline">Plans</Link>}>
+          {loadingSchools ? (
+            <Skeleton className="h-40 w-full rounded-xl" />
+          ) : derived.plans.length ? (
+            <PlansChart data={derived.plans} />
           ) : (
-            <form onSubmit={handleCreate} className="space-y-4 mt-2">
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-                <Label className="text-xs font-semibold text-gray-500">Plan Type</Label>
-                <p className="text-sm font-semibold text-gray-900 mt-1">{selectedPlan?.name || "None"}</p>
-                <p className="text-xs text-gray-500">₹{selectedPlan?.pricePerUser || 0}/user/month · {selectedPlan?.includedUsers || 0} free users · {selectedPlan?.features?.length || 0} features</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">School Details</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">School Name *</Label>
-                    <Input placeholder="e.g. Delhi Public School" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Phone</Label>
-                    <Input placeholder="9876543210" value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Email</Label>
-                    <Input placeholder="school@email.com" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className="rounded-xl" />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Address</Label>
-                    <Input placeholder="Full address" value={createForm.address} onChange={(e) => setCreateForm((f) => ({ ...f, address: e.target.value }))} className="rounded-xl" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Admin Account</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Admin Name *</Label>
-                    <Input placeholder="Full name" value={createForm.adminName} onChange={(e) => setCreateForm((f) => ({ ...f, adminName: e.target.value }))} required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Admin Phone</Label>
-                    <Input placeholder="9876543210" value={createForm.adminPhone} onChange={(e) => setCreateForm((f) => ({ ...f, adminPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} className="rounded-xl" />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Admin Email *</Label>
-                    <Input placeholder="admin@email.com (login credentials sent here)" value={createForm.adminEmail} onChange={(e) => setCreateForm((f) => ({ ...f, adminEmail: e.target.value }))} required className="rounded-xl" />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">License</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">License Start Date *</Label>
-                    <Input type="date" value={createForm.startDate} onChange={(e) => setCreateForm((f) => ({ ...f, startDate: e.target.value }))} required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">License End Date *</Label>
-                    <Input type="date" value={createForm.endDate} onChange={(e) => setCreateForm((f) => ({ ...f, endDate: e.target.value }))} required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-gray-500">Extra Users (beyond {selectedPlan?.includedUsers || 0} free)</Label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="0"
-                      value={countInputValue(createForm.extraUsers)}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, extraUsers: parseCountInput(e.target.value) }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1 flex items-end">
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 w-full">
-                      <p className="text-xs text-gray-500">Total Users</p>
-                      <p className="text-lg font-bold text-gray-900">{totalUsers}</p>
-                      <p className="text-[10px] text-gray-400">{selectedPlan?.includedUsers || 0} free + {createForm.extraUsers || 0} extra</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {createForm.startDate && createForm.endDate && createForm.extraUsers > 0 && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Cost Summary</p>
-                  <div className="space-y-1 text-sm text-blue-800">
-                    <div className="flex justify-between"><span>Duration</span><span className="font-medium">{months} month{months !== 1 ? "s" : ""}</span></div>
-                    <div className="flex justify-between"><span>Extra Users</span><span className="font-medium">{createForm.extraUsers}</span></div>
-                    <div className="flex justify-between"><span>Price Per User/Month</span><span className="font-medium">₹{selectedPlan?.pricePerUser || 0}</span></div>
-                    <div className="flex justify-between border-t border-blue-200 pt-1 mt-1">
-                      <span className="font-semibold">Total Amount</span>
-                      <span className="font-bold text-lg">₹{totalAmount}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setRegisterOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
-                <Button type="submit" disabled={creating} className="flex-1 h-11 rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white">
-                  {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {creating ? "Creating..." : "Register School"}
-                </Button>
-              </div>
-            </form>
+            <EmptyBlock icon={Crown} title="No schools yet" />
           )}
-        </DialogContent>
-      </Dialog>
+        </AdminPanel>
 
-      {/* Edit School Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-primary" /> Edit School
-            </DialogTitle>
-          </DialogHeader>
-          {editSchool && (
-            <form onSubmit={handleEdit} className="space-y-3 mt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-gray-500">School Name</Label>
-                <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="rounded-xl" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-gray-500">Phone</Label>
-                  <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} className="rounded-xl" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-gray-500">Email</Label>
-                  <Input value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className="rounded-xl" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-gray-500">Address</Label>
-                <Input value={editForm.address} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} className="rounded-xl" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-gray-500">Admin Name</Label>
-                  <Input value={editForm.adminName} onChange={(e) => setEditForm((f) => ({ ...f, adminName: e.target.value }))} className="rounded-xl" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold text-gray-500">Admin Phone</Label>
-                  <Input value={editForm.adminPhone} onChange={(e) => setEditForm((f) => ({ ...f, adminPhone: e.target.value }))} className="rounded-xl" />
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" onClick={() => setEditOpen(false)} className="rounded-xl">Cancel</Button>
-                <Button type="submit" disabled={saving} className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Save
-                </Button>
-              </div>
-            </form>
+        <AdminPanel
+          title="Licenses needing attention"
+          description="Expired or expiring within 30 days"
+          icon={CalendarClock}
+          bodyClassName="p-0"
+          actions={<Link href="/super-admin/schools" className="text-[12.5px] font-semibold text-primary hover:underline">All schools</Link>}
+        >
+          {loadingSchools ? (
+            <div className="space-y-2 p-5">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}</div>
+          ) : derived.expiring.length === 0 ? (
+            <EmptyBlock icon={ShieldCheck} title="All licenses healthy" description="Nothing expires in the next 30 days." />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {derived.expiring.map((s) => {
+                const days = daysUntil(s.license.endDate);
+                return (
+                  <li key={s._id} className="flex items-center gap-3 px-5 py-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/12 font-heading text-[13px] font-bold text-warning">{s.name.slice(0, 1)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-semibold">{s.name}</p>
+                      <p className="text-[12px] text-muted-foreground">{s.license.planName || "No plan"} · {formatDate(s.license.endDate)}</p>
+                    </div>
+                    <StatusPill status={licenseHealth(s)} label={days !== null && days < 0 ? `Expired ${Math.abs(days)}d ago` : `${days}d left`} />
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </DialogContent>
-      </Dialog>
+        </AdminPanel>
 
-      {/* Renew License Dialog */}
-      <Dialog open={renewOpen} onOpenChange={setRenewOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-green-600" /> Renew License
-            </DialogTitle>
-          </DialogHeader>
-          {renewSchool && (
-            <div className="space-y-4 mt-2">
-              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-1 text-sm">
-                <p className="font-medium text-gray-900">{renewSchool.name}</p>
-                <p className="text-xs text-gray-500">Plan: {renewSchool.license?.planName || "None"}</p>
-                {renewSchool.license?.endDate && (
-                  <p className="text-xs text-gray-500">
-                    Current expiry: {new Date(renewSchool.license.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
-                )}
-              </div>
+        <AdminPanel
+          title="Latest ticket activity"
+          icon={LifeBuoy}
+          bodyClassName="p-0"
+          className="lg:col-span-2 xl:col-span-1"
+          actions={<Link href="/super-admin/tickets" className="text-[12.5px] font-semibold text-primary hover:underline">View all</Link>}
+        >
+          {tickets === null ? (
+            <div className="space-y-2 p-5">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}</div>
+          ) : tickets.length === 0 ? (
+            <EmptyBlock icon={LifeBuoy} title="No tickets" description="Bug reports from schools will appear here." />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {tickets.map((t) => (
+                <li key={t._id}>
+                  <Link href={`/super-admin/tickets/${t._id}`} className="flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/50">
+                    <span className={cn("mt-2 h-2 w-2 shrink-0 rounded-full", t.adminUnread ? "bg-destructive" : "bg-border")} aria-label={t.adminUnread ? "Unread" : undefined} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13.5px] font-semibold">{t.title}</p>
+                      <p className="truncate text-[12px] text-muted-foreground">{t.ticketNumber} · {t.reporter.name} · {t.reporter.schoolName || "System"}</p>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={t.status} />
+                        <PriorityBadge priority={t.priority} />
+                        <span className="text-[11.5px] text-muted-foreground">{timeAgo(t.lastActivityAt)}</span>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
+      </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-gray-500">New Expiry Date</Label>
-                <Input type="date" value={renewForm.endDate} onChange={(e) => setRenewForm((f) => ({ ...f, endDate: e.target.value }))} className="rounded-xl" />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold text-gray-500">
-                  Extra Users (currently {renewSchool.license?.extraUsers || 0})
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="0"
-                  value={countInputValue(renewForm.extraUsers)}
-                  onChange={(e) => setRenewForm((f) => ({ ...f, extraUsers: parseCountInput(e.target.value) }))}
-                  className="rounded-xl"
-                />
-              </div>
-
-              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-sm space-y-1">
-                <div className="flex justify-between text-blue-800">
-                  <span>Total Users</span>
-                  <span className="font-bold">{(renewSchool.license?.includedUsers || 0) + renewForm.extraUsers}</span>
-                </div>
-                {renewSchool.license?.endDate && renewForm.endDate && (
-                  <div className="flex justify-between text-blue-700 text-xs">
-                    <span>Extends by</span>
-                    <span>
-                      {Math.max(
-                        0,
-                        Math.ceil(
-                          (new Date(renewForm.endDate).getTime() - new Date(renewSchool.license.endDate).getTime()) /
-                            (1000 * 60 * 60 * 24 * 30),
-                        ),
-                      )}{" "}
-                      month(s)
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setRenewOpen(false)} className="flex-1 rounded-xl">Cancel</Button>
-                <Button onClick={handleRenew} disabled={saving} className="flex-1 rounded-xl bg-gradient-to-r from-green-500 to-green-600 border-0 text-white">
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Calendar className="h-4 w-4 mr-2" />}
-                  Renew
-                </Button>
-              </div>
+      {/* Recent schools + plan catalogue */}
+      <div className="grid gap-6 xl:grid-cols-3">
+        <AdminPanel
+          title="Recently registered"
+          icon={School}
+          bodyClassName="p-0"
+          className="xl:col-span-2"
+          actions={<Link href="/super-admin/schools" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline">Manage schools <ArrowRight className="h-3.5 w-3.5" /></Link>}
+        >
+          {loadingSchools ? (
+            <div className="space-y-2 p-5">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-11 w-full" />)}</div>
+          ) : derived.recent.length === 0 ? (
+            <EmptyBlock icon={School} title="No schools yet" action={<Button className={cn(PRIMARY_CTA, "h-10 px-5")} onClick={() => registerWith()}><Plus /> Register school</Button>} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-[13px]">
+                <thead className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <tr className="border-b border-border/60">
+                    <th scope="col" className="px-5 py-2.5">School</th>
+                    <th scope="col" className="px-3 py-2.5">Plan</th>
+                    <th scope="col" className="px-3 py-2.5">Users</th>
+                    <th scope="col" className="px-3 py-2.5">Registered</th>
+                    <th scope="col" className="px-5 py-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {derived.recent.map((s) => (
+                    <tr key={s._id} className="transition-colors hover:bg-muted/40">
+                      <td className="px-5 py-3">
+                        <p className="font-semibold">{s.name}</p>
+                        <p className="text-[12px] text-muted-foreground">{s.code}</p>
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{s.license?.planName || "No plan"}</td>
+                      <td className="px-3 py-3 tabular-nums">{s.userCounts.usersUsed || 0} / {s.userCounts.usersTotal || s.license?.totalUsers || 0}</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-muted-foreground">{formatDate(s.createdAt)}</td>
+                      <td className="px-5 py-3"><StatusPill status={s.isActive ? "active" : "inactive"} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </AdminPanel>
+
+        <AdminPanel title="Subscription plans" description="Pick one to register a school" icon={Crown} bodyClassName="p-3">
+          {plans.filter((p) => p.isActive).length === 0 ? (
+            <EmptyBlock icon={Crown} title="No active plans" description="Create plans in Subscription Plans." action={<Button variant="outline" className="rounded-xl" nativeButton={false} render={<Link href="/super-admin/plans" />}>Open plans</Button>} />
+          ) : (
+            <ul className="space-y-2">
+              {plans.filter((p) => p.isActive).map((p) => (
+                <li key={p._id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-border/60 transition hover:ring-primary/40">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Crown className="h-4 w-4" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-semibold">{p.name}</p>
+                    <p className="truncate text-[12px] text-muted-foreground">
+                      <IndianRupee className="-mt-0.5 inline h-3 w-3" />{p.pricePerUser}/user/mo · {p.includedUsers} free
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => registerWith(p._id)}>
+                    <Plus /> Use
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </AdminPanel>
+      </div>
     </div>
   );
 }

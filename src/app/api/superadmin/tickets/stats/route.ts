@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { BugTicket } from "@/models/BugTicket";
 import { requireSuperAdminActor } from "@/lib/bugReports/auth";
-import { jsonError, runRetentionSweep } from "@/lib/bugReports/service";
+import { jsonError, migrateLegacyStatuses, runRetentionSweep } from "@/lib/bugReports/service";
 
 // GET /api/superadmin/tickets/stats -- dashboard cards, the unread badge
 // and the School filter's options, in one aggregation round-trip.
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
     const gate = await requireSuperAdminActor(req);
     if ("error" in gate) return gate.error;
 
+    await migrateLegacyStatuses();
     runRetentionSweep().catch((err) => console.warn("[tickets] retention sweep failed:", err));
 
     const [facets] = await BugTicket.aggregate<{

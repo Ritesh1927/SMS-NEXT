@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { BugTicket, type IBugTicket, type ITimelineEntry } from "@/models/BugTicket";
 import { TicketSettings, getTicketSettings } from "@/models/TicketSettings";
 import pkg from "../../../package.json";
-import { INTERNAL_TIMELINE_TYPES, SOLVED_STATUSES, TERMINAL_STATUSES, statusLabel, type TicketStatus } from "./constants";
+import { INTERNAL_TIMELINE_TYPES, LEGACY_STATUS_MAP, SOLVED_STATUSES, TERMINAL_STATUSES, statusLabel, type TicketStatus } from "./constants";
 import { sendReporterUpdateEmail } from "./emails";
 
 export const APP_VERSION = [pkg.version, process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)].filter(Boolean).join("+");
@@ -118,10 +118,45 @@ export function statusHeadline(status: TicketStatus): string {
     case "resolved": return "Your bug report has been resolved";
     case "closed": return "Your bug report has been closed";
     case "reopened": return "Your bug report has been reopened";
-    case "waiting_for_information":
-    case "waiting_for_customer": return "We need a bit more information about your report";
+    case "waiting_for_information": return "We need a bit more information about your report";
     default: return `Your bug report is now: ${statusLabel(status)}`;
   }
+}
+
+// ---- Data migration ---------------------------------------------------------
+
+let statusMigration: Promise<void> | null = null;
+
+/**
+ * One-time migration from the original 19-status workflow to the current
+ * 7 statuses (LEGACY_STATUS_MAP). Idempotent (once nothing matches, it is a
+ * handful of no-op updateMany calls) and runs at most once per server
+ * process; on failure it retries on the next call. Rewrites the ticket
+ * status and the from/to of status_change timeline entries only, because
+ * assignment entries also store the word "assigned".
+ */
+export function migrateLegacyStatuses(): Promise<void> {
+  statusMigration ??= (async () => {
+    const byTarget = new Map<TicketStatus, string[]>();
+    for (const [legacy, target] of Object.entries(LEGACY_STATUS_MAP)) {
+      byTarget.set(target, [...(byTarget.get(target) ?? []), legacy]);
+    }
+    for (const [target, legacy] of byTarget) {
+      // Raw collection: legacy values are outside the schema enum, so skip Mongoose casting.
+      await BugTicket.collection.updateMany({ status: { $in: legacy } }, { $set: { status: target } });
+      for (const field of ["from", "to"] as const) {
+        await BugTicket.collection.updateMany(
+          { timeline: { $elemMatch: { type: "status_change", [field]: { $in: legacy } } } },
+          { $set: { [`timeline.$[e].${field}`]: target } },
+          { arrayFilters: [{ "e.type": "status_change", [`e.${field}`]: { $in: legacy } }] },
+        );
+      }
+    }
+  })().catch((err) => {
+    statusMigration = null;
+    console.warn("[bug-reports] status migration failed, will retry:", err);
+  });
+  return statusMigration;
 }
 
 // ---- Retention -----------------------------------------------------------
