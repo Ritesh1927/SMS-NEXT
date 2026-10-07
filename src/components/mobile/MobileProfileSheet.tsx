@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, GraduationCap, LogOut, School, Settings, ShieldCheck, Users, X } from "lucide-react";
+import { InstallButton } from "@/components/pwa/InstallButton";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
@@ -140,6 +141,9 @@ export function MobileProfileSheet({
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
+
+            {/* Close this sheet first so the install sheet isn't stacked on it. */}
+            <InstallButton variant="sheet" onSelect={() => onOpenChange(false)} />
 
             <button
               type="button"

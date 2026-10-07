@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Offline · EduNivo</title>
+  <link rel="icon" href="/favicon.ico" />
+  <!-- Served by the service worker when a page can't load and has no cached
+       copy. Fully self-contained: no Next.js runtime, no external requests. -->
+  <style>
+    :root {
+      --primary: #5048e5;
+      --accent: #8d61f5;
+      --background: #eff0f6;
+      --card: #ffffff;
+      --foreground: #11182c;
+      --muted: #576078;
+      --border: #d9dce7;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      background: var(--background);
+      color: var(--foreground);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      padding: 32px 28px;
+      text-align: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: 0 24px 48px -24px rgba(80, 72, 229, 0.25);
+    }
+    .logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border-radius: 18px;
+      box-shadow: 0 12px 24px -10px rgba(80, 72, 229, 0.55);
+    }
+    h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+    p { margin: 0 0 24px; font-size: 14px; line-height: 1.55; color: var(--muted); }
+    button {
+      width: 100%;
+      height: 44px;
+      border: 0;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    .status { margin: 16px 0 0; font-size: 12px; }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: #e8a33c;
+      vertical-align: 1px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="/icons/icon-192x192.png" alt="EduNivo" width="64" height="64" />
+    <h1>You're offline</h1>
+    <p>EduNivo can't reach the server right now. Check your internet connection. This page reloads automatically once you're back online.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+    <p class="status"><span class="dot"></span>Waiting for connection…</p>
+  </main>
+  <script>
+    window.addEventListener("online", function () { location.reload(); });
+  </script>
+</body>
+</html>

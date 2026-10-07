@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { DashboardTopBar } from "@/components/dashboard/DashboardTopBar";
 import { PageLoader } from "@/components/PageLoader";
 import { MobileShell } from "@/components/mobile/MobileShell";
+import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
 
 interface UnreadResponse {
   success: boolean;
@@ -133,6 +134,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="mx-auto max-w-6xl w-full space-y-6">{children}</div>
         </main>
       </div>
+      {/* Offers "Install app" a few seconds after login, for every role. */}
+      <InstallPromptGate />
     </SidebarProvider>
   );
 }

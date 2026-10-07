@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# PWA service worker, generated from src/pwa/sw.js by `npm run build`
+/public/sw.js
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

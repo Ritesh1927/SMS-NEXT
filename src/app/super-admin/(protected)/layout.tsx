@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getSuperAdminToken } from "@/lib/superAdminAuth";
 import { PageLoader } from "@/components/PageLoader";
+import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
 
 export default function SuperAdminProtectedLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -22,5 +23,10 @@ export default function SuperAdminProtectedLayout({ children }: { children: Reac
     return <PageLoader fullScreen dark />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <InstallPromptGate />
+    </>
+  );
 }

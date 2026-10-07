@@ -9,7 +9,9 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
+import { InstallButton } from "@/components/pwa/InstallButton";
+import { ProfileMenuItem } from "@/components/dashboard/ProfileMenuItem";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { formatClassName } from "@/lib/helpers";
@@ -396,8 +398,8 @@ export function DashboardTopBar({
           <DropdownMenuTrigger
             nativeButton={false}
             render={
-              <div className="flex items-center gap-2 cursor-pointer rounded-full hover:bg-muted p-1 pr-2 transition-colors">
-                <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+              <div className="group/avatar flex items-center gap-2 cursor-pointer rounded-full hover:bg-muted p-1 pr-2 transition-colors">
+                <Avatar className="h-9 w-9 ring-2 ring-primary/20 transition-shadow group-data-popup-open/avatar:ring-primary/50 group-data-popup-open/avatar:shadow-[0_0_0_4px_rgba(80,72,229,0.12)]">
                   <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
                     {initials}
                   </AvatarFallback>
@@ -405,43 +407,85 @@ export function DashboardTopBar({
               </div>
             }
           />
-          <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden">
-            <div className="flex items-center gap-3 px-4 py-4 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent">
-              <Avatar className="h-12 w-12 shrink-0 ring-2 ring-white shadow-[0_4px_12px_-2px_rgba(79,70,229,0.35)]">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-base font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                <span className="inline-flex items-center mt-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  {ROLE_LABEL[user.role] || user.role}
-                </span>
-                {seats && (
-                  <p className="text-[11px] mt-1">
-                    <span className={seats.used >= seats.total ? "text-destructive font-semibold" : "text-foreground font-semibold"}>{seats.used}</span>
-                    <span className="text-muted-foreground"> / {seats.total} users</span>
-                  </p>
-                )}
-                {user.role === "teacher" && user.classTeacherOf && user.classTeacherOf.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                    Class Teacher of {user.classTeacherOf.map((c) => `Class ${c}`).join(", ")}
-                  </p>
-                )}
+          <DropdownMenuContent
+            align="end"
+            sideOffset={10}
+            className="w-80 overflow-hidden rounded-2xl p-0 shadow-[0_24px_60px_-20px_rgba(37,30,140,0.35)] ring-1 ring-foreground/[0.07]"
+          >
+            {/* Identity header: brand gradient with soft light blobs. */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary to-accent px-4 pt-4 pb-5 text-white">
+              <div className="pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-16 -left-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative flex items-center gap-3">
+                <Avatar className="h-14 w-14 shrink-0 ring-[3px] ring-white/40 shadow-lg shadow-black/15">
+                  <AvatarFallback className="bg-white text-lg font-bold text-primary">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-[15px] leading-tight font-bold">{user.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-white/80">{user.email}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold tracking-wide ring-1 ring-white/25 backdrop-blur-sm">
+                      {ROLE_LABEL[user.role] || user.role}
+                    </span>
+                    {user.schoolName && (
+                      <span className="inline-flex max-w-[150px] items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-medium text-white/90">
+                        <SchoolIcon className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{user.schoolName}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="p-1.5">
-              {user.role === "schooladmin" && (
-                <DropdownMenuItem onClick={() => router.push("/dashboard/settings")} className="gap-2 rounded-lg">
-                  <SettingsIcon className="h-4 w-4 text-muted-foreground" />
-                  Settings
-                </DropdownMenuItem>
+              {user.role === "teacher" && user.classTeacherOf && user.classTeacherOf.length > 0 && (
+                <p className="relative mt-3 truncate text-[11px] text-white/85">
+                  Class Teacher of {user.classTeacherOf.map((c) => `Class ${c}`).join(", ")}
+                </p>
               )}
-              <DropdownMenuItem onClick={onLogout} variant="destructive" className="gap-2 rounded-lg">
-                <LogOut className="h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
+            </div>
+
+            {/* Plan seat usage (only schools with a Super Admin seat cap). */}
+            {seats && (
+              <div className="mx-3 mt-3 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center justify-between text-[11.5px]">
+                  <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    Plan users
+                  </span>
+                  <span>
+                    <span className={seats.used >= seats.total ? "font-bold text-destructive" : "font-bold text-foreground"}>{seats.used}</span>
+                    <span className="text-muted-foreground"> / {seats.total}</span>
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-border/70">
+                  <div
+                    className={seats.used >= seats.total ? "h-full rounded-full bg-destructive" : "h-full rounded-full bg-gradient-to-r from-primary to-accent"}
+                    style={{ width: `${Math.min(100, Math.round((seats.used / seats.total) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-0.5 p-2">
+              {user.role === "schooladmin" && (
+                <ProfileMenuItem
+                  icon={SettingsIcon}
+                  title="Settings"
+                  description="School configuration and preferences"
+                  onClick={() => router.push("/dashboard/settings")}
+                />
+              )}
+              <InstallButton variant="menu" />
+            </div>
+
+            <div className="mx-3 h-px bg-border/70" />
+            <div className="p-2">
+              <ProfileMenuItem icon={LogOut} title="Log out" description="Sign out of this device" onClick={onLogout} tone="danger" />
+            </div>
+
+            <div className="flex items-center justify-center gap-1.5 border-t border-border/60 bg-muted/30 px-4 py-2 text-[10.5px] text-muted-foreground">
+              <GraduationCap className="h-3 w-3 text-primary" />
+              <span className="font-semibold text-foreground/80">EduNivo</span>
+              <span>· School Management System</span>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

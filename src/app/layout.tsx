@@ -3,6 +3,10 @@ import { Geist_Mono, Plus_Jakarta_Sans, DM_Sans, Lora } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
+import { PWAProvider } from "@/pwa/installContext";
+import { InstallModal } from "@/components/pwa/InstallModal";
+import { UpdateBanner } from "@/components/pwa/UpdateBanner";
+import { APP_NAME } from "@/pwa/config";
 
 // Same two Google Fonts as the original SMS-FRONTEND (Plus Jakarta Sans for
 // headings, DM Sans for body text) so sms-next's typography matches it.
@@ -35,6 +39,18 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "EduNivo",
   description: "School Management System",
+  applicationName: APP_NAME,
+  // iOS ignores the web manifest for home-screen apps' look; these meta
+  // tags give it the full-screen launch, title and icon instead.
+  // "default" status bar keeps iOS's own bar above the app rather than
+  // drawing content underneath it.
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    statusBarStyle: "default",
+  },
+  // Favicon / SVG icon / apple-touch-icon come from the app/favicon.ico,
+  // app/icon.svg and app/apple-icon.png file conventions.
 };
 
 // viewportFit: "cover" lets the mobile dashboard chrome (sticky top bar,
@@ -61,7 +77,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           for an attribute we never rendered and don't control. */}
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          {/* PWA install + update layer. Purely additive: renders nothing
+              until the install dialog is opened or an update is waiting. */}
+          <PWAProvider>
+            {children}
+            <InstallModal />
+            <UpdateBanner />
+          </PWAProvider>
           <Toaster />
         </AuthProvider>
       </body>
