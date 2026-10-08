@@ -54,16 +54,17 @@ interface ClassPerf {
 
 interface UpcomingExam {
   title: string;
-  date: string;
   class: string;
+  dates: string[]; // unique ISO dates, sorted ascending
+  subjects: string[];
+  scheduledExamId: string | null; // set when the row came from an exam term
+  examId: string; // representative subject-slot id (drill-down target)
 }
 
-interface PendingFeeStudent {
-  _id: string;
-  pendingAmount: number;
-  count: number;
-  dueDate: string | null;
-  student: { name: string; class: string; section: string } | null;
+interface PendingFeeClass {
+  name: string;
+  students: number;
+  amount: number;
 }
 
 interface ActivityItem {
@@ -80,7 +81,7 @@ interface DashboardData {
   feeMonthly: FeeMonth[];
   classPerformance: ClassPerf[];
   upcomingExams: UpcomingExam[];
-  pendingFeeStudents: PendingFeeStudent[];
+  pendingFeeByClass: PendingFeeClass[];
   recentActivity: ActivityItem[];
 }
 
@@ -110,6 +111,31 @@ const CLASS_BAR_GRADIENTS: [string, string][] = [
   ["#EC4899", "#DB2777"],
 ];
 
+// Dues bars for the Pending Fees card — assigned to classes by amount rank
+// (worst class red, then orange/amber/...) even though rows display in
+// class-ascending order, so the biggest concentration still reads red like
+// the reference design.
+const DUE_BAR_COLORS = ["#DC2626", "#EA580C", "#F59E0B", "#2563EB", "#7C3AED", "#059669"];
+
+// Compact rupee for the dues rows/pill: ₹2.7L / ₹32.0k / ₹850
+const fmtRupees = (v: number): string => {
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+  if (v >= 1000) return `₹${(v / 1000).toFixed(1)}k`;
+  return `₹${v}`;
+};
+
+// Exam row dates: same month collapses to "Oct 8, 9", otherwise each date
+// keeps its month — "Oct 8, Nov 2".
+const fmtExamDates = (dates: string[]): string => {
+  const parts = dates.map((d) => new Date(d));
+  const first = parts[0];
+  const sameMonth = parts.every((d) => d.getMonth() === first.getMonth() && d.getFullYear() === first.getFullYear());
+  if (sameMonth) {
+    return `${first.toLocaleDateString("en-US", { month: "short" })} ${parts.map((d) => d.getDate()).join(", ")}`;
+  }
+  return parts.map((d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" })).join(", ");
+};
+
 export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: string; schoolName?: string }) {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -131,12 +157,23 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
     return <PageLoader label="Loading dashboard..." />;
   }
 
-  const { stats, studentsByClass, todayAttendance, attendanceTrend, feeMonthly, classPerformance, upcomingExams, pendingFeeStudents, recentActivity } = data;
+  const { stats, studentsByClass, todayAttendance, attendanceTrend, feeMonthly, classPerformance, upcomingExams, pendingFeeByClass, recentActivity } = data;
   const attendanceRate =
     todayAttendance.marked > 0
       ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.marked) * 100)
       : null;
   const hasClassPerformance = classPerformance.some((c) => c.avg > 0);
+
+  // Pending Fees card: bar fill is each class's amount vs the worst class,
+  // pill shows the school-wide outstanding total. Rows arrive class-
+  // ascending from the API; colours are by amount rank so the worst class
+  // stays red regardless of where it sits in the list.
+  const maxDue = Math.max(1, ...pendingFeeByClass.map((c) => c.amount));
+  const totalDue = pendingFeeByClass.reduce((sum, c) => sum + c.amount, 0);
+  const dueColorByClass = new Map<string, string>();
+  [...pendingFeeByClass]
+    .sort((a, b) => b.amount - a.amount)
+    .forEach((c, i) => dueColorByClass.set(c.name, DUE_BAR_COLORS[i % DUE_BAR_COLORS.length]));
 
   const STAT_CARDS: {
     title: string;
@@ -296,7 +333,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                     <XAxis dataKey="month" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [`₹${Number(v).toLocaleString()}`, ""]} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, name) => [`₹${Number(v).toLocaleString()}`, name]} />
                     <Bar dataKey="collected" name="Collected" fill="#4F46E5" radius={[6, 6, 0, 0]} maxBarSize={36} />
                     <Bar dataKey="pending" name="Pending" fill="#C7D2FE" radius={[6, 6, 0, 0]} maxBarSize={36} />
                   </BarChart>
@@ -351,36 +388,40 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
             <DashboardSectionHeader
               icon={IndianRupee}
               title="Pending Fees"
-              subtitle="Outstanding balances"
+              subtitle="Outstanding balances by class"
               accent="orange"
               variant="dark"
               decoration={<HeaderPulseGlyph />}
               rightAction={
                 <HeaderActionPill variant="dark">
                   <IndianRupee className="h-3.5 w-3.5 text-white/80" />
-                  {pendingFeeStudents.length} pending
+                  {fmtRupees(totalDue)}
                 </HeaderActionPill>
               }
             />
             <div className="flex-1 bg-card p-6">
-              {pendingFeeStudents.length === 0 ? (
+              {pendingFeeByClass.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
               ) : (
-                <div className="space-y-2">
-                  {pendingFeeStudents.map((f) => (
-                    <div key={f._id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold bg-primary/10 text-primary border border-border">
-                          {(f.student?.name || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                <div className="space-y-4">
+                  {pendingFeeByClass.map((c) => {
+                    const color = dueColorByClass.get(c.name) ?? DUE_BAR_COLORS[0];
+                    const pct = Math.max(2, Math.round((c.amount / maxDue) * 100));
+                    return (
+                      <div key={c.name}>
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground truncate">{c.name}</p>
+                          <div className="shrink-0 text-right">
+                            <p className="text-sm font-bold" style={{ color }}>{fmtRupees(c.amount)}</p>
+                            <p className="text-[11px] text-muted-foreground">{c.students} student{c.students !== 1 ? "s" : ""}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{f.student?.name || "Unknown student"}</p>
-                          <p className="text-xs text-muted-foreground truncate">{f.count > 1 ? `${f.count} fees pending` : "1 fee pending"}</p>
+                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
                         </div>
                       </div>
-                      <span className="text-sm font-semibold text-destructive shrink-0">₹{f.pendingAmount.toLocaleString()}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -408,21 +449,28 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming exams scheduled.</p>
               ) : (
                 <div className="space-y-2.5">
-                  {upcomingExams.map((e, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted hover:bg-border transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
+                  {upcomingExams.map((e) => (
+                    <button
+                      key={e.examId}
+                      type="button"
+                      onClick={() => router.push("/dashboard/exams")}
+                      title="View exams"
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl bg-muted p-3 text-left transition-colors hover:bg-border"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{e.title}</p>
-                          <p className="text-xs text-muted-foreground">{e.class}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {e.class}
+                            {e.subjects.length > 1 ? ` · ${e.subjects.length} subjects` : ""}
+                          </p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold text-primary shrink-0">
-                        {new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </span>
-                    </div>
+                      <span className="text-xs font-semibold text-primary shrink-0">{fmtExamDates(e.dates)}</span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -646,60 +694,106 @@ interface UpcomingEntry {
   type: "holiday" | "event";
 }
 
-// Pulls from the same /school/holidays endpoint SchoolCalendar already uses
-// (it also returns events despite the route's name -- see that route's own
-// comment). Fetched independently here rather than threaded through the
-// dashboard's aggregate endpoint, matching SchoolCalendar's existing
-// self-contained pattern on this same page.
+interface UpcomingGroup {
+  key: UpcomingEntry["type"];
+  label: string;
+  items: UpcomingEntry[];
+}
+
+const UPCOMING_DOT: Record<UpcomingEntry["type"], string> = {
+  event: "bg-sky-500",
+  holiday: "bg-violet-500",
+};
+
+// Holidays come from the same /school/holidays endpoint SchoolCalendar
+// already uses (it also returns events despite the route's name -- see
+// that route's own comment), scoped to the current month and only from
+// today onward (today's holiday shows, it disappears tomorrow). Events
+// are any future date. Everything is rendered in labelled groups with a
+// title built from whichever groups are present, and there is no entry
+// cap -- all matching items are listed.
 function UpcomingEvents() {
-  const [entries, setEntries] = useState<UpcomingEntry[] | null>(null);
+  const [groups, setGroups] = useState<UpcomingGroup[] | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const firstOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const byDate = (a: UpcomingEntry, b: UpcomingEntry) => a.date.localeCompare(b.date);
+
     apiGet<{ success: boolean; data: CalendarData }>("/school/holidays", token)
       .then((res) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const isUpcoming = (d: string) => new Date(d) >= today;
-        const combined: UpcomingEntry[] = [
-          ...res.data.dates.filter((h) => isUpcoming(String(h.date))).map((h) => ({ date: String(h.date), name: h.name, type: "holiday" as const })),
-          ...res.data.events.filter((e) => isUpcoming(String(e.date))).map((e) => ({ date: String(e.date), name: e.name, type: "event" as const })),
-        ].sort((a, b) => a.date.localeCompare(b.date));
-        setEntries(combined.slice(0, 8));
+        const toTime = (d: string) => new Date(d).getTime();
+        const holidays: UpcomingEntry[] = res.data.dates
+          .filter((h) => {
+            const t = toTime(String(h.date));
+            return t >= today.getTime() && t < firstOfNextMonth.getTime();
+          })
+          .map((h) => ({ date: String(h.date), name: h.name, type: "holiday" as const }));
+        const events: UpcomingEntry[] = res.data.events
+          .filter((e) => toTime(String(e.date)) >= today.getTime())
+          .map((e) => ({ date: String(e.date), name: e.name, type: "event" as const }));
+
+        setGroups(
+          [
+            { key: "holiday" as const, label: "Holidays", items: holidays.sort(byDate) },
+            { key: "event" as const, label: "Events", items: events.sort(byDate) },
+          ].filter((g) => g.items.length > 0),
+        );
       })
-      .catch(() => setEntries([]));
+      .catch(() => setGroups([]));
   }, []);
+
+  const labels = groups?.map((g) => g.label) ?? [];
+  const title =
+    labels.length === 0
+      ? "Upcoming"
+      : labels.length === 1
+        ? `Upcoming ${labels[0]}`
+        : `Upcoming ${labels.slice(0, -1).join(", ")} & ${labels[labels.length - 1]}`;
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-[20px]" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
       <DashboardSectionHeader
         icon={CalendarDays}
-        title="Upcoming Events"
-        subtitle="Stay updated with important events"
+        title={title}
+        subtitle="Stay updated with important dates"
         accent="purple"
         variant="dark"
         decoration={<HeaderDotGridGlyph />}
       />
       <div className="flex flex-1 flex-col bg-card p-6 sm:p-7">
-        {!entries || entries.length === 0 ? (
+        {!groups || groups.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
               <CalendarDays className="h-5 w-5 text-muted-foreground" />
             </div>
-            <p className="text-sm font-semibold text-muted-foreground">No Upcoming Events</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">New events will appear here once scheduled.</p>
+            <p className="text-sm font-semibold text-muted-foreground">Nothing Upcoming</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Holidays and events will appear here once scheduled.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {entries.map((e, i) => (
-              <div key={`${e.type}-${e.date}-${i}`} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <span className={`h-2 w-2 rounded-full shrink-0 ${e.type === "event" ? "bg-sky-500" : "bg-violet-500"}`} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{e.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(e.date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}
-                  </p>
+          <div className="flex flex-col gap-5">
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="mb-1 flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${UPCOMING_DOT[g.key]}`} />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</p>
+                  <span className="text-xs text-muted-foreground">({g.items.length})</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {g.items.map((e, i) => (
+                    <div key={`${e.type}-${e.date}-${i}`} className="flex items-start gap-3 py-2.5">
+                      <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${UPCOMING_DOT[e.type]}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{e.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(e.date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

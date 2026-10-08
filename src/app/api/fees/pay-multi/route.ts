@@ -144,7 +144,9 @@ export async function POST(req: Request) {
         const monthDueDate = dueDateForMonth(fs.dueDate, month);
         const baseAmount = fs.amount;
         let lateFeeAmount = 0;
-        if (monthDueDate) lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, monthDueDate);
+        // Late fee applies to monthly fees only — never charged on
+        // quarterly / yearly / one-time heads.
+        if (monthDueDate && fs.frequency === "monthly") lateFeeAmount = calcProjectedLateFee(lateFeeConfig, baseAmount, monthDueDate);
 
         let concessionAmount = 0;
         const applicableConcession = concessions.find(

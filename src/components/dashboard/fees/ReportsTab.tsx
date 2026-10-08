@@ -347,14 +347,16 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
 }
 
 const REPORT_TABS = [
-  { id: "collection", label: "Collection Summary" },
-  { id: "outstanding", label: "Outstanding Dues" },
+  // Hidden on request (components kept below for easy restore — re-enable
+  // these two lines to bring the tabs back):
+  // { id: "collection", label: "Collection Summary" },
+  // { id: "outstanding", label: "Outstanding Dues" },
   { id: "classwise", label: "Class-wise" },
   { id: "ledger", label: "Student Ledger" },
 ];
 
 export default function ReportsTab({ classes, students }: { classes: ClassOption[]; students: StudentOption[] }) {
-  const [rptTab, setRptTab] = useState("collection");
+  const [rptTab, setRptTab] = useState("classwise");
   const [rptClass, setRptClass] = useState("all");
   const [rptStudent, setRptStudent] = useState("");
   const [ledgerStudentQuery, setLedgerStudentQuery] = useState("");

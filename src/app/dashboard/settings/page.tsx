@@ -174,42 +174,92 @@ export default function SettingsPage() {
   };
 
   const openDayDialog = (dateStr: string) => {
+    if (!profile) return;
+    // Past dates are read-only: viewing/removing an existing entry is fine,
+    // but creating a new holiday/event in the past is not allowed.
+    const todayKey = calDateKey(calToday.getFullYear(), calToday.getMonth(), calToday.getDate());
+    if (dateStr < todayKey && !findCalendarEntry(profile, dateStr)) {
+      toast.error("Cannot add on a past date", { description: "Pick today or a future date." });
+      return;
+    }
     setSelectedDate(dateStr);
     setDialogType("holiday");
     setDialogName("");
   };
 
-  const saveCalendarEntry = () => {
-    if (!selectedDate || !dialogName.trim()) {
+  // Saves straight to the server (no separate "Save Changes" click needed) —
+  // same PATCH the form submit uses.
+  const saveCalendarEntry = async () => {
+    if (!profile || !selectedDate) return;
+    const name = dialogName.trim();
+    if (!name) {
       toast.error("Enter a name.");
       return;
     }
-    setProfile((p) => {
-      if (!p) return p;
-      if (dialogType === "holiday") {
-        const dates = [...p.settings.holidays.dates, { date: selectedDate, name: dialogName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
-        return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
-      }
-      const events = [...p.settings.events, { date: selectedDate, name: dialogName.trim() }].sort((a, b) => a.date.localeCompare(b.date));
-      return { ...p, settings: { ...p.settings, events } };
-    });
-    setSelectedDate(null);
+    const todayKey = calDateKey(calToday.getFullYear(), calToday.getMonth(), calToday.getDate());
+    if (selectedDate < todayKey) {
+      toast.error("Cannot add on a past date", { description: "Pick today or a future date." });
+      return;
+    }
+    const next: SchoolProfile =
+      dialogType === "holiday"
+        ? { ...profile, settings: { ...profile.settings, holidays: { ...profile.settings.holidays, dates: [...profile.settings.holidays.dates, { date: selectedDate, name }].sort((a, b) => a.date.localeCompare(b.date)) } } }
+        : { ...profile, settings: { ...profile.settings, events: [...profile.settings.events, { date: selectedDate, name }].sort((a, b) => a.date.localeCompare(b.date)) } };
+    try {
+      await patchProfile(next);
+      setProfile(next);
+      toast.success(dialogType === "holiday" ? "Holiday saved" : "Event saved");
+      setSelectedDate(null);
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    }
   };
 
-  const removeCalendarEntry = () => {
-    if (!selectedDate) return;
-    setProfile((p) => {
-      if (!p) return p;
-      const existing = findCalendarEntry(p, selectedDate);
-      if (!existing) return p;
-      if (existing.type === "holiday") {
-        const dates = p.settings.holidays.dates.filter((_, i) => i !== existing.index);
-        return { ...p, settings: { ...p.settings, holidays: { ...p.settings.holidays, dates } } };
-      }
-      const events = p.settings.events.filter((_, i) => i !== existing.index);
-      return { ...p, settings: { ...p.settings, events } };
+  const removeCalendarEntry = async () => {
+    if (!profile || !selectedDate) return;
+    const existing = findCalendarEntry(profile, selectedDate);
+    if (!existing) {
+      setSelectedDate(null);
+      return;
+    }
+    const next: SchoolProfile =
+      existing.type === "holiday"
+        ? { ...profile, settings: { ...profile.settings, holidays: { ...profile.settings.holidays, dates: profile.settings.holidays.dates.filter((_, i) => i !== existing.index) } } }
+        : { ...profile, settings: { ...profile.settings, events: profile.settings.events.filter((_, i) => i !== existing.index) } };
+    try {
+      await patchProfile(next);
+      setProfile(next);
+      toast.success("Removed");
+      setSelectedDate(null);
+    } catch (err) {
+      toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
+    }
+  };
+
+  // Single PATCH used by both the form's Save Changes and the holiday/
+  // event dialog (which saves immediately — no second save needed).
+  const patchProfile = async (next: SchoolProfile) => {
+    const token = getToken();
+    if (!token) throw new Error("Not authenticated.");
+    const res = await fetch("/api/school/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        schoolName: next.schoolName,
+        schoolAddress: next.schoolAddress,
+        schoolPhone: next.schoolPhone,
+        schoolEmail: next.schoolEmail,
+        website: next.website,
+        logo: next.logo,
+        themeColor: next.themeColor,
+        secondaryColor: next.secondaryColor,
+        name: next.name,
+        phone: next.phone,
+        settings: next.settings,
+      }),
     });
-    setSelectedDate(null);
+    const json: ApiMessageResponse = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || "Failed to save settings.");
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -220,29 +270,9 @@ export default function SettingsPage() {
       toast.error("Invalid Email", { description: "Please enter a valid school email address." });
       return;
     }
-    const token = getToken();
-    if (!token) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/school/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          schoolName: profile.schoolName,
-          schoolAddress: profile.schoolAddress,
-          schoolPhone: profile.schoolPhone,
-          schoolEmail: profile.schoolEmail,
-          website: profile.website,
-          logo: profile.logo,
-          themeColor: profile.themeColor,
-          secondaryColor: profile.secondaryColor,
-          name: profile.name,
-          phone: profile.phone,
-          settings: profile.settings,
-        }),
-      });
-      const json: ApiMessageResponse = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message || "Failed to save settings.");
+      await patchProfile(profile);
       toast.success("Settings saved");
     } catch (err) {
       toast.error("Error", { description: err instanceof Error ? err.message : "Something went wrong." });
@@ -617,7 +647,7 @@ export default function SettingsPage() {
                   icon={AlarmClock}
                   colorClass="bg-orange-500/10 text-orange-600"
                   label="Enable Late Fees"
-                  description="Automatically apply late fees on overdue payments"
+                  description="Automatically apply late fees on overdue monthly fee payments (quarterly / yearly / one-time are never charged)"
                   checked={profile.settings.lateFee.enabled}
                   onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: v } } })}
                 />
@@ -693,7 +723,7 @@ export default function SettingsPage() {
             </Panel>
 
             <Panel icon={CalendarOff} title="School Calendar" tint="slate">
-              <p className="text-xs text-muted-foreground mb-3">Click a date to declare it a holiday or an event. Attendance cannot be marked on holiday dates; events are informational only.</p>
+              <p className="text-xs text-muted-foreground mb-3">Click a future date to declare it a holiday or an event — it saves immediately. Attendance cannot be marked on holiday dates; events are informational only.</p>
               <div className="flex items-center justify-between mb-3">
                 <button type="button" onClick={() => changeCalMonth(-1)} className="h-7 w-7 flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Previous month">
                   <ChevronLeft className="h-4 w-4" />
@@ -714,6 +744,11 @@ export default function SettingsPage() {
                   const dateStr = calDateKey(calYear, calMonth, day);
                   const holiday = getHolidayInfo(new Date(calYear, calMonth, day), profile.settings.holidays);
                   const event = !holiday ? getEventInfo(new Date(calYear, calMonth, day), profile.settings.events) : null;
+                  // Past days without a saved entry are read-only (creation is
+                  // blocked); days that already hold a holiday/event stay
+                  // clickable so they can still be viewed / removed.
+                  const isPastEmpty =
+                    dateStr < calDateKey(calToday.getFullYear(), calToday.getMonth(), calToday.getDate()) && !holiday && !event;
                   const cellStyle =
                     holiday?.type === "custom"
                       ? "bg-violet-100 text-violet-700 font-semibold hover:bg-violet-200"
@@ -721,11 +756,14 @@ export default function SettingsPage() {
                         ? "bg-slate-200 text-slate-600 font-semibold hover:bg-slate-300"
                         : event
                           ? "bg-sky-100 text-sky-700 font-semibold hover:bg-sky-200"
-                          : "text-foreground hover:bg-muted";
+                          : isPastEmpty
+                            ? "text-muted-foreground/40 cursor-not-allowed"
+                            : "text-foreground hover:bg-muted";
                   return (
                     <button
                       key={i}
                       type="button"
+                      disabled={isPastEmpty}
                       onClick={() => openDayDialog(dateStr)}
                       title={holiday?.name || event?.name}
                       className={`h-9 rounded-lg flex items-center justify-center text-sm transition-colors ${cellStyle}`}

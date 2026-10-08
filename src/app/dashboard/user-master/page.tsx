@@ -29,7 +29,7 @@ interface UserRecord {
   isActive: boolean;
   teacherId?: string;
   createdAt: string;
-  students?: { name: string; class: string; section?: string }[];
+  students?: { name: string; class: string; section?: string; studentId?: string }[];
 }
 
 interface ListResponse {
@@ -316,6 +316,15 @@ export default function UserMasterPage() {
                   const gradient = ROLE_GRADIENT[u.role];
                   const RoleIcon = ROLE_ICON[u.role];
                   const name = displayName(u);
+                  // ID column: teachers show their teacherId; parents show the
+                  // linked student's admission ID (the row is already labelled
+                  // with that student's name). "-" when nothing is available.
+                  const rowIds =
+                    u.role === "parent"
+                      ? (u.students ?? []).map((s) => s?.studentId).filter((v): v is string => !!v)
+                      : u.teacherId
+                        ? [u.teacherId]
+                        : [];
                   return (
                   <tr key={`${u.role}-${u.userId}`} className="group transition-colors hover:bg-muted/40">
                     <td className="p-3.5 pl-5">
@@ -338,8 +347,8 @@ export default function UserMasterPage() {
                       </span>
                     </td>
                     <td className="p-3.5">
-                      {u.teacherId ? (
-                        <span className="text-xs font-mono text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">{u.teacherId}</span>
+                      {rowIds.length > 0 ? (
+                        <span className="text-xs font-mono text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5">{rowIds.join(", ")}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground/60">-</span>
                       )}

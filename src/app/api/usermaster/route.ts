@@ -10,6 +10,7 @@ interface ChildRef {
   name: string;
   class: string;
   section?: string;
+  studentId?: string;
 }
 
 interface UserRow {
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
     if (!role || role === "parent") {
       const parents = await Parent.find({ school: auth.schoolId })
         .select("name email phone isActive createdAt students")
-        .populate("students", "name class section")
+        .populate("students", "name class section studentId")
         .lean();
       users.push(...(parents.map((p) => ({ ...p, userId: String(p._id), role: "parent" as const })) as unknown as UserRow[]));
     }
@@ -69,11 +70,18 @@ export async function GET(req: Request) {
           q.test(u.email) ||
           (u.phone && q.test(u.phone)) ||
           (u.teacherId && q.test(u.teacherId)) ||
-          (u.students ?? []).some((s) => s && (q.test(s.name) || q.test(`Class ${s.class}-${s.section ?? ""}`))),
+          (u.students ?? []).some((s) => s && (q.test(s.name) || q.test(s.studentId || "") || q.test(`Class ${s.class}-${s.section ?? ""}`))),
       );
     }
 
-    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // A→Z by the name the User Master table actually shows — parent rows
+    // render their linked student's name, so sorting by the parent's own
+    // name would look unsorted on screen.
+    const displayLabel = (u: UserRow) =>
+      u.role === "parent" && (u.students ?? []).some((s) => s && s.name)
+        ? (u.students ?? []).filter((s) => s && s.name).map((s) => s.name).join(", ")
+        : u.name;
+    filtered.sort((a, b) => displayLabel(a).localeCompare(displayLabel(b)));
 
     return NextResponse.json({ success: true, data: filtered, total: filtered.length });
   } catch (err) {

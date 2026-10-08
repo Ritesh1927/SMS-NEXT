@@ -2,16 +2,10 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
-import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
-import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
-import {
-  generateSessionMonths,
-  resolveFeeMonths,
-  concessionAppliesToMonth,
-  concessionAmount,
-} from "@/lib/feeEngine";
+import { computeFeeDues } from "@/lib/feeDues";
+import { generateSessionMonths } from "@/lib/feeEngine";
 
 interface ClassRow {
   className: string;
@@ -22,8 +16,14 @@ interface ClassRow {
   totalCount: number;
 }
 
-// GET /api/fees/reports/class-wise — per-class collected/pending totals for
-// the current month, based on FeePayment records (not invoices).
+// GET /api/fees/reports/class-wise — per-class collected/outstanding totals.
+// Outstanding comes from the same fee-engine dues every other fees surface
+// uses (structures − paid, admission-aware, full backlog up to today), so
+// the numbers here always match the dashboard's Pending Fees card and the
+// Fees page — the old hand-rolled loop only counted the *current* month's
+// dues and silently ignored the whole unpaid backlog. Collected is the sum
+// of paid amounts recorded this session, grouped by the student's class.
+// Returned class-ascending (numeric-aware: Class 2 before Class 10).
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
@@ -33,92 +33,75 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
-    const students = await Student.find({ school: auth.schoolId, isActive: true })
-      .select("name class section studentId")
-      .lean<{ _id: unknown; name: string; class: string }[]>();
-    const structures = await FeeStructure.find({ school: auth.schoolId, isActive: true }).lean<IFeeStructure[]>();
-    const payments = await FeePayment.find({ school: auth.schoolId })
-      .populate("student", "name class section studentId")
-      .lean<{ student: { _id: unknown; class: string } | null; feeStructure: unknown; status: string; month: string | null; paidAmount: number }[]>();
-
-    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
     const school = await Admin.findById(auth.schoolId).select("settings");
-    const sessionMonths = generateSessionMonths(school?.settings?.sessionStartMonth || "April", new Date().getFullYear());
-    const concessions = await Concession.find({ school: auth.schoolId }).lean<IConcession[]>();
-    const conByStudent = new Map<string, IConcession[]>();
-    for (const c of concessions) {
-      const key = String(c.student);
-      const list = conByStudent.get(key) || [];
-      list.push(c);
-      conByStudent.set(key, list);
-    }
+    const now = new Date();
+    const sessionMonths = generateSessionMonths(school?.settings?.sessionStartMonth || "April", now.getFullYear());
+    // First month of the generated session (e.g. "2026-04" → 1 Apr 2026) —
+    // payments collected before it belong to a previous session.
+    const [sessionStartYear, sessionStartMonth] = (sessionMonths[0] || `${now.getFullYear()}-04`).split("-").map(Number);
+    const sessionStart = new Date(sessionStartYear, sessionStartMonth - 1, 1);
+
+    const [students, dues, payments] = await Promise.all([
+      Student.find({ school: auth.schoolId, isActive: true })
+        .select("class")
+        .lean<{ _id: unknown; class: string }[]>(),
+      computeFeeDues(auth.schoolId),
+      FeePayment.find({ school: auth.schoolId, status: "paid", paidDate: { $gte: sessionStart } })
+        .select("student paidAmount")
+        .populate("student", "class")
+        .lean<{ student: { _id?: unknown; class?: string } | null; paidAmount: number }[]>(),
+    ]);
+
     const classMap = new Map<string, ClassRow>();
+    const ensure = (cls: string) => {
+      const key = cls || "Unknown";
+      if (!classMap.has(key)) classMap.set(key, { className: key, collected: 0, pending: 0, paid: 0, pendingCount: 0, totalCount: 0 });
+      return classMap.get(key)!;
+    };
 
-    for (const s of students) {
-      const cls = s.class || "Unknown";
-      if (!classMap.has(cls)) classMap.set(cls, { className: cls, collected: 0, pending: 0, paid: 0, pendingCount: 0, totalCount: 0 });
-      const row = classMap.get(cls)!;
-      row.totalCount++;
+    for (const s of students) ensure(s.class).totalCount++;
 
-      const classStructs = structures.filter((st) => st.class === cls);
-      const stuCons = conByStudent.get(String(s._id)) || [];
-      let studentPaid = 0;
-      let studentPending = 0;
-
-      for (const fs of classStructs) {
-        const headCons = stuCons.filter((c) => !c.feeStructure || String(c.feeStructure) === String(fs._id));
-        let oneTimeConUsed = false;
-        const netFor = (monthKey: string) => {
-          const con = headCons.find((c) => {
-            if (!concessionAppliesToMonth(c, monthKey)) return false;
-            if (c.duration === "one-time") {
-              if (oneTimeConUsed) return false;
-              oneTimeConUsed = true;
-            }
-            return true;
-          });
-          return Math.max(0, fs.amount - (con ? concessionAmount(fs.amount, con) : 0));
-        };
-
-        if (fs.frequency === "quarterly") {
-          const quarters = resolveFeeMonths("quarterly", sessionMonths, sessionMonths, fs.dueDate);
-          for (const q of quarters) {
-            const paid = payments.find(
-              (p) =>
-                String(p.student?._id) === String(s._id) &&
-                String(p.feeStructure) === String(fs._id) &&
-                p.status === "paid" &&
-                p.month === q,
-            );
-            if (paid) studentPaid += paid.paidAmount;
-            else if (q <= currentMonth) studentPending += netFor(q);
-          }
-          continue;
-        }
-        const targetMonth =
-          fs.frequency === "one-time"
-            ? "one-time"
-            : fs.frequency === "yearly" && fs.dueDate
-              ? `${new Date(fs.dueDate).getFullYear()}-${String(new Date(fs.dueDate).getMonth() + 1).padStart(2, "0")}`
-              : currentMonth;
-        const paid = payments.find(
-          (p) =>
-            String(p.student?._id) === String(s._id) &&
-            String(p.feeStructure) === String(fs._id) &&
-            p.status === "paid" &&
-            p.month === targetMonth,
-        );
-        if (paid) studentPaid += paid.paidAmount;
-        else studentPending += netFor(targetMonth);
-      }
-
-      row.collected += studentPaid;
-      row.pending += studentPending;
-      if (studentPaid > 0 && studentPending === 0) row.paid++;
-      else if (studentPending > 0) row.pendingCount++;
+    // Outstanding: real dues per class + distinct student headcount.
+    const pendingStudentsByClass = new Map<string, Set<string>>();
+    for (const d of dues) {
+      const row = ensure(d.class || "");
+      row.pending += d.amount;
+      const set = pendingStudentsByClass.get(row.className) || new Set<string>();
+      if (d.studentId) set.add(d.studentId);
+      pendingStudentsByClass.set(row.className, set);
+    }
+    for (const [className, ids] of pendingStudentsByClass) {
+      ensure(className).pendingCount = ids.size;
     }
 
-    return NextResponse.json({ success: true, data: Array.from(classMap.values()) });
+    // Collected: paid amounts this session, by the payer's class.
+    const paidStudentIds = new Set<string>();
+    for (const p of payments) {
+      ensure(p.student?.class || "").collected += p.paidAmount || 0;
+      if (p.student?._id) paidStudentIds.add(String(p.student._id));
+    }
+
+    // "Paid" = settled students (nothing outstanding, and at least one
+    // payment recorded this session) — mirrors the old card's intent
+    // without the current-month-only bias.
+    const studentIdsByClass = new Map<string, Set<string>>();
+    for (const s of students) {
+      const key = s.class || "Unknown";
+      if (!studentIdsByClass.has(key)) studentIdsByClass.set(key, new Set());
+      studentIdsByClass.get(key)!.add(String(s._id));
+    }
+    for (const [className, ids] of studentIdsByClass) {
+      const row = ensure(className);
+      const pendingIds = pendingStudentsByClass.get(className) || new Set<string>();
+      for (const id of ids) {
+        if (!pendingIds.has(id) && paidStudentIds.has(id)) row.paid++;
+      }
+    }
+
+    const data = Array.from(classMap.values()).sort((a, b) =>
+      a.className.localeCompare(b.className, undefined, { numeric: true }),
+    );
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load class-wise report." },

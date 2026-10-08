@@ -10,6 +10,7 @@ import { Result } from "@/models/Result";
 import { Exam } from "@/models/Exam";
 import { Notice } from "@/models/Notice";
 import { Class } from "@/models/Class";
+import { computeFeeDues } from "@/lib/feeDues";
 import { formatClassName } from "@/lib/helpers";
 
 export async function GET(req: Request) {
@@ -99,32 +100,76 @@ export async function GET(req: Request) {
       }),
     );
 
-    // Last 6 calendar months (oldest first), bucketed by each fee's dueDate —
-    // matches how the Fees page itself groups payments into a monthly cycle.
+    // Last 6 calendar months (oldest first), per FEE-month view — the same
+    // model the Fees dashboard / Reports Overview use. Collected = amounts
+    // settled against each month's fees (payment's `month` field, one-time
+    // by dueDate; fee component only, late fees excluded) regardless of
+    // when the cash arrived — bucketing by paidDate inflated the current
+    // month whenever an old backlog was cleared (e.g. ₹10.4k all landing
+    // in Oct for Apr–Oct dues). Pending = real dues from the fee engine
+    // (structures − paid, admission-aware) bucketed by fee month — never
+    // from stored "pending" payment docs, which go stale. So each bar is:
+    // Collected toward that month + still-Pending for that month.
     const sixMonthsAgo = new Date(monthStart);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    const feeBuckets = await FeePayment.aggregate([
-      { $match: { school: schoolObjectId, dueDate: { $gte: sixMonthsAgo } } },
-      {
-        $group: {
-          _id: { year: { $year: "$dueDate" }, month: { $month: "$dueDate" } },
-          collected: { $sum: "$paidAmount" },
-          pending: { $sum: { $subtract: ["$amount", "$paidAmount"] } },
-        },
-      },
+    const sixMonthKeys = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(monthStart);
+      d.setMonth(d.getMonth() - (5 - i));
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    });
+    const [feeSettled, dues, thisMonthPays] = await Promise.all([
+      FeePayment.find({
+        school: schoolObjectId,
+        status: "paid",
+        $or: [
+          { month: { $in: sixMonthKeys } },
+          { month: "one-time", dueDate: { $gte: sixMonthsAgo, $lte: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59, 999) } },
+        ],
+      })
+        .select("month dueDate paidAmount lateFee")
+        .lean<{ month?: string | null; dueDate?: Date | null; paidAmount: number; lateFee?: number }[]>(),
+      computeFeeDues(schoolId),
+      // Money received THIS month (paidDate), fee component only — feeds
+      // the "Fee Collection" stat card. Matches the Fees dashboard's
+      // "Collected This Month" (₹5,700, not ₹10,370 cash-with-late).
+      FeePayment.find({ school: schoolObjectId, status: "paid", paidDate: { $gte: monthStart } })
+        .select("paidAmount lateFee")
+        .lean<{ paidAmount: number; lateFee?: number }[]>(),
     ]);
-    const feeByKey = new Map(feeBuckets.map((b) => [`${b._id.year}-${b._id.month}`, b]));
+    const settledByKey = new Map<string, number>();
+    for (const p of feeSettled) {
+      const key =
+        !p.month || p.month === "one-time"
+          ? p.dueDate
+            ? `${p.dueDate.getFullYear()}-${String(p.dueDate.getMonth() + 1).padStart(2, "0")}`
+            : null
+          : p.month;
+      if (!key || !sixMonthKeys.includes(key)) continue;
+      settledByKey.set(key, (settledByKey.get(key) || 0) + Math.max(0, (p.paidAmount || 0) - (p.lateFee || 0)));
+    }
     const feeMonthly = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(monthStart);
       d.setMonth(d.getMonth() - (5 - i));
-      const bucket = feeByKey.get(`${d.getFullYear()}-${d.getMonth() + 1}`);
+      // Zero-padded on both sides — fee-engine month keys are "2026-07"
+      // style, so an unpadded "2026-7" key silently matched nothing.
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      let pending = 0;
+      for (const due of dues) {
+        // Monthly/quarterly/yearly entries carry a "YYYY-MM" month key;
+        // one-time dues bucket by their stored dueDate's month instead.
+        const dueKey =
+          due.month === "one-time" && due.dueDate
+            ? `${due.dueDate.getFullYear()}-${String(due.dueDate.getMonth() + 1).padStart(2, "0")}`
+            : due.month;
+        if (dueKey === key) pending += due.amount;
+      }
       return {
         month: d.toLocaleDateString("en-US", { month: "short" }),
-        collected: bucket?.collected || 0,
-        pending: Math.max(0, bucket?.pending || 0),
+        collected: settledByKey.get(key) || 0,
+        pending,
       };
     });
-    const feeCollectedThisMonth = feeMonthly[feeMonthly.length - 1]?.collected || 0;
+    const feeCollectedThisMonth = thisMonthPays.reduce((s, p) => s + Math.max(0, (p.paidAmount || 0) - (p.lateFee || 0)), 0);
 
     const classPerformance = (
       await Result.aggregate([
@@ -137,45 +182,88 @@ export async function GET(req: Request) {
       ])
     ).map((c) => ({ name: formatClassName(c._id), avg: Math.round(c.avg) }));
 
-    const upcomingExams = (
-      await Exam.find({ school: schoolId, date: { $gte: todayStart } })
-        .select("title date class section subject")
-        .sort({ date: 1 })
-        .limit(5)
-    ).map((e) => ({ title: e.title, date: e.date, class: formatClassName(e.class, e.section) }));
+    // Upcoming exams grouped so one multi-subject exam term (or a test
+    // repeated across subjects) is a single card row with every date, not
+    // one row per subject slot. Term slots merge on scheduledExamId (their
+    // titles carry a "— <subject>" suffix, which is stripped for display);
+    // standalone tests merge on title + class + section. Fetches a wider
+    // window of slots than the card shows so grouping still fills the card
+    // once duplicates collapse.
+    const examSlots = await Exam.find({ school: schoolId, date: { $gte: todayStart } })
+      .select("title date class section subject scheduledExamId")
+      .sort({ date: 1 })
+      .limit(60);
 
-    // Grouped by student rather than one row per fee record, so a student
-    // with both an Admission Fee and a Tuition Fee outstanding shows once
-    // with their combined pending amount instead of twice.
-    const pendingFeeStudents = (
-      await FeePayment.aggregate([
-        { $match: { school: schoolObjectId, status: { $in: ["pending", "partial", "overdue"] } } },
-        {
-          $group: {
-            _id: "$student",
-            pendingAmount: { $sum: { $subtract: ["$amount", "$paidAmount"] } },
-            count: { $sum: 1 },
-            dueDate: { $min: "$dueDate" },
-          },
-        },
-        { $sort: { dueDate: 1 } },
-        { $limit: 5 },
-        { $lookup: { from: "students", localField: "_id", foreignField: "_id", as: "student" } },
-        { $unwind: { path: "$student", preserveNullAndEmptyArrays: true } },
-      ])
-    ).map((f) => ({
-      _id: String(f._id),
-      pendingAmount: f.pendingAmount,
-      count: f.count,
-      dueDate: f.dueDate,
-      student: f.student ? { name: f.student.name, class: f.student.class, section: f.student.section } : null,
-    }));
+    interface ExamGroupSlot {
+      title: string;
+      cls: string;
+      sections: string[];
+      dates: string[];
+      subjects: string[];
+      scheduledExamId: string | null;
+      examId: string;
+    }
+    const examGroups = new Map<string, ExamGroupSlot>();
+    for (const e of examSlots) {
+      const isTerm = Boolean(e.scheduledExamId);
+      const key = isTerm ? `term:${e.scheduledExamId}` : `test:${e.title}|${e.class}|${e.section}`;
+      const title = isTerm ? e.title.replace(` — ${e.subject}`, "") : e.title;
+      const dateIso = e.date.toISOString();
+      const g = examGroups.get(key);
+      if (g) {
+        if (!g.dates.includes(dateIso)) g.dates.push(dateIso);
+        if (e.section && !g.sections.includes(e.section)) g.sections.push(e.section);
+        if (!g.subjects.includes(e.subject)) g.subjects.push(e.subject);
+      } else {
+        examGroups.set(key, {
+          title,
+          cls: e.class,
+          sections: e.section ? [e.section] : [],
+          dates: [dateIso],
+          subjects: [e.subject],
+          scheduledExamId: e.scheduledExamId ? String(e.scheduledExamId) : null,
+          examId: String(e._id),
+        });
+      }
+    }
+    const upcomingExams = [...examGroups.values()]
+      .map((g) => ({
+        title: g.title,
+        class: g.sections.length > 1 ? `${formatClassName(g.cls)} (${g.sections.join(", ")})` : formatClassName(g.cls, g.sections[0] ?? ""),
+        dates: g.dates.sort(),
+        subjects: g.subjects,
+        scheduledExamId: g.scheduledExamId,
+        examId: g.examId,
+      }))
+      .sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
+
+    // Class-wise outstanding from the same dues computation as the Fees
+    // page (structures − paid, admission-aware) — "students" is a
+    // distinct headcount, "amount" the sum of that class's unpaid dues.
+    // The old aggregation over stored "pending" payment docs showed stale
+    // leftovers that never matched the real balance.
+    const pendingByClassMap = new Map<string, { students: Set<string>; amount: number }>();
+    for (const due of dues) {
+      const name = formatClassName(due.class || "") || "Unassigned";
+      const row = pendingByClassMap.get(name) || { students: new Set<string>(), amount: 0 };
+      row.amount += due.amount;
+      if (due.studentId) row.students.add(due.studentId);
+      pendingByClassMap.set(name, row);
+    }
+    const pendingFeeByClass = [...pendingByClassMap.entries()]
+      .map(([name, row]) => ({ name, students: row.students.size, amount: row.amount }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
     const [recentPayments, recentStudents, recentNotices] = await Promise.all([
       FeePayment.find({ school: schoolId, status: "paid" }).populate("student", "name").sort({ paidDate: -1 }).limit(4),
       Student.find({ school: schoolId, isActive: true }).sort({ admissionDate: -1 }).limit(4),
       Notice.find({ school: schoolId }).sort({ createdAt: -1 }).limit(4),
     ]);
+    // Only genuinely recent items belong here — with no cutoff the card
+    // happily surfaced months-old payments/admissions whenever nothing
+    // newer had happened (e.g. "100d ago" entries).
+    const activityCutoff = new Date();
+    activityCutoff.setDate(activityCutoff.getDate() - 2);
     const recentActivity = [
       ...recentPayments
         .filter((p) => p.paidDate)
@@ -187,7 +275,7 @@ export async function GET(req: Request) {
       ...recentStudents.map((s) => ({ type: "student" as const, text: `${s.name} was admitted`, time: s.admissionDate as Date })),
       ...recentNotices.map((n) => ({ type: "notice" as const, text: `Notice posted: ${n.title}`, time: n.get("createdAt") as Date })),
     ]
-      .filter((a) => a.time)
+      .filter((a) => a.time && new Date(a.time).getTime() >= activityCutoff.getTime())
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
       .slice(0, 6)
       .map((a) => ({ type: a.type, text: a.text, time: a.time }));
@@ -202,7 +290,7 @@ export async function GET(req: Request) {
         feeMonthly,
         classPerformance,
         upcomingExams,
-        pendingFeeStudents,
+        pendingFeeByClass,
         recentActivity,
       },
     });

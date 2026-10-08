@@ -62,6 +62,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       let months: MonthRow[];
 
       const rowLateFee = (monthKey: string) => {
+        // Late fee applies to monthly fees only — paid rows still show the
+        // late fee actually recorded at payment time.
+        if (fs.frequency !== "monthly") return 0;
         let due: Date | string | null | undefined = fs.dueDate;
         if (monthKey !== "one-time") {
           const d = new Date(monthKey + "-01");

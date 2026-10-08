@@ -98,7 +98,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       // of how far off their due date is -- only genuinely recurring
       // (monthly/quarterly/yearly) periods get locked to their own fee period.
       const upcoming = !paid && month !== "one-time" && isMonthUpcoming(fs.dueDate, month, now);
-      const projectedLateFee = paid || upcoming ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, dueDate);
+      // Late fee applies to monthly fees only — quarterly/yearly/one-time
+      // never accrue a projected late fee.
+      const projectedLateFee =
+        paid || upcoming || fs.frequency !== "monthly" ? 0 : calcProjectedLateFee(lateFeeConfig, fs.amount, dueDate);
       return {
         month,
         paid: !!paid,

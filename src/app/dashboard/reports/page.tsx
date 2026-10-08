@@ -170,10 +170,15 @@ export default function ReportsPage() {
     newStudentsThisMonth?: number;
     newTeachersThisMonth?: number;
   } | null>(null);
-  // Overview-only fee analytics (year totals + monthly collection chart +
-  // class-wise collected/pending for the class snapshot table).
+  // Overview-only fee analytics (session totals + monthly fee-month chart +
+  // class-wise collected/pending for the class snapshot table). Loaded in
+  // FY mode so it matches the Fees dashboard: session-scoped window and a
+  // per-fee-month chart (paid toward that month + still-pending), instead
+  // of the legacy calendar-year view that bucketed collected by paidDate
+  // (cash-in month) while pending was per fee-month — two different bases.
   const [feeSummary, setFeeSummary] = useState<{
     totalCollected: number;
+    totalCollectedFee?: number;
     totalPending: number;
     totalLateFees?: number;
     totalConcessions?: number;
@@ -236,6 +241,11 @@ export default function ReportsPage() {
     const token = getToken();
     if (!token) return;
     const run = async () => {
+      // Session FY for fee analytics (Overview must match the Fees
+      // dashboard's session-scoped, fee-month view — resolve the school's
+      // session start first).
+      const branding = await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null);
+      const feeFy = currentAcademicYear(branding?.data?.settings?.sessionStartMonth || "April");
       const [classesRes, statsRes, analyticsRes, attYearlyRes] = await Promise.allSettled([
         apiGet<{ success: boolean; data: ClassDoc[] }>("/classes", token),
         isAdmin ? apiGet<{ success: boolean; data: { stats: { totalStudents: number; totalTeachers: number; newStudentsThisMonth?: number; newTeachersThisMonth?: number } } }>("/dashboard/schooladmin", token) : Promise.resolve(null),
@@ -243,10 +253,10 @@ export default function ReportsPage() {
           ? apiGet<{
               success: boolean;
               data: { month: string; collected: number; pending: number }[];
-              classWise: { class: string; collected: number }[];
+              classWise: { class: string; collected: number; pending?: number }[];
               pendingByClass: { class: string; pending: number }[];
-              summary: { totalCollected: number; totalPending: number; totalLateFees: number; totalConcessions: number };
-            }>("/fees/analytics", token)
+              summary: { totalCollected: number; totalCollectedFee?: number; totalPending: number; totalLateFees: number; totalConcessions: number };
+            }>(`/fees/analytics?fy=${encodeURIComponent(feeFy)}`, token)
           : Promise.resolve(null),
         // School-wide attendance trend for the current year (both roles —
         // /attendance/yearly allows teachers too).
@@ -399,10 +409,13 @@ export default function ReportsPage() {
   const finRate = finTotals.fee > 0 ? Math.round((finTotals.paid / finTotals.fee) * 10000) / 100 : 0;
 
   // ---- Overview (management view) derivations ----
-  // Collection rate = YTD collected ÷ (collected + outstanding dues).
+  // Fee-only collected (excludes late fees) so the cards satisfy
+  // Total = Collected + Pending + Upcoming + Late, same as the Fees
+  // dashboard. Collection rate = fee-collected ÷ (fee-collected + dues).
+  const feeCollected = feeSummary ? feeSummary.totalCollectedFee ?? feeSummary.totalCollected : 0;
   const collRate =
-    feeSummary && feeSummary.totalCollected + feeSummary.totalPending > 0
-      ? Math.round((feeSummary.totalCollected / (feeSummary.totalCollected + feeSummary.totalPending)) * 10000) / 100
+    feeSummary && feeCollected + feeSummary.totalPending > 0
+      ? Math.round((feeCollected / (feeCollected + feeSummary.totalPending)) * 10000) / 100
       : null;
   // School-wide attendance YTD — overall rate from raw present/total counts
   // (the per-month `rate` is rounded to an integer by the API) and the rows
@@ -493,9 +506,9 @@ export default function ReportsPage() {
                   icon={DollarSign}
                   color="#16A34A"
                   colorDark="#15803D"
-                  value={feeSummary ? `₹${(feeSummary.totalCollected / 1000).toFixed(1)}k` : "—"}
+                  value={feeSummary ? `₹${(feeCollected / 1000).toFixed(1)}k` : "—"}
                   label="Total Collected"
-                  sublabel="Collected this year"
+                  sublabel="This session · excl. late fees"
                 />
                 <StatFilterCard
                   icon={AlertCircle}
@@ -503,7 +516,7 @@ export default function ReportsPage() {
                   colorDark="#D97706"
                   value={feeSummary ? `₹${(feeSummary.totalPending / 1000).toFixed(1)}k` : "—"}
                   label="Fee Pending"
-                  sublabel="Outstanding dues"
+                  sublabel="Dues till now"
                 />
                 <StatFilterCard
                   icon={TrendingUp}
@@ -519,7 +532,7 @@ export default function ReportsPage() {
                   colorDark="#DC2626"
                   value={feeSummary ? inr(feeSummary.totalLateFees ?? 0) : "—"}
                   label="Total Late Fees"
-                  sublabel="Charged this year"
+                  sublabel="Charged this session"
                 />
                 <StatFilterCard
                   icon={Tag}
@@ -527,7 +540,7 @@ export default function ReportsPage() {
                   colorDark="#0D9488"
                   value={feeSummary ? inr(feeSummary.totalConcessions ?? 0) : "—"}
                   label="Total Concessions"
-                  sublabel="Waived this year"
+                  sublabel="Waived this session"
                 />
                 <StatFilterCard
                   icon={CalendarCheck}
