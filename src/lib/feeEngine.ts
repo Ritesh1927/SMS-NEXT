@@ -108,12 +108,16 @@ export function isMonthUpcoming(structureDueDate: Date | string | null | undefin
 }
 
 // Drops session months that fall before the student's admission date.
+// A student admitted after the session has ended gets no months at all
+// (previously the un-filtered list leaked in, which overstated dues when
+// analytics computes a past financial year).
 export function filterMonthsByAdmission(months: string[], admissionDate: Date | string | null | undefined): string[] {
   if (!admissionDate) return months;
   const admDate = new Date(admissionDate);
   const admMonth = `${admDate.getFullYear()}-${String(admDate.getMonth() + 1).padStart(2, "0")}`;
   const idx = months.indexOf(admMonth);
-  return idx > 0 ? months.slice(idx) : months;
+  if (idx >= 0) return months.slice(idx);
+  return months.length > 0 && admMonth > months[months.length - 1] ? [] : months;
 }
 
 export function resolveFeeMonths(

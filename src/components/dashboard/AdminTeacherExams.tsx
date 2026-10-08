@@ -360,6 +360,9 @@ export function AdminTeacherExams() {
   const [reviewing, setReviewing] = useState(false);
 
   const [activeTab, setActiveTab] = useState("tests");
+  // Deep link from the dashboard's Upcoming Exams card (?tab=&term=&exam=);
+  // consumed once the matching list has loaded — see the effects below.
+  const [pendingDeepLink, setPendingDeepLink] = useState<{ termId?: string; examId?: string } | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
@@ -670,6 +673,44 @@ export function AdminTeacherExams() {
       toast.error("Failed to load exam subjects.");
     }
   };
+
+  // ── Deep link from the dashboard's Upcoming Exams card ─────────────────────
+  // /dashboard/exams?tab=tests|exams&exam=<id>&term=<id>. Read from
+  // window.location rather than useSearchParams so no Suspense boundary is
+  // needed for prerendering.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const termId = params.get("term") || undefined;
+    const examId = params.get("exam") || undefined;
+    const tab = params.get("tab");
+    if (termId || examId) setPendingDeepLink({ termId, examId });
+    else if (tab === "tests" || tab === "exams") setActiveTab(tab);
+  }, []);
+
+  // Resolve the deep link once the relevant list has loaded: terms land
+  // expanded (their subject-wise schedule is the detail view), standalone
+  // tests open the detail/edit dialog.
+  useEffect(() => {
+    if (!pendingDeepLink) return;
+    if (pendingDeepLink.termId) {
+      if (!terms) return;
+      const term = terms.find((t) => t._id === pendingDeepLink.termId);
+      setPendingDeepLink(null);
+      if (term) {
+        setActiveTab("exams");
+        if (!expandedTerms.has(term._id)) void toggleExpandTerm(term);
+      }
+      return;
+    }
+    if (pendingDeepLink.examId) {
+      if (!exams) return;
+      const exam = exams.find((e) => e._id === pendingDeepLink.examId);
+      setPendingDeepLink(null);
+      setActiveTab("tests");
+      if (exam) openEditExam(exam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openEditExam/toggleExpandTerm are plain component functions; re-running on identity change is harmless here (the pendingDeepLink guard short-circuits).
+  }, [pendingDeepLink, terms, exams, expandedTerms]);
 
   // ── Cancel ────────────────────────────────────────────────────────────────
   const submitCancel = async () => {

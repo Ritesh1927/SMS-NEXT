@@ -137,39 +137,83 @@ export async function GET(req: Request) {
       ])
     ).map((c) => ({ name: formatClassName(c._id), avg: Math.round(c.avg) }));
 
-    const upcomingExams = (
-      await Exam.find({ school: schoolId, date: { $gte: todayStart } })
-        .select("title date class section subject")
-        .sort({ date: 1 })
-        .limit(5)
-    ).map((e) => ({ title: e.title, date: e.date, class: formatClassName(e.class, e.section) }));
+    // Upcoming exams grouped so one multi-subject exam term (or a test
+    // repeated across subjects) is a single card row with every date, not
+    // one row per subject slot. Term slots merge on scheduledExamId (their
+    // titles carry a "— <subject>" suffix, which is stripped for display);
+    // standalone tests merge on title + class + section. Fetches a wider
+    // window of slots than the card shows so grouping still fills the card
+    // once duplicates collapse.
+    const examSlots = await Exam.find({ school: schoolId, date: { $gte: todayStart } })
+      .select("title date class section subject scheduledExamId")
+      .sort({ date: 1 })
+      .limit(60);
 
-    // Grouped by student rather than one row per fee record, so a student
-    // with both an Admission Fee and a Tuition Fee outstanding shows once
-    // with their combined pending amount instead of twice.
-    const pendingFeeStudents = (
+    interface ExamGroupSlot {
+      title: string;
+      cls: string;
+      sections: string[];
+      dates: string[];
+      subjects: string[];
+      scheduledExamId: string | null;
+      examId: string;
+    }
+    const examGroups = new Map<string, ExamGroupSlot>();
+    for (const e of examSlots) {
+      const isTerm = Boolean(e.scheduledExamId);
+      const key = isTerm ? `term:${e.scheduledExamId}` : `test:${e.title}|${e.class}|${e.section}`;
+      const title = isTerm ? e.title.replace(` — ${e.subject}`, "") : e.title;
+      const dateIso = e.date.toISOString();
+      const g = examGroups.get(key);
+      if (g) {
+        if (!g.dates.includes(dateIso)) g.dates.push(dateIso);
+        if (e.section && !g.sections.includes(e.section)) g.sections.push(e.section);
+        if (!g.subjects.includes(e.subject)) g.subjects.push(e.subject);
+      } else {
+        examGroups.set(key, {
+          title,
+          cls: e.class,
+          sections: e.section ? [e.section] : [],
+          dates: [dateIso],
+          subjects: [e.subject],
+          scheduledExamId: e.scheduledExamId ? String(e.scheduledExamId) : null,
+          examId: String(e._id),
+        });
+      }
+    }
+    const upcomingExams = [...examGroups.values()]
+      .map((g) => ({
+        title: g.title,
+        class: g.sections.length > 1 ? `${formatClassName(g.cls)} (${g.sections.join(", ")})` : formatClassName(g.cls, g.sections[0] ?? ""),
+        dates: g.dates.sort(),
+        subjects: g.subjects,
+        scheduledExamId: g.scheduledExamId,
+        examId: g.examId,
+      }))
+      .sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
+
+    // Class-wise outstanding totals for the dashboard's Pending Fees card.
+    // Grouped per student first (so a student with several outstanding fee
+    // records counts once, and "students" below is a headcount, not a fee
+    // count), then rolled up per class -- sections merged into the class
+    // name so a class shows as one row, matching the Students by Class
+    // chart. Returned class-ascending (numeric-aware: Class 2 before
+    // Class 10); the card colours bars by amount rank instead.
+    const pendingFeeByClass = (
       await FeePayment.aggregate([
         { $match: { school: schoolObjectId, status: { $in: ["pending", "partial", "overdue"] } } },
-        {
-          $group: {
-            _id: "$student",
-            pendingAmount: { $sum: { $subtract: ["$amount", "$paidAmount"] } },
-            count: { $sum: 1 },
-            dueDate: { $min: "$dueDate" },
-          },
-        },
-        { $sort: { dueDate: 1 } },
-        { $limit: 5 },
+        { $group: { _id: "$student", pendingAmount: { $sum: { $subtract: ["$amount", "$paidAmount"] } } } },
         { $lookup: { from: "students", localField: "_id", foreignField: "_id", as: "student" } },
         { $unwind: { path: "$student", preserveNullAndEmptyArrays: true } },
+        { $group: { _id: "$student.class", students: { $sum: 1 }, amount: { $sum: "$pendingAmount" } } },
       ])
-    ).map((f) => ({
-      _id: String(f._id),
-      pendingAmount: f.pendingAmount,
-      count: f.count,
-      dueDate: f.dueDate,
-      student: f.student ? { name: f.student.name, class: f.student.class, section: f.student.section } : null,
-    }));
+    )
+      .map((c) => ({
+        name: formatClassName(c._id ? String(c._id) : "") || "Unassigned",
+        students: c.students as number,
+        amount: c.amount as number,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
     const [recentPayments, recentStudents, recentNotices] = await Promise.all([
       FeePayment.find({ school: schoolId, status: "paid" }).populate("student", "name").sort({ paidDate: -1 }).limit(4),
@@ -202,7 +246,7 @@ export async function GET(req: Request) {
         feeMonthly,
         classPerformance,
         upcomingExams,
-        pendingFeeStudents,
+        pendingFeeByClass,
         recentActivity,
       },
     });

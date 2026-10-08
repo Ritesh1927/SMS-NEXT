@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { useState, useEffect, useCallback, useRef, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
-  DollarSign, TrendingUp, AlertCircle, Clock, Plus, Pencil, Trash2, Settings, LayoutDashboard,
-  CreditCard, FileText, Tag, RefreshCw, Loader2, X,
+  DollarSign, AlertCircle, Clock, Plus, Pencil, Trash2, Settings, LayoutDashboard,
+  CreditCard, FileText, Tag, RefreshCw, Loader2, X, Users, Wallet, Calendar, CalendarDays,
+  AlertTriangle, CalendarClock, CheckCircle2, ChevronRight,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -39,11 +40,17 @@ interface ConcessionRow {
   type: ConcessionType; value: number; isPct: boolean; description: string;
   duration: ConcessionDuration; validUntil: string | null;
 }
-interface AnalyticsMonth { month: string; collected: number; pending: number }
-interface ClassWiseChart { class: string; collected: number }
+interface AnalyticsMonth { month: string; collected: number; pending: number; total?: number }
+interface ClassWiseChart { class: string; collected: number; pending?: number; students?: number; pendingStudents?: number }
+interface TopStudentRow { studentId: string; name: string; class: string; pending: number; months: number }
 interface AnalyticsResponse {
   success: boolean; data: AnalyticsMonth[]; classWise: ClassWiseChart[];
-  summary: { totalCollected: number; totalPending: number; totalLateFees: number; totalConcessions: number };
+  summary: {
+    totalCollected: number; totalPending: number; totalLateFees: number; totalConcessions: number;
+    expected?: number; overdue?: number; upcoming?: number; thisMonthCollected?: number;
+    pendingStudents?: number; collectedPct?: number; pendingPct?: number;
+  };
+  topStudents?: TopStudentRow[];
 }
 interface StructuresResponse { success: boolean; data: StructureRow[] }
 interface ClassesResponse { success: boolean; data: ClassOption[] }
@@ -88,6 +95,110 @@ function resolveDefaultDueDate() {
   return d.toISOString().slice(0, 10);
 }
 
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+// "Nov 2026 – Mar 2027" style window for the Upcoming card: from the month
+// after today (or the FY start, whichever is later) to the FY's last month.
+function upcomingWindowLabel(fyVal: string, sessionStart: string) {
+  if (!fyVal) return "";
+  const fyStartYear = parseInt(fyVal.slice(0, 4), 10);
+  if (!fyStartYear) return "";
+  let startIdx = MONTHS_FULL.indexOf(sessionStart);
+  if (startIdx < 0) startIdx = 3;
+  const fyEndIdx = (startIdx + 11) % 12;
+  const fyEndYear = fyEndIdx < startIdx ? fyStartYear + 1 : fyStartYear;
+  const now = new Date();
+  const nextStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const fyStart = new Date(fyStartYear, startIdx, 1);
+  const from = nextStart > fyStart ? nextStart : fyStart;
+  if (from > new Date(fyEndYear, fyEndIdx + 1, 0)) return "None left in this FY";
+  return `${MONTHS_SHORT[from.getMonth()]} ${from.getFullYear()} – ${MONTHS_SHORT[fyEndIdx]} ${fyEndYear}`;
+}
+
+// "Apr 2026 – Mar 2027" — the full current-session window shown on the
+// header badge (same session math as upcomingWindowLabel, both ends fixed).
+function sessionWindowLabel(fyVal: string, sessionStart: string) {
+  if (!fyVal) return "";
+  const fyStartYear = parseInt(fyVal.slice(0, 4), 10);
+  if (!fyStartYear) return "";
+  let startIdx = MONTHS_FULL.indexOf(sessionStart);
+  if (startIdx < 0) startIdx = 3;
+  const fyEndIdx = (startIdx + 11) % 12;
+  const fyEndYear = fyEndIdx < startIdx ? fyStartYear + 1 : fyStartYear;
+  return `${MONTHS_SHORT[startIdx]} ${fyStartYear} – ${MONTHS_SHORT[fyEndIdx]} ${fyEndYear}`;
+}
+
+// Excel-style month windows, both ends inclusive:
+//   pending  = session start → current month
+//   overdue  = session start → month before current
+//   upcoming = month after current → session end
+// Each returns "Apr 2026 – Oct 2026" (or "" when the range is empty).
+function pendingWindowLabel(fyVal: string, sessionStart: string) {
+  if (!fyVal) return "";
+  const fyStartYear = parseInt(fyVal.slice(0, 4), 10);
+  if (!fyStartYear) return "";
+  let startIdx = MONTHS_FULL.indexOf(sessionStart);
+  if (startIdx < 0) startIdx = 3;
+  const now = new Date();
+  const fyStart = new Date(fyStartYear, startIdx, 1);
+  const nowMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const from = nowMonth > fyStart ? fyStart : nowMonth;
+  if (from > nowMonth) return "";
+  return `${MONTHS_SHORT[from.getMonth()]} ${from.getFullYear()} – ${MONTHS_SHORT[nowMonth.getMonth()]} ${nowMonth.getFullYear()}`;
+}
+
+function overdueWindowLabel(fyVal: string, sessionStart: string) {
+  if (!fyVal) return "";
+  const fyStartYear = parseInt(fyVal.slice(0, 4), 10);
+  if (!fyStartYear) return "";
+  let startIdx = MONTHS_FULL.indexOf(sessionStart);
+  if (startIdx < 0) startIdx = 3;
+  const now = new Date();
+  const fyStart = new Date(fyStartYear, startIdx, 1);
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const from = lastMonth > fyStart ? fyStart : lastMonth;
+  if (from > lastMonth) return "";
+  return `${MONTHS_SHORT[from.getMonth()]} ${from.getFullYear()} – ${MONTHS_SHORT[lastMonth.getMonth()]} ${lastMonth.getFullYear()}`;
+}
+
+// Priority bucket for a class on the Fees dashboard — pending share of the
+// class's total (collected + pending) exposure, matching the reference's
+// High >20% / Medium 10–20% / Low <10% / Cleared 0% tiles.
+type ClassBucket = "high" | "medium" | "low" | "cleared";
+function classBucket(c: ClassWiseChart): ClassBucket {
+  const pending = c.pending || 0;
+  const denom = (c.collected || 0) + pending;
+  if (denom === 0 || pending === 0) return "cleared";
+  const pct = (pending / denom) * 100;
+  return pct > 20 ? "high" : pct > 10 ? "medium" : "low";
+}
+
+const PRIO_TILES = [
+  { key: "high", title: "High Priority", color: "#DC2626", cond: "> 20% pending", icon: AlertTriangle,
+    bg: "bg-red-50/70 dark:bg-red-500/10", border: "border-red-100 dark:border-red-500/20",
+    chip: "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400" },
+  { key: "medium", title: "Medium Priority", color: "#F59E0B", cond: "10% – 20% pending", icon: AlertCircle,
+    bg: "bg-amber-50/70 dark:bg-amber-500/10", border: "border-amber-100 dark:border-amber-500/20",
+    chip: "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400" },
+  { key: "low", title: "Low Priority", color: "#16A34A", cond: "< 10% pending", icon: Clock,
+    bg: "bg-green-50/70 dark:bg-green-500/10", border: "border-green-100 dark:border-green-500/20",
+    chip: "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400" },
+  { key: "cleared", title: "No Pending Dues", color: "#0EA5E9", cond: "0% pending", icon: CheckCircle2,
+    bg: "bg-sky-50/70 dark:bg-sky-500/10", border: "border-sky-100 dark:border-sky-500/20",
+    chip: "bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400" },
+] as const;
+
+const QUICK_ACTIONS = [
+  { icon: Settings, title: "Fee Structure", desc: "Check class-wise fee structure", target: "structure", color: "#4F46E5", dark: "#4338CA" },
+  { icon: CreditCard, title: "Collect Fee", desc: "Record a fee payment", target: "collect", color: "#16A34A", dark: "#15803D" },
+  { icon: FileText, title: "Reports", desc: "View collections & ledger", target: "reports", color: "#0EA5E9", dark: "#0284C7" },
+  { icon: Tag, title: "Concessions", desc: "Manage fee discounts", target: "concessions", color: "#F59E0B", dark: "#D97706" },
+] as const;
+
 export default function AdminFeesPage() {
   const { user } = useAuth();
   const permissions = user?.permissions as { canManageFees?: boolean } | undefined;
@@ -102,6 +213,13 @@ export default function AdminFeesPage() {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [concessions, setConcessions] = useState<ConcessionRow[]>([]);
   const [academicYear, setAcademicYear] = useState("");
+  // Current session for the Dashboard tab (e.g. "2026-2027") — fixed to the
+  // session containing today, derived from settings.sessionStartMonth on
+  // first load. No picker: the dashboard only ever shows the current session.
+  const [fy, setFy] = useState("");
+  const [sessionStart, setSessionStart] = useState("April");
+  const [prioFilter, setPrioFilter] = useState<ClassBucket | "all">("all");
+  const fyRef = useRef("");
 
   const [structClass, setStructClass] = useState("");
   // Classes targeted by the Create Fee Heads dialog (batch mode) — fee
@@ -123,23 +241,28 @@ export default function AdminFeesPage() {
   const [conSaving, setConSaving] = useState(false);
   const [pendingDeleteCon, setPendingDeleteCon] = useState<ConcessionRow | null>(null);
 
+  const loadAnalytics = useCallback(async (fyVal: string) => {
+    const token = getToken();
+    if (!token || !fyVal) return;
+    const res = await apiGet<AnalyticsResponse>(`/fees/analytics?fy=${fyVal}`, token).catch(() => null);
+    setAnalytics(res);
+  }, []);
+
   const loadAll = useCallback(async () => {
     const token = getToken();
     if (!token) return;
     setLoading(true);
     try {
-      const [clsR, stuR, strR, anaR, branding] = await Promise.all([
+      const [clsR, stuR, strR, branding] = await Promise.all([
         apiGet<ClassesResponse>("/classes", token).catch(() => ({ success: true, data: [] as ClassOption[] })),
         apiGet<StudentsResponse>("/students", token).catch(() => ({ success: true, data: [] as StudentOption[] })),
         apiGet<StructuresResponse>("/fees/structures", token).catch(() => ({ success: true, data: [] as StructureRow[] })),
-        apiGet<AnalyticsResponse>("/fees/analytics", token).catch(() => null),
         apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null),
       ]);
       setClasses(clsR.data);
       setStructClass((prev) => prev || clsR.data[0]?.name || "");
       setStudents([...stuR.data].sort((a, b) => a.name.localeCompare(b.name)));
       setStructures([...strR.data].sort((a, b) => a.title.localeCompare(b.title)));
-      setAnalytics(anaR);
 
       if (canManage) {
         const conR = await apiGet<ConcessionsResponse>("/fees/concessions", token).catch(() => ({ success: true, data: [] as ConcessionRow[] }));
@@ -154,26 +277,80 @@ export default function AdminFeesPage() {
       const endMonthIdx = (startIdx + 11) % 12;
       const endYear = endMonthIdx < startIdx ? startYear + 1 : startYear;
       setAcademicYear(`${startYear}-${endYear}`);
+
+      // The Dashboard always shows the session today falls into (current FY
+      // only) — no picker. Analytics loads for that session via the [fy] effect.
+      setSessionStart(startMonth);
+      const sIdx = startIdx >= 0 ? startIdx : 3;
+      const curStartYear = now.getMonth() >= sIdx ? startYear : startYear - 1;
+      setFy((prev) => prev || `${curStartYear}-${curStartYear + 1}`);
+      // A manual refresh re-runs loadAll but not the [fy] effect, so
+      // re-fetch analytics here too when a FY is already selected.
+      if (fyRef.current) loadAnalytics(fyRef.current);
     } catch {
       toast.error("Failed to load fee data");
     } finally {
       setLoading(false);
     }
-  }, [canManage]);
+  }, [canManage, loadAnalytics]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: initial data load on mount.
     loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    if (!fy) return;
+    fyRef.current = fy;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: FY picker triggers the dashboard data load.
+    loadAnalytics(fy);
+  }, [fy, loadAnalytics]);
+
+  const sum = analytics?.summary;
+  const totalCollected = sum?.totalCollected ?? 0;
+  const totalPending = sum?.totalPending ?? 0;
+  const expected = sum?.expected ?? totalCollected + totalPending;
   const dash = {
-    totalYear: analytics?.summary.totalCollected ?? 0,
-    thisMonth: analytics?.data[new Date().getMonth()]?.collected ?? 0,
-    totalPending: analytics?.summary.totalPending ?? 0,
-    totalLateFees: analytics?.summary.totalLateFees ?? 0,
-    totalConcessions: analytics?.summary.totalConcessions ?? 0,
+    totalYear: totalCollected,
+    thisMonth: sum?.thisMonthCollected ?? 0,
+    totalPending,
+    expected,
+    overdue: sum?.overdue ?? 0,
+    upcoming: sum?.upcoming ?? 0,
+    totalLateFees: sum?.totalLateFees ?? 0,
+    totalConcessions: sum?.totalConcessions ?? 0,
+    pendingStudents: sum?.pendingStudents ?? 0,
+    collectedPct: sum?.collectedPct ?? (expected > 0 ? Math.round((totalCollected / expected) * 100) : 0),
+    pendingPct: sum?.pendingPct ?? (expected > 0 ? Math.round((totalPending / expected) * 100) : 0),
     classWise: analytics?.classWise ?? [],
+    topStudents: analytics?.topStudents ?? [],
   };
+
+  // ---- Dashboard-tab derivations (cheap; computed every render) ----
+  const classRows = [...dash.classWise].sort((a, b) =>
+    a.class.localeCompare(b.class, undefined, { numeric: true, sensitivity: "base" }),
+  );
+  const bucketInfo: Record<ClassBucket, { count: number; pending: number }> = {
+    high: { count: 0, pending: 0 },
+    medium: { count: 0, pending: 0 },
+    low: { count: 0, pending: 0 },
+    cleared: { count: 0, pending: 0 },
+  };
+  for (const c of dash.classWise) {
+    if (c.students === 0) continue;
+    const b = classBucket(c);
+    bucketInfo[b].count += 1;
+    bucketInfo[b].pending += c.pending || 0;
+  }
+  const visibleClasses =
+    prioFilter === "all" ? classRows : classRows.filter((c) => c.students !== 0 && classBucket(c) === prioFilter);
+  const topClasses = [...dash.classWise]
+    .filter((c) => (c.pending || 0) > 0)
+    .sort((a, b) => (b.pending || 0) - (a.pending || 0))
+    .slice(0, 5);
+  const donutBase = dash.totalYear + dash.totalPending;
+  const donutPct = donutBase > 0 ? Math.round((dash.totalYear / donutBase) * 100) : 0;
+  const monthNowLabel = new Date().toLocaleString("en", { month: "short", year: "numeric" });
 
   const openAddStruct = () => {
     setBatchFees([EMPTY_BATCH_ROW]);
@@ -494,33 +671,71 @@ export default function AdminFeesPage() {
 
       {tab === "dashboard" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatFilterCard icon={DollarSign} color="#F59E0B" colorDark="#D97706" value={fmt(dash.totalYear)} label="Total Collected (Year)" sublabel={`FY ${new Date().getFullYear()}`} />
-            <StatFilterCard icon={TrendingUp} color="#0EA5E9" colorDark="#0284C7" value={fmt(dash.thisMonth)} label="This Month" sublabel={new Date().toLocaleString("en", { month: "short" })} />
-            <StatFilterCard icon={AlertCircle} color="#4F46E5" colorDark="#4338CA" value={fmt(dash.totalPending)} label="Pending Dues" sublabel="Across all students" />
-            {dash.totalLateFees > 0 && (
-              <StatFilterCard icon={Clock} color="#DC2626" colorDark="#B91C1C" value={fmt(dash.totalLateFees)} label="Late Fees Collected" sublabel="From overdue payments" />
-            )}
-            {dash.totalConcessions > 0 && (
-              <StatFilterCard icon={Tag} color="#16A34A" colorDark="#15803D" value={fmt(dash.totalConcessions)} label="Concessions Given" sublabel="Discounts on payments" />
-            )}
+          {/* Header: title + FY selector + today's date */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-white shadow-[0_8px_18px_-6px_rgba(79,70,229,0.6)]">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Fees Dashboard</h2>
+                <p className="text-sm text-muted-foreground">Track fee collection, pending dues and upcoming fees at a glance.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                Session: {sessionWindowLabel(fy, sessionStart)}
+              </div>
+              <div className="hidden h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground sm:flex">
+                <Calendar className="h-4 w-4" />
+                {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="p-4 border-b border-border"><h3 className="text-base font-semibold text-foreground">Monthly Collection Trend</h3></div>
+          {/* Stat row 1 — Excel model: total fee for the session, collected, pending (start→curr), headcount */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatFilterCard icon={Users} color="#4F46E5" colorDark="#4338CA" value={students.length} label="Total Students" sublabel={`Across ${classes.length} classes`} />
+            <StatFilterCard icon={Wallet} color="#0EA5E9" colorDark="#0284C7" value={fmt(dash.expected)} label="Total Fee (This Session)" sublabel={`${sessionWindowLabel(fy, sessionStart)} · what we should collect`} />
+            <StatFilterCard icon={DollarSign} color="#16A34A" colorDark="#15803D" value={fmt(dash.totalYear)} label="Collected" sublabel={`Money received · ${dash.collectedPct}% of total fee`} />
+            <StatFilterCard icon={AlertCircle} color="#F59E0B" colorDark="#D97706" value={fmt(dash.totalPending)} label="Pending Dues" sublabel={`Due till now · ${pendingWindowLabel(fy, sessionStart)}`} />
+            <StatFilterCard icon={Users} color="#8B5CF6" colorDark="#7C3AED" value={`${dash.pendingStudents} / ${students.length}`} label="Pending Students" sublabel={`${students.length > 0 ? Math.round((dash.pendingStudents / students.length) * 100) : 0}% of students`} />
+          </div>
+
+          {/* Stat row 2 — Excel split: overdue (start→curr-1), upcoming (curr+1→end), this month, adjustments */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatFilterCard icon={AlertTriangle} color="#DC2626" colorDark="#B91C1C" value={fmt(dash.overdue)} label="Overdue" sublabel={`Start → last month · ${overdueWindowLabel(fy, sessionStart) || "—"}`} />
+            <StatFilterCard icon={CalendarClock} color="#2563EB" colorDark="#1D4ED8" value={fmt(dash.upcoming)} label="Upcoming Dues" sublabel={`Next month → session end · ${upcomingWindowLabel(fy, sessionStart)}`} />
+            <StatFilterCard icon={CalendarDays} color="#0891B2" colorDark="#0E7490" value={fmt(dash.thisMonth)} label="Collected This Month" sublabel={monthNowLabel} />
+            <StatFilterCard icon={Clock} color="#EA580C" colorDark="#C2410C" value={fmt(dash.totalLateFees)} label="Late Fees Collected" sublabel="Charged on late payments" />
+            <StatFilterCard icon={Tag} color="#0D9488" colorDark="#0F766E" value={fmt(dash.totalConcessions)} label="Concessions Given" sublabel="Waived on fees" />
+          </div>
+
+          {/* Overview chart + overall donut */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4">
+                <h3 className="text-base font-semibold text-foreground">Fee Collection Overview</h3>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#16A34A]" />Collected</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#F59E0B]" />Pending</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#93C5FD]" />Total</span>
+                </div>
+              </div>
               <div className="p-4">
                 {!analytics || analytics.data.every((a) => a.collected === 0 && a.pending === 0) ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+                  <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">No data yet</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={analytics.data}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                      <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 12 }} />
+                      <XAxis dataKey="month" tick={{ fill: "#64748B", fontSize: 11 }} />
                       <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${v / 1000}k`} />
-                      <Tooltip formatter={(v) => [fmt(Number(v)), ""]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12 }} />
-                      <Bar dataKey="collected" fill="#7C3AED" radius={[6, 6, 0, 0]} name="Collected" />
-                      <Bar dataKey="pending" fill="#33C6E7" radius={[6, 6, 0, 0]} name="Pending" />
+                      <Tooltip formatter={(v, name) => [fmt(Number(v)), name]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12 }} />
+                      <Bar dataKey="collected" fill="#16A34A" radius={[4, 4, 0, 0]} name="Collected" />
+                      <Bar dataKey="pending" fill="#F59E0B" radius={[4, 4, 0, 0]} name="Pending" />
+                      <Bar dataKey="total" fill="#93C5FD" radius={[4, 4, 0, 0]} name="Total" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -528,23 +743,248 @@ export default function AdminFeesPage() {
             </div>
 
             <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
-              <div className="p-4 border-b border-border"><h3 className="text-base font-semibold text-foreground">Class-wise Collection</h3></div>
+              <div className="border-b border-border p-4"><h3 className="text-base font-semibold text-foreground">Fees Status (Overall)</h3></div>
               <div className="p-4">
-                {dash.classWise.every((c) => c.collected === 0) ? (
-                  <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+                {donutBase === 0 ? (
+                  <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">No data yet</div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={dash.classWise}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                      <XAxis dataKey="class" tick={{ fill: "#64748B", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "#64748B", fontSize: 12 }} tickFormatter={(v) => `₹${v / 1000}k`} />
-                      <Tooltip formatter={(v) => [fmt(Number(v)), ""]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12 }} />
-                      <Bar dataKey="collected" fill="#A78BFA" radius={[6, 6, 0, 0]} name="Collected" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <>
+                    <div className="relative">
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: "Collected", value: dash.totalYear },
+                              { name: "Pending", value: dash.totalPending },
+                            ]}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={58}
+                            outerRadius={85}
+                            paddingAngle={2}
+                            startAngle={90}
+                            endAngle={-270}
+                            stroke="none"
+                          >
+                            <Cell fill="#16A34A" />
+                            <Cell fill="#F59E0B" />
+                          </Pie>
+                          <Tooltip formatter={(v, name) => [fmt(Number(v)), name]} contentStyle={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-foreground">{donutPct}%</span>
+                        <span className="text-xs text-muted-foreground">Collected</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground"><span className="h-2.5 w-2.5 rounded-full bg-[#16A34A]" />Collected</span>
+                        <span className="font-medium text-foreground">{fmt(dash.totalYear)} <span className="text-muted-foreground">({donutPct}%)</span></span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground"><span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" />Pending</span>
+                        <span className="font-medium text-foreground">{fmt(dash.totalPending)} <span className="text-muted-foreground">({100 - donutPct}%)</span></span>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Class-wise table + pending priority tiles */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] lg:col-span-2">
+              <div className="flex items-center justify-between border-b border-border p-4">
+                <h3 className="text-base font-semibold text-foreground">Fee Collection by Class</h3>
+                <button type="button" onClick={() => setTab("reports")} className="text-sm font-medium text-primary hover:underline">View All</button>
+              </div>
+              <div className="p-4">
+                {visibleClasses.length === 0 ? (
+                  <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                    {dash.classWise.length === 0 ? "No data yet" : "No classes match this filter"}
+                  </div>
+                ) : (
+                  <div className="max-h-[380px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-card">
+                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                          <th className="px-2 pb-2.5 font-medium">Class</th>
+                          <th className="px-2 pb-2.5 font-medium">Students</th>
+                          <th className="px-2 pb-2.5 font-medium">Collected</th>
+                          <th className="px-2 pb-2.5 font-medium">Pending</th>
+                          <th className="w-[170px] px-2 pb-2.5 font-medium">% Collected</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleClasses.map((c) => {
+                          const denom = (c.collected || 0) + (c.pending || 0);
+                          const pct = denom > 0 ? Math.round(((c.collected || 0) / denom) * 100) : 0;
+                          return (
+                            <tr key={c.class} className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/40">
+                              <td className="px-2 py-2.5">
+                                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{c.class}</span>
+                              </td>
+                              <td className="px-2 py-2.5 text-muted-foreground">{c.students ?? "—"}</td>
+                              <td className="px-2 py-2.5 font-medium text-foreground">{fmt(c.collected)}</td>
+                              <td className="px-2 py-2.5 font-medium" style={(c.pending || 0) > 0 ? { color: "#F59E0B" } : undefined}>{fmt(c.pending || 0)}</td>
+                              <td className="px-2 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                    <div className="h-full rounded-full" style={{ width: `${denom > 0 ? Math.max(pct, 2) : 0}%`, background: "linear-gradient(90deg,#16A34A,#0D9488)" }} />
+                                  </div>
+                                  <span className="w-9 text-right text-xs text-muted-foreground">{pct}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="border-b border-border p-4"><h3 className="text-base font-semibold text-foreground">Pending Fee Summary</h3></div>
+              <div className="space-y-3 p-4">
+                {PRIO_TILES.map((t) => {
+                  const info = bucketInfo[t.key];
+                  const active = prioFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setPrioFilter((p) => (p === t.key ? "all" : t.key))}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-all hover:-translate-y-0.5 ${t.bg} ${t.border}`}
+                      style={active ? { boxShadow: `0 0 0 1.5px ${t.color}` } : undefined}
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${t.chip}`}>
+                        <t.icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-semibold" style={{ color: t.color }}>{t.title}</span>
+                        <span className="block text-sm font-bold text-foreground">{info.count} {info.count === 1 ? "Class" : "Classes"} · {fmt(info.pending)}</span>
+                        <span className="block text-[11px] text-muted-foreground">({t.cond})</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Top defaulters */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="border-b border-border p-4"><h3 className="text-base font-semibold text-foreground">Top 5 Classes by Pending Amount</h3></div>
+              <div className="p-4">
+                {topClasses.length === 0 ? (
+                  <div className="flex h-[140px] items-center justify-center text-sm text-muted-foreground">No pending dues 🎉</div>
+                ) : (
+                  <div className="space-y-3">
+                    {topClasses.map((c, i) => {
+                      const denom = (c.collected || 0) + (c.pending || 0);
+                      const pendingPct = denom > 0 ? Math.round(((c.pending || 0) / denom) * 100) : 0;
+                      return (
+                        <div key={c.class} className="flex items-center gap-3">
+                          <span
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                            style={{
+                              background: i === 0 ? "#FEE2E2" : i === 1 ? "#FFEDD5" : "#E2E8F0",
+                              color: i === 0 ? "#DC2626" : i === 1 ? "#F59E0B" : "#475569",
+                            }}
+                          >
+                            {i + 1}
+                          </span>
+                          <span className="w-16 shrink-0 text-sm font-semibold text-foreground">{c.class}</span>
+                          <span className="hidden w-20 shrink-0 text-xs text-muted-foreground sm:block">{c.students ?? 0} students</span>
+                          <span className="hidden w-24 shrink-0 text-xs text-muted-foreground sm:block">{c.pendingStudents ?? 0} pending</span>
+                          <span className="w-24 shrink-0 text-sm font-semibold" style={{ color: "#F59E0B" }}>{fmt(c.pending || 0)}</span>
+                          <div className="h-2 min-w-[50px] flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.max(pendingPct, 2)}%`,
+                                background: pendingPct > 20 ? "#DC2626" : pendingPct > 10 ? "#F59E0B" : "#16A34A",
+                              }}
+                            />
+                          </div>
+                          <span className="w-9 shrink-0 text-right text-xs text-muted-foreground">{pendingPct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+              <div className="flex items-center justify-between border-b border-border p-4">
+                <h3 className="text-base font-semibold text-foreground">Top 5 Pending Students</h3>
+                <button type="button" onClick={() => setTab("collect")} className="text-sm font-medium text-primary hover:underline">View All</button>
+              </div>
+              <div className="p-4">
+                {dash.topStudents.length === 0 ? (
+                  <div className="flex h-[140px] items-center justify-center text-sm text-muted-foreground">No pending dues 🎉</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                          <th className="px-2 pb-2.5 font-medium">Student</th>
+                          <th className="px-2 pb-2.5 font-medium">Class</th>
+                          <th className="px-2 pb-2.5 text-right font-medium">Pending</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dash.topStudents.map((s) => (
+                          <tr key={s.studentId} className="border-b border-border/50 transition-colors last:border-0 hover:bg-muted/40">
+                            <td className="px-2 py-2.5">
+                              <span className="flex items-center gap-2">
+                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{s.name.charAt(0)}</span>
+                                <span className="font-medium text-foreground">{s.name}</span>
+                              </span>
+                            </td>
+                            <td className="px-2 py-2.5">
+                              <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{s.class}</span>
+                            </td>
+                            <td className="px-2 py-2.5 text-right font-semibold" style={{ color: "#F59E0B" }}>{fmt(s.pending)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {QUICK_ACTIONS.filter((a) => TABS.some((t) => t.id === a.target)).map((a) => (
+              <button
+                key={a.target}
+                type="button"
+                onClick={() => setTab(a.target)}
+                className="group flex items-center gap-3 rounded-[18px] bg-card p-4 text-left shadow-[0_0_0_1px_rgba(15,23,42,0.07)] transition-all hover:-translate-y-0.5"
+              >
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: `linear-gradient(135deg, ${a.color}, ${a.dark})`, boxShadow: `0 8px 18px -6px ${a.color}80` }}
+                >
+                  <a.icon className="h-5 w-5 text-white" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">{a.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{a.desc}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -750,12 +1190,13 @@ export default function AdminFeesPage() {
                           <SelectContent>{FREQ_OPTS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                         </Select>
                       </Field>
-                      {(f.frequency === "yearly" || f.frequency === "one-time" || f.frequency === "quarterly") && (
-                        <Field label="Due Date" required={f.frequency === "quarterly"}>
-                          <Input type="date" value={f.dueDate} onChange={(e) => updateBatchRow(idx, "dueDate", e.target.value)} />
-                          {f.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
-                        </Field>
-                      )}
+                      <Field label="Due Date" required={f.frequency === "quarterly"}>
+                        <Input type="date" value={f.dueDate} onChange={(e) => updateBatchRow(idx, "dueDate", e.target.value)} />
+                        {f.frequency === "monthly" && (
+                          <p className="text-xs text-muted-foreground">Day of month used each month · late fee counted from this day</p>
+                        )}
+                        {f.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
+                      </Field>
                     </div>
                     <Field label="Description (optional)">
                       <Input value={f.description} onChange={(e) => updateBatchRow(idx, "description", e.target.value)} placeholder="Notes..." />
@@ -786,12 +1227,13 @@ export default function AdminFeesPage() {
                       <SelectContent>{FREQ_OPTS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                     </Select>
                   </Field>
-                  {(structForm.frequency === "yearly" || structForm.frequency === "one-time" || structForm.frequency === "quarterly") && (
-                    <Field label="Due Date" required={structForm.frequency === "quarterly"}>
-                      <Input type="date" value={structForm.dueDate} onChange={(e) => setStructForm((f) => ({ ...f, dueDate: e.target.value }))} />
-                      {structForm.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
-                    </Field>
-                  )}
+                  <Field label="Due Date" required={structForm.frequency === "quarterly"}>
+                    <Input type="date" value={structForm.dueDate} onChange={(e) => setStructForm((f) => ({ ...f, dueDate: e.target.value }))} />
+                    {structForm.frequency === "monthly" && (
+                      <p className="text-xs text-muted-foreground">Day of month used each month · late fee counted from this day</p>
+                    )}
+                    {structForm.frequency === "quarterly" && <p className="text-xs text-muted-foreground">1st quarter due · then every 3 months</p>}
+                  </Field>
                 </div>
                 <Field label="Description (optional)">
                   <Input value={structForm.description} onChange={(e) => setStructForm((f) => ({ ...f, description: e.target.value }))} placeholder="Notes..." />

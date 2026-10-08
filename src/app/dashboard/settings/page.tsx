@@ -617,7 +617,7 @@ export default function SettingsPage() {
                   icon={AlarmClock}
                   colorClass="bg-orange-500/10 text-orange-600"
                   label="Enable Late Fees"
-                  description="Automatically apply late fees on overdue payments"
+                  description="Automatically apply late fees on overdue monthly fee payments (quarterly / yearly / one-time are never charged)"
                   checked={profile.settings.lateFee.enabled}
                   onCheckedChange={(v) => setProfile((p) => p && { ...p, settings: { ...p.settings, lateFee: { ...p.settings.lateFee, enabled: v } } })}
                 />
