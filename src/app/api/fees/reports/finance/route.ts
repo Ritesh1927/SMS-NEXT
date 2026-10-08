@@ -218,8 +218,10 @@ export async function GET(req: Request) {
           const paidNow = pay ? Math.min(pay.paid, net) : 0;
           const due = dueDateForMonth(fs.dueDate, occKey);
           // Projected late fee only when nothing has been paid yet — the same
-          // rule student-status uses for unpaid, past-due months.
-          const projected = !pay && due && due < now ? calcProjectedLateFee(lateFeeConfig || {}, fs.amount, due) : 0;
+          // rule student-status uses for unpaid, past-due months — and only
+          // on monthly heads (quarterly/yearly/one-time never accrue one).
+          const projected =
+            fs.frequency === "monthly" && !pay && due && due < now ? calcProjectedLateFee(lateFeeConfig || {}, fs.amount, due) : 0;
           const headPending = Math.max(0, net - paidNow);
           const headLateFee = (pay?.lateFee || 0) + projected;
 

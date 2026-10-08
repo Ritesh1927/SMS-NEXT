@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
   CreditCard, Check, Loader2, IndianRupee, Download, Eye, CheckCircle2, Receipt, Calendar,
+  CalendarDays, FileText, Wallet, ChevronDown,
 } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
@@ -132,6 +133,35 @@ async function fetchBranding(token: string) {
   return res?.data || {};
 }
 
+// Design-only metadata for the Fee Categories selector (icon, chip colour,
+// price unit, helper copy) — no fee logic lives here.
+const FREQ_META: Record<string, { icon: typeof CalendarDays; chip: string; unit: string; desc: string }> = {
+  monthly: {
+    icon: CalendarDays,
+    chip: "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400",
+    unit: "/month",
+    desc: "Recurring monthly fee for the academic session",
+  },
+  quarterly: {
+    icon: FileText,
+    chip: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
+    unit: "/quarter",
+    desc: "Charged every 3 months across the session",
+  },
+  yearly: {
+    icon: Wallet,
+    chip: "bg-purple-50 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400",
+    unit: "/year",
+    desc: "Annual fee for the academic session",
+  },
+  "one-time": {
+    icon: IndianRupee,
+    chip: "bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400",
+    unit: "",
+    desc: "One-time payment for this student",
+  },
+};
+
 export default function CollectFeeTab() {
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -149,6 +179,9 @@ export default function CollectFeeTab() {
   const [paymentHistory, setPaymentHistory] = useState<HistoryGroup[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeTab, setActiveTab] = useState("collect");
+  // Design-only: which single fee category is expanded in the selector
+  // (view state — never affects amounts, selection or payment).
+  const [activeHeadId, setActiveHeadId] = useState("");
 
   useEffect(() => {
     const token = getToken();
@@ -178,6 +211,9 @@ export default function CollectFeeTab() {
         const init: Record<string, Record<string, boolean>> = {};
         heads.forEach((h) => { init[h._id] = {}; });
         setSelectedMonths(init);
+        // Expand the first head that actually has dues pending (else the first).
+        const defaultHead = heads.find((h) => h.months.some((m) => !m.paid && !m.upcoming)) || heads[0];
+        setActiveHeadId(defaultHead?._id || "");
       })
       .catch(() => toast.error("Failed to load fee data"))
       .finally(() => setLoading(false));
@@ -259,6 +295,14 @@ export default function CollectFeeTab() {
       sorted.slice(firstUnpaidIdx).forEach((m) => { if (!m.paid) newSelection[m.month] = true; });
     }
     setSelectedMonths((prev) => ({ ...prev, [feeHeadId]: newSelection }));
+  };
+
+  // Design-only "Clear All" in the Selected Payment panel — empties every
+  // head's selection (identical end state to deselecting each month by hand).
+  const clearSelection = () => {
+    const cleared: Record<string, Record<string, boolean>> = {};
+    feeHeads.forEach((h) => { cleared[h._id] = {}; });
+    setSelectedMonths(cleared);
   };
 
   const summary = useMemo(() => {
@@ -447,12 +491,20 @@ export default function CollectFeeTab() {
               <Card><CardContent className="py-12 text-center text-muted-foreground">No fee structures defined for this student&apos;s class.</CardContent></Card>
             )}
 
-            {!loading && feeHeads.map((fh) => {
-              const paidMonths = fh.months.filter((m) => m.paid).map((m) => m.month);
-              const unpaidMonths = fh.months.filter((m) => !m.paid);
-              const pendingMonths = unpaidMonths.filter((m) => !m.upcoming);
-              const upcomingMonths = unpaidMonths.filter((m) => m.upcoming);
-              const sorted = [...fh.months].sort((a, b) => a.month.localeCompare(b.month));
+            {!loading && feeHeads.length > 0 && (() => {
+              const activeHead = feeHeads.find((h) => h._id === activeHeadId) || feeHeads[0];
+              const headCounts = (fh: FeeHead) => {
+                const unpaid = fh.months.filter((m) => !m.paid);
+                return {
+                  paid: fh.months.length - unpaid.length,
+                  pending: unpaid.filter((m) => !m.upcoming).length,
+                  upcoming: unpaid.filter((m) => m.upcoming).length,
+                };
+              };
+              const counts = headCounts(activeHead);
+              const meta = FREQ_META[activeHead.frequency] || FREQ_META.monthly;
+              const ActiveIcon = meta.icon;
+              const sorted = [...activeHead.months].sort((a, b) => a.month.localeCompare(b.month));
               const firstUnpaidIdx = sorted.findIndex((m) => !m.paid);
               const isLocked = (month: string) => {
                 if (firstUnpaidIdx < 0) return false;
@@ -460,174 +512,283 @@ export default function CollectFeeTab() {
                 if (sorted[idx]?.paid) return false;
                 if (idx === firstUnpaidIdx) return false;
                 for (let i = firstUnpaidIdx; i < idx; i++) {
-                  if (!sorted[i].paid && !selectedMonths[fh._id]?.[sorted[i].month]) return true;
+                  if (!sorted[i].paid && !selectedMonths[activeHead._id]?.[sorted[i].month]) return true;
                 }
                 return false;
               };
+              const unpaidActive = activeHead.months.filter((m) => !m.paid);
               return (
-                <Card key={fh._id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <CardTitle className="text-base font-semibold">{fh.title}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">₹{fh.amount}{fh.frequency === "monthly" ? "/month" : fh.frequency === "quarterly" ? "/quarter" : ""}</Badge>
-                        <Badge variant={fh.frequency === "one-time" ? "secondary" : "default"}>{fh.frequency}</Badge>
-                        {fh.concession && (
-                          <Badge className="bg-green-100 text-green-700 border-0">
-                            {fh.concession.isPct ? `${fh.concession.value}% off` : `₹${fh.concession.value} off`}
-                          </Badge>
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+                  {/* Left: fee category selector + the active head's months */}
+                  <div className="space-y-4 lg:col-span-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Fee Categories</h3>
+                      <p className="text-xs text-muted-foreground">Select a fee category and choose the pending months to collect.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {feeHeads.map((fh) => {
+                        const fc = headCounts(fh);
+                        const fm = FREQ_META[fh.frequency] || FREQ_META.monthly;
+                        const FI = fm.icon;
+                        const isActive = fh._id === activeHead._id;
+                        return (
+                          <button
+                            key={fh._id}
+                            type="button"
+                            onClick={() => setActiveHeadId(fh._id)}
+                            className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                              isActive
+                                ? "border-primary bg-primary/5 shadow-[0_2px_10px_-4px_rgba(79,70,229,0.35)]"
+                                : "border-border/60 bg-card hover:border-primary/40 hover:bg-muted/40"
+                            }`}
+                          >
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${fm.chip}`}>
+                              <FI className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className={`block truncate text-sm font-semibold ${isActive ? "text-primary" : "text-foreground"}`}>{fh.title}</span>
+                              <span className="block text-xs text-muted-foreground">{fc.pending} pending · {fc.upcoming} upcoming</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Active head — expanded panel */}
+                    <div className="overflow-hidden rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${meta.chip}`}>
+                            <ActiveIcon className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="truncate text-base font-semibold text-foreground">{activeHead.title}</h3>
+                            <p className="truncate text-xs text-muted-foreground">{meta.desc}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">₹{activeHead.amount}{meta.unit}</Badge>
+                          <Badge variant={activeHead.frequency === "one-time" ? "secondary" : "default"}>{activeHead.frequency}</Badge>
+                          {activeHead.concession && (
+                            <Badge className="border-0 bg-green-100 text-green-700">
+                              {activeHead.concession.isPct ? `${activeHead.concession.value}% off` : `₹${activeHead.concession.value} off`}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        {activeHead.frequency === "one-time" ? (() => {
+                          const isPaid = activeHead.months[0]?.paid;
+                          return (
+                            <div className={`flex items-center justify-between rounded-lg border p-3 ${isPaid ? "border-green-200 bg-green-50" : "border-border"}`}>
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={isPaid || !!selectedMonths[activeHead._id]?.["one-time"]}
+                                  onChange={() => !isPaid && toggleMonth(activeHead._id, "one-time")}
+                                  disabled={isPaid}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <div>
+                                  <p className="text-sm font-medium">{activeHead.title}</p>
+                                  <p className="text-xs text-muted-foreground">{isPaid ? "Paid" : "One-time payment"}</p>
+                                </div>
+                              </div>
+                              {isPaid ? <Badge className="border-0 bg-green-100 text-green-700">Paid</Badge> : <span className="text-sm font-semibold">₹{Math.max(0, (activeHead.months[0]?.amount ?? activeHead.amount) - (activeHead.months[0]?.concession || 0))}</span>}
+                            </div>
+                          );
+                        })() : (
+                          <div>
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" />{counts.pending} Pending</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />{counts.upcoming} Upcoming</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500" />{counts.paid} Paid</span>
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => toggleAllMonths(activeHead._id)}>
+                                {unpaidActive.length > 0 && unpaidActive.every((m) => selectedMonths[activeHead._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                              {sorted.map((m) => {
+                                const locked = !m.paid && isLocked(m.month);
+                                const selected = !!selectedMonths[activeHead._id]?.[m.month];
+                                return (
+                                  <button
+                                    key={m.month}
+                                    type="button"
+                                    onClick={() => !m.paid && !locked && toggleMonth(activeHead._id, m.month)}
+                                    disabled={m.paid || locked}
+                                    title={locked ? "Pay the earlier month(s) first." : m.upcoming ? "This fee period hasn't started yet, but it can still be paid in advance." : undefined}
+                                    className={`rounded-lg border p-2 text-center text-xs transition-all ${
+                                      m.paid
+                                        ? "cursor-not-allowed border-green-200 bg-green-50 text-green-700"
+                                        : locked
+                                          ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400"
+                                          : selected
+                                            ? "border-primary bg-primary/10 font-semibold text-primary"
+                                            : m.upcoming
+                                              ? "border-blue-100 bg-blue-50/50 text-blue-500 hover:border-primary/50"
+                                              : "border-border text-muted-foreground hover:border-primary/50"
+                                    }`}
+                                  >
+                                    <p className="font-medium">{getMonthLabel(m.month)}</p>
+                                    {m.paid ? (
+                                      <Check className="mx-auto mt-1 h-3 w-3 text-green-600" />
+                                    ) : locked ? (
+                                      <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
+                                    ) : (
+                                      <>
+                                        <p className="mt-0.5">₹{Math.max(0, m.amount - m.lateFee - (m.concession || 0))}</p>
+                                        {m.lateFee > 0 && <p className="text-[9px] font-medium text-destructive">+₹{m.lateFee} late</p>}
+                                        {m.upcoming && !selected && <p className="text-[9px] text-blue-400">Upcoming</p>}
+                                      </>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {fh.frequency === "one-time" ? (() => {
-                      const isPaid = fh.months[0]?.paid;
+
+                    {/* Collapsed rows for every other head — click to switch */}
+                    {feeHeads.filter((fh) => fh._id !== activeHead._id).map((fh) => {
+                      const fc = headCounts(fh);
+                      const fm = FREQ_META[fh.frequency] || FREQ_META.monthly;
+                      const FI = fm.icon;
                       return (
-                        <div className={`flex items-center justify-between p-3 rounded-lg border ${isPaid ? "bg-green-50 border-green-200" : "border-border"}`}>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={isPaid || !!selectedMonths[fh._id]?.["one-time"]}
-                              onChange={() => !isPaid && toggleMonth(fh._id, "one-time")}
-                              disabled={isPaid}
-                              className="h-4 w-4 rounded border-gray-300"
-                            />
-                            <div>
-                              <p className="text-sm font-medium">{fh.title}</p>
-                              <p className="text-xs text-muted-foreground">{isPaid ? "Paid" : "One-time payment"}</p>
-                            </div>
-                          </div>
-                            {isPaid ? <Badge className="bg-green-100 text-green-700 border-0">Paid</Badge> : <span className="text-sm font-semibold">₹{Math.max(0, (fh.months[0]?.amount ?? fh.amount) - (fh.months[0]?.concession || 0))}</span>}
-                        </div>
+                        <button
+                          key={fh._id}
+                          type="button"
+                          onClick={() => setActiveHeadId(fh._id)}
+                          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-3.5 text-left transition-all hover:border-primary/40 hover:bg-muted/40"
+                        >
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${fm.chip}`}>
+                              <FI className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-foreground">{fh.title}</span>
+                              <span className="block text-xs text-muted-foreground">{fc.pending} pending · {fc.upcoming} upcoming</span>
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-2">
+                            <Badge variant="outline">₹{fh.amount}{fm.unit}</Badge>
+                            <Badge variant={fh.frequency === "one-time" ? "secondary" : "default"}>{fh.frequency}</Badge>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </span>
+                        </button>
                       );
-                    })() : (
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-sm text-muted-foreground">
-                            {paidMonths.length} paid · {pendingMonths.length} pending
-                            {upcomingMonths.length > 0 && ` · ${upcomingMonths.length} upcoming`}
-                          </p>
-                          <Button variant="ghost" size="sm" onClick={() => toggleAllMonths(fh._id)}>
-                            {unpaidMonths.length > 0 && unpaidMonths.every((m) => selectedMonths[fh._id]?.[m.month]) ? "Deselect All" : "Select All Pending"}
+                    })}
+                  </div>
+
+                  {/* Right: sticky selected-payment panel */}
+                  <div className="lg:sticky lg:top-4">
+                    <div className="overflow-hidden rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
+                      <div className="flex items-center justify-between gap-2 border-b border-border p-4">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <CreditCard className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold text-foreground">Selected Payment</h3>
+                            <p className="text-xs text-muted-foreground">
+                              {summary.itemCount > 0
+                                ? `${summary.itemCount} item${summary.itemCount > 1 ? "s" : ""} selected`
+                                : "Nothing selected yet"}
+                            </p>
+                          </div>
+                        </div>
+                        {summary.itemCount > 0 && (
+                          <Button variant="ghost" size="sm" onClick={clearSelection}>Clear All</Button>
+                        )}
+                      </div>
+
+                      <div className="space-y-4 p-4">
+                        {summary.itemCount === 0 ? (
+                          <div className="rounded-lg border border-dashed border-border/80 px-4 py-8 text-center">
+                            <Wallet className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                            <p className="text-sm text-muted-foreground">Select months from a fee category to build the payment.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {summary.lines.map((line, i) => (
+                              <div key={i} className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                                <div className="flex justify-between gap-4 text-sm">
+                                  <span className="truncate font-medium text-foreground">{line.label}</span>
+                                  <span className="shrink-0 font-semibold">₹{line.total.toLocaleString("en-IN")}</span>
+                                </div>
+                                {line.lateFee > 0 && (
+                                  <div className="flex justify-between gap-4 text-xs text-destructive">
+                                    <span className="pl-2">Late Fee</span><span>+₹{line.lateFee.toLocaleString("en-IN")}</span>
+                                  </div>
+                                )}
+                                {line.concession > 0 && (
+                                  <div className="flex justify-between gap-4 text-xs text-green-600">
+                                    <span className="pl-2">Concession</span><span>-₹{line.concession.toLocaleString("en-IN")}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5 border-t border-border pt-3 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Base Amount</span>
+                            <span className="font-medium">₹{summary.baseAmount.toLocaleString("en-IN")}</span>
+                          </div>
+                          {summary.lateFee > 0 && (
+                            <div className="flex justify-between gap-4 text-destructive">
+                              <span>+ Late Fee</span><span className="font-medium">+₹{summary.lateFee.toLocaleString("en-IN")}</span>
+                            </div>
+                          )}
+                          {summary.concession > 0 && (
+                            <div className="flex justify-between gap-4 text-green-600">
+                              <span>− Concession</span><span className="font-medium">-₹{summary.concession.toLocaleString("en-IN")}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-4 border-t border-border pt-1.5">
+                            <span className="font-semibold">Total</span>
+                            <span className="text-lg font-bold">₹{summary.total.toLocaleString("en-IN")}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Select value={paymentMode} onValueChange={(v) => setPaymentMode((v || paymentMode) as PaymentMode)}>
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="online">Online</SelectItem>
+                              <SelectItem value="cheque">Cheque</SelectItem>
+                              <SelectItem value="dd">DD</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <div className="space-y-1">
+                            <label htmlFor="collect-remarks" className="text-xs font-medium text-muted-foreground">Remarks</label>
+                            <Textarea
+                              id="collect-remarks"
+                              placeholder="Add remarks — payment notes, reference number, reason..."
+                              value={remarks}
+                              onChange={(e) => setRemarks(e.target.value)}
+                              rows={3}
+                              className="resize-y"
+                            />
+                          </div>
+                          <Button className="w-full bg-primary hover:bg-primary/90 gap-2" onClick={handlePay} disabled={paying || summary.itemCount === 0}>
+                            {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <IndianRupee className="h-4 w-4" />}
+                            {paying ? "Processing..." : `Pay ₹${summary.total.toLocaleString("en-IN")}`}
                           </Button>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                          {sorted.map((m) => {
-                            const locked = !m.paid && isLocked(m.month);
-                            const selected = !!selectedMonths[fh._id]?.[m.month];
-                            return (
-                              <button
-                                key={m.month}
-                                type="button"
-                                onClick={() => !m.paid && !locked && toggleMonth(fh._id, m.month)}
-                                disabled={m.paid || locked}
-                                title={locked ? "Pay the earlier month(s) first." : m.upcoming ? "This fee period hasn't started yet, but it can still be paid in advance." : undefined}
-                                className={`p-2 rounded-lg border text-center text-xs transition-all ${
-                                  m.paid
-                                    ? "bg-green-50 border-green-200 text-green-700 cursor-not-allowed"
-                                    : locked
-                                      ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                                      : selected
-                                        ? "bg-primary/10 border-primary text-primary font-semibold"
-                                        : m.upcoming
-                                          ? "bg-blue-50/50 border-blue-100 text-blue-500 hover:border-primary/50"
-                                          : "border-border hover:border-primary/50 text-muted-foreground"
-                                }`}
-                              >
-                                <p className="font-medium">{getMonthLabel(m.month)}</p>
-                                {m.paid ? (
-                                  <Check className="h-3 w-3 mx-auto mt-1 text-green-600" />
-                                ) : locked ? (
-                                  <p className="mt-0.5 text-[10px]">🔒 Pay prev</p>
-                                ) : (
-                                  <>
-                                    <p className="mt-0.5">₹{Math.max(0, m.amount - (m.concession || 0))}</p>
-                                    {m.upcoming && !selected && <p className="text-[9px] text-blue-400">Upcoming</p>}
-                                  </>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {summary.itemCount > 0 && (
-              <Card className="border-primary/20">
-                <CardContent className="p-5">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-base font-semibold mb-2">Payment Summary</h3>
-                      <div className="space-y-1 text-sm">
-                        {summary.lines.map((line, i) => (
-                          <div key={i}>
-                            <div className="flex justify-between gap-8">
-                              <span className="text-muted-foreground">{line.label}</span>
-                              <span className="font-medium">₹{line.amount.toLocaleString("en-IN")}</span>
-                            </div>
-                            {line.lateFee > 0 && (
-                              <div className="flex justify-between gap-8 text-destructive text-xs">
-                                <span className="pl-2">Late Fee</span><span>+₹{line.lateFee.toLocaleString("en-IN")}</span>
-                              </div>
-                            )}
-                            {line.concession > 0 && (
-                              <div className="flex justify-between gap-8 text-green-600 text-xs">
-                                <span className="pl-2">Concession</span><span>-₹{line.concession.toLocaleString("en-IN")}</span>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {summary.concession > 0 && (
-                          <div className="flex justify-between gap-8 text-green-600">
-                            <span>Total Concession</span><span className="font-medium">-₹{summary.concession.toLocaleString("en-IN")}</span>
-                          </div>
-                        )}
-                        {summary.lateFee > 0 && (
-                          <div className="flex justify-between gap-8 text-destructive">
-                            <span>Total Late Fee</span><span className="font-medium">+₹{summary.lateFee.toLocaleString("en-IN")}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between gap-8 border-t border-border pt-1 mt-1">
-                          <span className="font-semibold">Total</span>
-                          <span className="font-bold text-lg">₹{summary.total.toLocaleString("en-IN")}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 w-full sm:w-80">
-                      <Select value={paymentMode} onValueChange={(v) => setPaymentMode((v || paymentMode) as PaymentMode)}>
-                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cash">Cash</SelectItem>
-                          <SelectItem value="online">Online</SelectItem>
-                          <SelectItem value="cheque">Cheque</SelectItem>
-                          <SelectItem value="dd">DD</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="space-y-1">
-                        <label htmlFor="collect-remarks" className="text-xs font-medium text-muted-foreground">Remarks</label>
-                        <Textarea
-                          id="collect-remarks"
-                          placeholder="Add remarks — payment notes, reference number, reason..."
-                          value={remarks}
-                          onChange={(e) => setRemarks(e.target.value)}
-                          rows={4}
-                          className="resize-y"
-                        />
-                      </div>
-                      <Button className="bg-primary hover:bg-primary/90 gap-2" onClick={handlePay} disabled={paying || summary.itemCount === 0}>
-                        {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <IndianRupee className="h-4 w-4" />}
-                        {paying ? "Processing..." : `Pay ₹${summary.total.toLocaleString("en-IN")}`}
-                      </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
