@@ -453,8 +453,14 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
                     <button
                       key={e.examId}
                       type="button"
-                      onClick={() => router.push("/dashboard/exams")}
-                      title="View exams"
+                      onClick={() =>
+                        router.push(
+                          e.scheduledExamId
+                            ? `/dashboard/exams?tab=exams&term=${e.scheduledExamId}`
+                            : `/dashboard/exams?tab=tests&exam=${e.examId}`,
+                        )
+                      }
+                      title="View details"
                       className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl bg-muted p-3 text-left transition-colors hover:bg-border"
                     >
                       <div className="flex min-w-0 items-center gap-3">
