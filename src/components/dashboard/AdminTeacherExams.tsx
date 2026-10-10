@@ -1394,7 +1394,7 @@ export function AdminTeacherExams() {
           <div className="rounded-[18px] bg-card p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.07)] mb-4">
             <h2 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Result Entry</h2>
             <p className="text-xs text-muted-foreground mb-3">Select a class and a test or exam — enter marks and publish results.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-3">
               <Select value={rClass} onValueChange={(v) => { setRClass(v || "all"); setRSourceId(""); }}>
                 <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
@@ -1412,8 +1412,8 @@ export function AdminTeacherExams() {
                 </SelectContent>
               </Select>
               <Select value={rSourceId} onValueChange={(v) => setRSourceId(v || "")}>
-                <SelectTrigger><SelectValue placeholder={rSourceType === "test" ? "Select a test" : "Select an exam"} /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="w-full"><SelectValue placeholder={rSourceType === "test" ? "Select a test" : "Select an exam"} /></SelectTrigger>
+                <SelectContent className="w-max! min-w-(--anchor-width) max-w-(--available-width)">
                   {rSourceType === "test"
                     ? testsForResultPicker.map((e) => (
                         <SelectItem key={e._id} value={e._id}>{e.title} — {e.subject}</SelectItem>
