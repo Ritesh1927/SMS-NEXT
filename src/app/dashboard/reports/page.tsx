@@ -47,6 +47,7 @@ interface ExamDoc {
   class: string;
   section: string;
   status: string;
+  scheduledExamId?: string | null;
 }
 
 interface ResultDoc {
@@ -213,6 +214,8 @@ export default function ReportsPage() {
   const [loadingAtt, setLoadingAtt] = useState(true);
 
   const [exams, setExams] = useState<ExamDoc[]>([]);
+  const [examClass, setExamClass] = useState("all");
+  const [examKind, setExamKind] = useState<"test" | "exam">("test");
   const [selectedExam, setSelectedExam] = useState("");
   const [examResults, setExamResults] = useState<{ results: ResultDoc[]; summary: { total: number; passed: number; failed: number; avgPercentage: number } } | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
@@ -463,6 +466,15 @@ export default function ReportsPage() {
     classTotals.collected + classTotals.pending > 0
       ? Math.round((classTotals.collected / (classTotals.collected + classTotals.pending)) * 10000) / 100
       : null;
+
+  // Class + type filters for the Exam Results tab — the exam pool can get
+  // long, so narrow it by class (name::section) and by whether it's a
+  // standalone Test (no scheduledExamId) or an Exam term's subject row.
+  const filteredExams = exams.filter((e) => {
+    const matchesClass = examClass === "all" || `${e.class}::${e.section || ""}` === examClass;
+    const matchesKind = examKind === "test" ? !e.scheduledExamId : !!e.scheduledExamId;
+    return matchesClass && matchesKind;
+  });
 
   if (user && user.role !== "schooladmin" && user.role !== "teacher") {
     return <p className="text-sm text-muted-foreground">Reports are not available for your role.</p>;
@@ -794,14 +806,56 @@ export default function ReportsPage() {
       {activeTab === "exams" && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[240px] space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Select Exam</p>
-              <Select value={selectedExam} onValueChange={(v) => setSelectedExam(v || "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose an exam to view results" />
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Class</p>
+              <Select
+                value={examClass}
+                onValueChange={(v) => {
+                  setExamClass(v || "all");
+                  setSelectedExam("");
+                  setExamResults(null);
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exams.map((e) => (
+                  <SelectItem value="all">All classes</SelectItem>
+                  {classes.map((c) => (
+                    <SelectItem key={c._id} value={`${c.name}::${c.section || ""}`}>
+                      Class {c.name}-{c.section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Type</p>
+              <Select
+                value={examKind}
+                onValueChange={(v) => {
+                  setExamKind((v || "test") as "test" | "exam");
+                  setSelectedExam("");
+                  setExamResults(null);
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="test">Test</SelectItem>
+                  <SelectItem value="exam">Exam</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[240px] space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">{examKind === "test" ? "Select Test" : "Select Exam"}</p>
+              <Select value={selectedExam} onValueChange={(v) => setSelectedExam(v || "")}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={filteredExams.length === 0 ? `No ${examKind}s for this filter` : `Choose a ${examKind} to view results`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredExams.map((e) => (
                     <SelectItem key={e._id} value={e._id}>
                       {e.title} — {e.class}
                       {e.section ? `-${e.section}` : ""} ({e.subject}) [{e.status}]
@@ -829,7 +883,7 @@ export default function ReportsPage() {
           </div>
 
           {!selectedExam && (
-            <EmptyState icon={GraduationCap} message="Select an exam above to view results and grade distribution." />
+            <EmptyState icon={GraduationCap} message={`Select a ${examKind} above to view results and grade distribution.`} />
           )}
 
           {loadingResults && <PageLoader label="Loading results..." />}
