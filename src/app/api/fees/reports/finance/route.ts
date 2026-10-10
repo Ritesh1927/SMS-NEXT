@@ -8,7 +8,6 @@ import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { FeePayment, type IFeePayment } from "@/models/FeePayment";
 import { Concession, type IConcession } from "@/models/Concession";
 import { Admin } from "@/models/Admin";
-import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 import {
   generateSessionMonths,
   resolveFeeMonths,
@@ -59,7 +58,7 @@ const monthKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).p
 // being folded into the totals.
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
-  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+  if (!auth || auth.role !== "schooladmin") {
     return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -82,16 +81,6 @@ export async function GET(req: Request) {
 
     const cls = await Class.findOne({ _id: classId, school: auth.schoolId }).lean();
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
-
-    // Same teacher scoping as the attendance register — the class picker
-    // (/api/classes) already limits teachers to their own classes.
-    if (auth.role === "teacher") {
-      const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-      const allowed = accessible.some((c) => c.name === cls.name && (c.section || "") === (cls.section || ""));
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You do not have access to this class." }, { status: 403 });
-      }
-    }
 
     const sessionStartYear = Number(academicYear.slice(0, 4));
     const [students, structures, concessions, school] = await Promise.all([

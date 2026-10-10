@@ -7,6 +7,8 @@ const ICON_PRESETS = {
   green: { from: "#ECFDF5", to: "#DCFCE7", iconColor: "#16A34A", tint: "rgba(22,163,74,0.05)", dark: "linear-gradient(135deg, #0F766E, #115E59)" },
   purple: { from: "#F3E8FF", to: "#EDE9FE", iconColor: "#8B5CF6", tint: "rgba(139,92,246,0.05)", dark: "linear-gradient(135deg, #4C1D95, #3B0764)" },
   orange: { from: "#FFF7ED", to: "#FED7AA", iconColor: "#EA580C", tint: "rgba(234,88,12,0.05)", dark: "linear-gradient(135deg, #92400E, #78350F)" },
+  pink: { from: "#FDF2F8", to: "#FCE7F3", iconColor: "#DB2777", tint: "rgba(219,39,119,0.05)", dark: "linear-gradient(135deg, #9D174D, #831843)" },
+  cyan: { from: "#ECFEFF", to: "#CFFAFE", iconColor: "#0891B2", tint: "rgba(8,145,178,0.05)", dark: "linear-gradient(135deg, #155E75, #164E63)" },
 } as const;
 
 export type SectionHeaderAccent = keyof typeof ICON_PRESETS;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
+import { getRazorpayInstance } from "@/lib/razorpay";
 import { FeePayment } from "@/models/FeePayment";
 import { Parent } from "@/models/Parent";
 
@@ -10,6 +11,10 @@ import { Parent } from "@/models/Parent";
 // paid. Re-checks parent ownership (not just signature validity) so one
 // parent can't mark a different family's fee paid by replaying a feePaymentId
 // they don't own — SMS-BACKEND's verifyPayment doesn't re-check this itself.
+// It ALSO requires the record to belong to the batch recorded in the order's
+// notes at create-order time: the signature only binds order↔payment, so
+// without this check a paid ₹500 order for record A could be replayed to
+// mark record B (₹5000) paid.
 export async function POST(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "parent") {
@@ -31,6 +36,24 @@ export async function POST(req: Request) {
       .digest("hex");
     if (expectedSig !== razorpay_signature) {
       return NextResponse.json({ success: false, message: "Payment verification failed." }, { status: 400 });
+    }
+
+    // The signature proves the money moved for THIS order; it says nothing
+    // about which fee records the order was created for. The batch was
+    // recorded server-side in the order notes by create-order — the record
+    // being verified must be part of it (legacy orders carry a single
+    // "feePaymentId" note instead).
+    const razorpay = getRazorpayInstance();
+    if (!razorpay) return NextResponse.json({ success: false, message: "Razorpay not configured." }, { status: 500 });
+    const order = await razorpay.orders.fetch(razorpay_order_id).catch(() => null);
+    if (!order) {
+      return NextResponse.json({ success: false, message: "Payment order not found." }, { status: 400 });
+    }
+    const notes = (order.notes || {}) as Record<string, string>;
+    const batchIds = (notes.feePaymentIds || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const idStr = String(feePaymentId);
+    if (!batchIds.includes(idStr) && notes.feePaymentId !== idStr) {
+      return NextResponse.json({ success: false, message: "Payment record is not part of this payment order." }, { status: 403 });
     }
 
     await connectDB();

@@ -43,7 +43,7 @@ export function SchoolCalendar() {
   const isToday = (d: number) => year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
 
   return (
-    <div className="overflow-hidden rounded-[20px] h-full" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
+    <div className="bg-card overflow-hidden rounded-[20px] h-full" style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}>
       <DashboardSectionHeader
         icon={CalendarDays}
         title="School Calendar"

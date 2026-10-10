@@ -2,9 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   Award, BookOpen, Calendar, CalendarCheck, CalendarClock, ChevronRight, ClipboardList,
-  IndianRupee, Megaphone, MessageSquare, Wallet, Zap,
+  IndianRupee, Megaphone, Wallet, Zap,
 } from "lucide-react";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -12,6 +13,10 @@ import { DashboardHero } from "./DashboardHero";
 import { PageLoader } from "@/components/PageLoader";
 import { Badge } from "@/components/ui/badge";
 import { SchoolCalendar } from "./SchoolCalendarWidget";
+import {
+  DashboardSectionHeader, HeaderActionPill, HeaderBarsGlyph, HeaderDotGridGlyph,
+  HeaderPulseGlyph, HeaderWaveGlyph, type SectionHeaderAccent,
+} from "./DashboardSectionHeader";
 
 interface Child {
   _id: string;
@@ -48,7 +53,7 @@ interface ExamsResp { success: boolean; data: ExamRow[] }
 interface HomeworkItem { _id: string; title: string; subject: string; dueDate: string; submission: { status: string; marks: number | null } | null }
 interface HomeworkResp { success: boolean; data: HomeworkItem[] }
 
-interface FeeMonth { month: string; paid: boolean; amount: number; paidAmount: number; lateFee: number; concession: number }
+interface FeeMonth { month: string; paid: boolean; upcoming: boolean; amount: number; paidAmount: number; lateFee: number; concession: number }
 interface FeeHead { _id: string; title: string; amount: number; frequency: string; months: FeeMonth[] }
 interface FeeStatusResp { success: boolean; data: { feeHeads: FeeHead[] } }
 
@@ -66,8 +71,9 @@ interface OverviewData {
   avgCount: number;
   exams: ExamRow[];
   hwPendingCount: number;
+  hwTotal: number;
   pendingHw: HomeworkItem[];
-  fees: { paid: number; pending: number; total: number; pct: number } | null;
+  fees: { paid: number; pending: number; upcoming: number; total: number; pct: number } | null;
   timetable: TtEntry[];
   notices: NoticeRow[];
 }
@@ -90,18 +96,49 @@ function Empty({ text }: { text: string }) {
   return <p className="text-xs text-muted-foreground py-5 text-center">{text}</p>;
 }
 
-function Panel({ title, icon, href, children }: { title: string; icon: ReactNode; href?: string; children: ReactNode }) {
+// Region card matching the admin/teacher dashboards' colourful look: dark
+// gradient header banner (DashboardSectionHeader variant="dark") flush on
+// top of the card body, with an optional "View All" pill in the header.
+function Panel({
+  title,
+  icon,
+  href,
+  subtitle,
+  accent,
+  decoration,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  href?: string;
+  subtitle?: string;
+  accent?: SectionHeaderAccent;
+  decoration?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className={`${CARD} p-5 flex flex-col`}>
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">{icon}{title}</h3>
-        {href && (
-          <Link href={href} className="text-xs font-medium text-primary hover:underline whitespace-nowrap">
-            View All
-          </Link>
-        )}
-      </div>
-      <div className="flex-1">{children}</div>
+    <div
+      className="bg-card overflow-hidden rounded-[20px]"
+      style={{ border: "1px solid rgba(59,130,246,0.18)", boxShadow: "0 10px 30px rgba(15,23,42,0.08)" }}
+    >
+      <DashboardSectionHeader
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        accent={accent}
+        variant="dark"
+        decoration={decoration}
+        rightAction={
+          href ? (
+            <HeaderActionPill variant="dark">
+              <Link href={href} className="flex items-center gap-1 text-white/90 hover:text-white">
+                View All <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </HeaderActionPill>
+          ) : undefined
+        }
+      />
+      <div className="bg-card p-5">{children}</div>
     </div>
   );
 }
@@ -219,9 +256,19 @@ function ChildOverview({ child }: { child: Child }) {
       const results = resR?.data ?? null;
       const avgScore = results && results.results.length > 0 ? results.averagePercentage : null;
 
-      const nowTs = Date.now();
+      // Exams dated today are still upcoming — a date-only value parses to
+      // midnight, so compare calendar days (UTC getters: the stored value is
+      // the school's date at UTC midnight) instead of timestamp vs now.
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
       const exams = (exR?.data ?? [])
-        .filter((e) => (!e.section || e.section === child.section) && new Date(e.date).getTime() >= nowTs && e.status !== "cancelled")
+        .filter((e) => {
+          if (e.section && e.section !== child.section) return false;
+          if (e.status === "cancelled") return false;
+          const d = new Date(e.date);
+          const examDay = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+          return examDay.getTime() >= startOfToday.getTime();
+        })
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 4);
 
@@ -229,18 +276,22 @@ function ChildOverview({ child }: { child: Child }) {
         .filter((h) => !h.submission)
         .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
+      // Same split the parent Fees page uses: pending = due now, upcoming =
+      // fee periods that haven't started (they must not inflate "Pending").
       let fees: OverviewData["fees"] = null;
       if (feeR) {
         let paid = 0;
         let pending = 0;
+        let upcoming = 0;
         for (const fh of feeR.data.feeHeads) {
           for (const m of fh.months) {
             if (m.paid) paid += m.paidAmount || m.amount;
+            else if (m.upcoming) upcoming += Math.max(0, m.amount - (m.concession || 0));
             else pending += Math.max(0, m.amount - (m.concession || 0));
           }
         }
-        const total = paid + pending;
-        fees = { paid, pending, total, pct: total > 0 ? Math.round((paid / total) * 100) : 0 };
+        const total = paid + pending + upcoming;
+        fees = { paid, pending, upcoming, total, pct: total > 0 ? Math.round((paid / total) * 100) : 0 };
       }
 
       setD({
@@ -251,6 +302,7 @@ function ChildOverview({ child }: { child: Child }) {
         avgCount: results?.results.length ?? 0,
         exams,
         hwPendingCount: pendingAll.length,
+        hwTotal: (hwR?.data ?? []).length,
         pendingHw: pendingAll.slice(0, 4),
         fees,
         timetable: ttR?.data ?? [],
@@ -296,7 +348,9 @@ function ChildOverview({ child }: { child: Child }) {
             <div className="min-w-0">
               <p className="text-sm font-medium text-muted-foreground">Fees</p>
               <p className="text-2xl font-bold mt-0.5 text-foreground">{fees ? `₹${fees.pending.toLocaleString("en-IN")}` : "—"}</p>
-              <p className="text-xs text-muted-foreground">{fees && fees.pending === 0 ? "All paid" : "Pending"}</p>
+              <p className="text-xs text-muted-foreground">
+                {!fees ? "—" : fees.pending > 0 ? "Pending" : fees.upcoming > 0 ? "No dues · upcoming ₹" + fees.upcoming.toLocaleString("en-IN") : "All paid"}
+              </p>
               {fees && fees.pending > 0 && (
                 <span className="inline-flex items-center gap-1 mt-2 rounded-full bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold">
                   Pay Now <ChevronRight className="h-3 w-3" />
@@ -330,7 +384,7 @@ function ChildOverview({ child }: { child: Child }) {
               <p className="text-sm font-medium text-muted-foreground">Homework</p>
               <p className="text-2xl font-bold mt-0.5 text-foreground">{d.hwPendingCount}</p>
               <p className={`text-xs ${d.hwPendingCount === 0 ? "text-green-600 font-medium" : "text-muted-foreground"}`}>
-                {d.hwPendingCount === 0 ? "All submitted" : "Pending"}
+                {d.hwPendingCount > 0 ? "Pending" : d.hwTotal === 0 ? "No homework yet" : "All submitted"}
               </p>
               {d.hwPendingCount > 0 && (
                 <span className="inline-flex items-center gap-1 mt-2 rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-semibold">
@@ -343,8 +397,8 @@ function ChildOverview({ child }: { child: Child }) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Panel title="Recent Attendance" icon={<Calendar className="h-4 w-4 text-blue-500" />} href="/dashboard/attendance">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <Panel title="Recent Attendance" icon={Calendar} subtitle="This month · last 5 marks" accent="blue" decoration={<HeaderWaveGlyph />} href="/dashboard/attendance">
           {d.recentAtt.length === 0 ? (
             <Empty text="No records this month." />
           ) : (
@@ -370,7 +424,7 @@ function ChildOverview({ child }: { child: Child }) {
           )}
         </Panel>
 
-        <Panel title="Upcoming Exams" icon={<ClipboardList className="h-4 w-4 text-pink-500" />} href="/dashboard/exams">
+        <Panel title="Upcoming Exams" icon={ClipboardList} subtitle="Scheduled next" accent="purple" decoration={<HeaderPulseGlyph />} href="/dashboard/exams">
           {d.exams.length === 0 ? (
             <Empty text="No upcoming exams." />
           ) : (
@@ -392,9 +446,9 @@ function ChildOverview({ child }: { child: Child }) {
           )}
         </Panel>
 
-        <Panel title="Upcoming Homework" icon={<BookOpen className="h-4 w-4 text-blue-500" />} href="/dashboard/homework">
+        <Panel title="Upcoming Homework" icon={BookOpen} subtitle="Not yet submitted" accent="green" decoration={<HeaderBarsGlyph />} href="/dashboard/homework">
           {d.pendingHw.length === 0 ? (
-            <Empty text={d.hwPendingCount === 0 ? "All homework submitted." : "No upcoming homework."} />
+            <Empty text={d.hwTotal === 0 ? "No homework assigned yet." : "All homework submitted."} />
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
@@ -414,7 +468,7 @@ function ChildOverview({ child }: { child: Child }) {
           )}
         </Panel>
 
-        <Panel title="Quick Actions" icon={<Zap className="h-4 w-4 text-purple-500" />}>
+        <Panel title="Quick Actions" icon={Zap} subtitle="Jump anywhere" accent="orange" decoration={<HeaderDotGridGlyph />}>
           <div className="space-y-2">
             {[
               { label: "View Attendance", href: "/dashboard/attendance", Icon: CalendarCheck, cls: "bg-green-100 text-green-600" },
@@ -438,15 +492,13 @@ function ChildOverview({ child }: { child: Child }) {
             ))}
           </div>
         </Panel>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Panel title="Fee Summary" icon={<IndianRupee className="h-4 w-4 text-orange-500" />} href="/dashboard/fees">
+        <Panel title="Fee Summary" icon={IndianRupee} subtitle="Session totals" accent="pink" decoration={<HeaderBarsGlyph />} href="/dashboard/fees">
           {!fees ? (
             <Empty text="Fee data unavailable." />
           ) : (
             <div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-center">
                 <div>
                   <p className="text-[11px] text-muted-foreground">Total Fees</p>
                   <p className="text-sm font-bold text-foreground mt-0.5">₹{fees.total.toLocaleString("en-IN")}</p>
@@ -459,6 +511,10 @@ function ChildOverview({ child }: { child: Child }) {
                   <p className="text-[11px] text-muted-foreground">Pending</p>
                   <p className="text-sm font-bold text-orange-600 mt-0.5">₹{fees.pending.toLocaleString("en-IN")}</p>
                 </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Upcoming</p>
+                  <p className="text-sm font-bold text-blue-600 mt-0.5">₹{fees.upcoming.toLocaleString("en-IN")}</p>
+                </div>
               </div>
               <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
                 <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${fees.pct}%` }} />
@@ -469,8 +525,10 @@ function ChildOverview({ child }: { child: Child }) {
         </Panel>
 
         <TimetablePanel entries={d.timetable} />
+      </div>
 
-        <Panel title="Latest Notifications" icon={<Megaphone className="h-4 w-4 text-orange-500" />} href="/dashboard/notices">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Panel title="Latest Notifications" icon={Megaphone} subtitle="School announcements" accent="purple" decoration={<HeaderDotGridGlyph />} href="/dashboard/notices">
           {d.notices.length === 0 ? (
             <Empty text="No notices yet." />
           ) : (
@@ -491,20 +549,6 @@ function ChildOverview({ child }: { child: Child }) {
           )}
         </Panel>
 
-        <Panel title="Stay Connected" icon={<MessageSquare className="h-4 w-4 text-purple-500" />}>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Get the latest updates, notices and school announcements.
-          </p>
-          <Link
-            href="/dashboard/notices"
-            className="mt-4 flex items-center justify-center gap-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2.5 text-xs font-semibold transition-colors"
-          >
-            View Notices <Megaphone className="h-3.5 w-3.5" />
-          </Link>
-        </Panel>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SchoolCalendar />
       </div>
     </div>
@@ -518,11 +562,10 @@ function TimetablePanel({ entries }: { entries: TtEntry[] }) {
 
   const periods = entries
     .filter((e) => e.day === day)
-    .sort((a, b) => a.periodNumber - b.periodNumber)
-    .slice(0, 4);
+    .sort((a, b) => a.periodNumber - b.periodNumber);
 
   return (
-    <Panel title="Class Timetable" icon={<CalendarClock className="h-4 w-4 text-blue-500" />} href="/dashboard/timetable">
+    <Panel title="Class Timetable" icon={CalendarClock} subtitle="Weekly periods" accent="cyan" decoration={<HeaderWaveGlyph />} href="/dashboard/timetable">
       <div className="flex items-center gap-1.5 mb-3 flex-wrap">
         {DAYS.map((full, i) => (
           <button

@@ -162,6 +162,14 @@ export default function ReportsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "schooladmin";
   const [tab, setTab] = useState<Tab>("overview");
+  // Overview + Finance are admin-only — teachers see Attendance / Exam
+  // Results only. The state still defaults to "overview", so every render,
+  // effect and pill highlight must go through activeTab (which remaps a
+  // hidden selection to "attendance" for non-admins).
+  const visibleTabs: { id: Tab; label: string; icon: typeof BarChart3 }[] = isAdmin
+    ? TABS
+    : TABS.filter((t) => t.id !== "overview" && t.id !== "finance");
+  const activeTab: Tab = !isAdmin && (tab === "overview" || tab === "finance") ? "attendance" : tab;
 
   const [classes, setClasses] = useState<ClassDoc[]>([]);
   const [stats, setStats] = useState<{
@@ -243,8 +251,10 @@ export default function ReportsPage() {
     const run = async () => {
       // Session FY for fee analytics (Overview must match the Fees
       // dashboard's session-scoped, fee-month view — resolve the school's
-      // session start first).
-      const branding = await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null);
+      // session start first). Admin-only: teachers never see Overview.
+      const branding = isAdmin
+        ? await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null)
+        : null;
       const feeFy = currentAcademicYear(branding?.data?.settings?.sessionStartMonth || "April");
       const [classesRes, statsRes, analyticsRes, attYearlyRes] = await Promise.allSettled([
         apiGet<{ success: boolean; data: ClassDoc[] }>("/classes", token),
@@ -307,18 +317,18 @@ export default function ReportsPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: showing the loading state for the data load this tab switch / class pick kicks off.
-    if (tab === "attendance" && attClassId) loadAttendance();
+    if (activeTab === "attendance" && attClassId) loadAttendance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, attClassId]);
+  }, [activeTab, attClassId]);
 
   useEffect(() => {
-    if (tab !== "exams" || exams.length > 0) return;
+    if (activeTab !== "exams" || exams.length > 0) return;
     const token = getToken();
     if (!token) return;
     apiGet<{ success: boolean; data: ExamDoc[] }>("/exams", token)
       .then((res) => setExams(res.data))
       .catch(() => toast.error("Failed to load exams."));
-  }, [tab, exams.length]);
+  }, [activeTab, exams.length]);
 
   useEffect(() => {
     if (!selectedExam) return;
@@ -363,7 +373,7 @@ export default function ReportsPage() {
   // academic-year / month selects can be built and defaulted (AY = the one
   // today falls in, month = the current month).
   useEffect(() => {
-    if (tab !== "finance" || finMeta) return;
+    if (activeTab !== "finance" || finMeta) return;
     const token = getToken();
     if (!token) return;
     apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token)
@@ -378,13 +388,13 @@ export default function ReportsPage() {
         setFinAY((prev) => prev || ay);
         setFinMonth((prev) => prev || (months.includes(todayKey) ? todayKey : months[0] || todayKey));
       });
-  }, [tab, finMeta]);
+  }, [activeTab, finMeta]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: showing the loading state for the data load this tab open / class pick kicks off.
-    if (tab === "finance" && finMeta && finClassId && finAY && finMonth) loadFinance();
+    if (activeTab === "finance" && finMeta && finClassId && finAY && finMonth) loadFinance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, finMeta, finClassId]);
+  }, [activeTab, finMeta, finClassId]);
 
   const sessionStart = finMeta?.sessionStartMonth || "April";
   const finYears = academicYearOptions(sessionStart);
@@ -460,15 +470,15 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={BarChart3} title="Reports" subtitle="Live data across attendance, exams and finances." accent="fuchsia" />
+      <PageHeader icon={BarChart3} title="Reports" subtitle={isAdmin ? "Live data across attendance, exams and finances." : "Live data across attendance and exams."} accent="fuchsia" />
 
       <div className="inline-flex w-fit flex-wrap items-center justify-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] overflow-x-auto">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`relative inline-flex items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
-              tab === t.id
+              activeTab === t.id
                 ? "bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_14px_-2px_rgba(79,70,229,0.45)]"
                 : "text-muted-foreground hover:text-foreground hover:bg-card/60"
             }`}
@@ -479,7 +489,7 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {tab === "overview" && (
+      {activeTab === "overview" && (
         <div className="space-y-6">
           {loadingInit ? (
             <PageLoader label="Loading overview..." />
@@ -707,7 +717,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === "attendance" && (
+      {activeTab === "attendance" && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1">
@@ -781,7 +791,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === "exams" && (
+      {activeTab === "exams" && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[240px] space-y-1">
@@ -906,7 +916,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {tab === "finance" && (
+      {activeTab === "finance" && (
         <div className="space-y-5">
           {/* Filters — same rhythm as Attendance: class reloads on change,
               academic year / month wait for Apply (AY keeps the month). */}
