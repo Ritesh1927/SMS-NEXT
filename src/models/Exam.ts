@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
-export type ExamType = "unit-test" | "mid-term" | "final" | "practical" | "assignment";
+export type ExamType = "class-test" | "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 export type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 export interface IExam extends Document {
@@ -40,7 +40,7 @@ const examSchema = new Schema<IExam>(
     totalMarks: { type: Number, required: true },
     passingMarks: { type: Number, required: true },
     duration: { type: Number, default: null },
-    examType: { type: String, enum: ["unit-test", "mid-term", "final", "practical", "assignment"], default: "unit-test" },
+    examType: { type: String, enum: ["class-test", "unit-test", "mid-term", "final", "practical", "assignment"], default: "unit-test" },
     createdBy: { type: Schema.Types.ObjectId, required: true, refPath: "createdByModel" },
     createdByModel: { type: String, enum: ["Teacher", "Admin"], default: "Teacher" },
     instructions: { type: String, default: "" },

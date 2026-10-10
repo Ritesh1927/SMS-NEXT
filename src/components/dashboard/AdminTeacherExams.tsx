@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
 
-type ExamType = "unit-test" | "mid-term" | "final" | "practical" | "assignment";
+type ExamType = "class-test" | "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 type TermType = "midterm" | "final" | "unit" | "annual";
 
@@ -144,7 +144,7 @@ const EMPTY_FORM = {
   endTime: "",
   totalMarks: "100",
   passingMarks: "33",
-  examType: "unit-test" as ExamType,
+  examType: "class-test" as ExamType,
 };
 
 interface TermSubjectDraft {
@@ -1846,7 +1846,7 @@ export function AdminTeacherExams() {
                     <Input value={form.class} onChange={(e) => setForm((f) => ({ ...f, class: e.target.value }))} required className="rounded-xl" />
                   )}
                 </Field>
-                {editingExamId ? (
+                {editingExamId && (
                   <Field label="Subject" required>
                     {subjectOptions.length > 0 ? (
                       <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v || "" }))}>
@@ -1860,17 +1860,6 @@ export function AdminTeacherExams() {
                     ) : (
                       <Input value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder={form.class ? "No subjects assigned" : "Select class first"} disabled={!form.class} required className="rounded-xl" />
                     )}
-                  </Field>
-                ) : (
-                  <Field label="Type">
-                    <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
-                      <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </Field>
                 )}
               </div>
@@ -1959,21 +1948,9 @@ export function AdminTeacherExams() {
               <div className="space-y-3">
                 {editingExamId && (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Date" required>
-                        <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required className="rounded-xl" />
-                      </Field>
-                      <Field label="Type">
-                        <Select value={form.examType} onValueChange={(v) => setForm((f) => ({ ...f, examType: (v || f.examType) as ExamType }))}>
-                          <SelectTrigger className="w-full rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {(["unit-test", "mid-term", "final", "practical", "assignment"] as ExamType[]).map((t) => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    </div>
+                    <Field label="Date" required>
+                      <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} min={todayISO()} required className="rounded-xl" />
+                    </Field>
                     <div className="rounded-xl border border-border p-3">
                       <div className="grid grid-cols-2 gap-3">
                         <Field label="From" required>
