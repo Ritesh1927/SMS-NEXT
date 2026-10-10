@@ -32,7 +32,10 @@ export async function GET(req: Request) {
     }
     if (subject) query.subject = subject;
 
-    const hw = await Homework.find(query).populate("assignedBy", "name teacherId").sort({ dueDate: 1 });
+    const hw = await Homework.find(query)
+      .populate("assignedBy", "name teacherId")
+      .populate("submissions.student", "name studentId")
+      .sort({ dueDate: 1 });
 
     // Attach real class size so the client can show an accurate submissions
     // progress bar instead of treating the submission count as its own total.
@@ -40,19 +43,43 @@ export async function GET(req: Request) {
       const [className, section_] = key.split("::");
       return { class: className, section: section_ };
     });
-    const counts = new Map<string, number>();
+    const rosterByClass = new Map<string, { _id: unknown; name: string; studentId: string }[]>();
     await Promise.all(
       pairs.map(async (p) => {
         const q: Record<string, unknown> = { school: auth.schoolId, class: p.class, isActive: true };
         if (p.section) q.section = p.section;
-        counts.set(`${p.class}::${p.section}`, await Student.countDocuments(q));
+        const students = await Student.find(q)
+          .select("name studentId")
+          .sort({ rollNumber: 1, name: 1 })
+          .lean<{ _id: unknown; name: string; studentId: string }[]>();
+        rosterByClass.set(`${p.class}::${p.section}`, students);
       }),
     );
 
-    const data = hw.map((h) => ({
-      ...h.toObject(),
-      totalStudents: counts.get(`${h.class}::${h.section || ""}`) ?? 0,
-    }));
+    const data = hw.map((h) => {
+      const students = rosterByClass.get(`${h.class}::${h.section || ""}`) ?? [];
+      // submissions.student is populated above but typed as a plain ObjectId.
+      const submittedIds = new Set(
+        h.submissions.map((s) => {
+          const raw = s.student as unknown as { _id?: unknown } | null;
+          return String(raw?._id ?? raw);
+        }),
+      );
+      // Full class roster for the Submissions dialog: everyone who submitted
+      // (existing submission docs) followed by classmates who haven't, so
+      // the teacher sees who is missing — not just who turned it in.
+      const roster = [
+        ...h.submissions.map((s) => ({ ...s.toObject(), notSubmitted: false })),
+        ...students
+          .filter((st) => !submittedIds.has(String(st._id)))
+          .map((st) => ({ student: st, submittedAt: null, note: "", status: "submitted", marks: null, feedback: "", notSubmitted: true })),
+      ];
+      return {
+        ...h.toObject(),
+        totalStudents: students.length,
+        roster,
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {

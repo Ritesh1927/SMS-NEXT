@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip, CalendarClock, CalendarX2, TrendingUp, Search, X, Users, School, Clock } from "lucide-react";
+import { Plus, Loader2, Trash2, Pencil, ClipboardCheck, BookOpen, CheckCircle2, Upload, Paperclip, CalendarClock, CalendarX2, TrendingUp, Search, X, Users, School, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -31,6 +31,13 @@ interface Submission {
   feedback: string;
 }
 
+// Full class roster from the API: submitters carry the submission fields,
+// classmates who haven't turned it in come flagged notSubmitted.
+interface RosterEntry extends Partial<Submission> {
+  student: { _id: string; name: string; studentId: string } | string;
+  notSubmitted?: boolean;
+}
+
 interface HomeworkRow {
   _id: string;
   title: string;
@@ -42,6 +49,7 @@ interface HomeworkRow {
   createdAt: string;
   maxMarks: number | null;
   submissions: Submission[];
+  roster?: RosterEntry[];
   totalStudents: number;
   attachmentUrl?: string;
   attachmentName?: string;
@@ -310,7 +318,14 @@ export default function HomeworkPage() {
                     <span className="flex items-center gap-1"><School className="h-3 w-3" /> Class {hw.class}{hw.section ? `-${hw.section}` : ""}</span>
                     <span className="font-medium" style={{ color: palette.color }}>{hw.subject}</span>
                     <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" /> Due {new Date(hw.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                    <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {hw.submissions.length}/{hw.totalStudents} submitted</span>
+                    <button
+                      type="button"
+                      onClick={() => openGrading(hw)}
+                      title="View who submitted"
+                      className="flex items-center gap-1 hover:text-primary hover:underline underline-offset-2 transition-colors"
+                    >
+                      <Users className="h-3 w-3" /> {hw.submissions.length}/{hw.totalStudents} submitted
+                    </button>
                     {hw.createdAt && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" /> Assigned {new Date(hw.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} at{" "}
@@ -342,7 +357,7 @@ export default function HomeworkPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon-sm" onClick={() => openGrading(hw)} aria-label="Submissions">
+                <Button variant="ghost" size="icon-sm" onClick={() => openGrading(hw)} aria-label="Submissions" title="View submissions">
                   <ClipboardCheck className="h-3.5 w-3.5" />
                 </Button>
                 {(user?.role === "schooladmin" || hw.assignedBy?._id === user?.id) && (
@@ -373,17 +388,42 @@ export default function HomeworkPage() {
             <DialogTitle className="text-lg text-foreground">
               Submissions {gradingHw ? `— ${gradingHw.title}` : ""}
             </DialogTitle>
+            {gradingHw && (
+              <p className="text-sm text-muted-foreground">
+                {gradingHw.submissions.length} of {gradingHw.totalStudents || gradingHw.submissions.length} submitted
+                {gradingHw.totalStudents - gradingHw.submissions.length > 0
+                  ? ` · ${gradingHw.totalStudents - gradingHw.submissions.length} pending`
+                  : ""}
+              </p>
+            )}
           </DialogHeader>
           {gradingHw && (
             <div className="space-y-3 mt-2">
-              {gradingHw.submissions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No submissions yet.</p>
-              ) : (
-                gradingHw.submissions.map((s) => {
+              {(() => {
+                const roster: RosterEntry[] = gradingHw.roster ?? gradingHw.submissions;
+                if (roster.length === 0) return <p className="text-sm text-muted-foreground">No submissions yet.</p>;
+                const rosterExpired = new Date(gradingHw.dueDate).getTime() < now;
+                return roster.map((s, idx) => {
                   const student = typeof s.student === "string" ? { _id: s.student, name: "Unknown" } : s.student;
+                  if (s.notSubmitted) {
+                    return (
+                      <div
+                        key={student._id || idx}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-red-200 bg-red-50/40 p-3"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                          <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
+                        </div>
+                        <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          {rosterExpired ? "Not submitted · Overdue" : "Not submitted"}
+                        </span>
+                      </div>
+                    );
+                  }
                   const draft = gradeDrafts[student._id] || { marks: "", feedback: "" };
                   return (
-                    <div key={student._id} className="rounded-xl border border-border p-3 space-y-2">
+                    <div key={student._id || idx} className="rounded-xl border border-border p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-foreground">{student.name}</p>
                         <span
@@ -420,8 +460,8 @@ export default function HomeworkPage() {
                       </div>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           )}
         </DialogContent>

@@ -42,36 +42,57 @@ export async function GET(req: Request) {
     type PopulatedClass = { _id: unknown; name: string; section: string };
     const assigned = teacher.assignedClasses as unknown as PopulatedClass[];
 
+    // Classes this teacher is the class teacher of — included in "My
+    // Classes" / Total Students alongside subject-assigned ones so a pure
+    // class teacher isn't counted as having zero classes. Attendance and
+    // performance widgets below still use only these owned classes.
+    const ownedClasses: { _id: Types.ObjectId; name: string; section: string }[] = await Class.find({
+      classTeacher: teacher._id,
+      school: teacher.school,
+    }).select("name section").lean();
+
+    // "My Classes" = union of subject-assigned + class-teacher classes,
+    // deduped by class id (a class can be both).
+    const breakdownMap = new Map<string, { label: string; studentCount: number }>();
+    const countStudents = async (name: string, section: string) => {
+      const query: Record<string, unknown> = { school: teacher.school, isActive: true, class: name };
+      if (section) query.section = section;
+      return Student.countDocuments(query);
+    };
+    for (const c of assigned) {
+      breakdownMap.set(String(c._id), {
+        label: formatClassName(c.name, c.section),
+        studentCount: await countStudents(c.name, c.section),
+      });
+    }
+    for (const c of ownedClasses) {
+      const id = String(c._id);
+      if (!breakdownMap.has(id)) {
+        breakdownMap.set(id, { label: formatClassName(c.name, c.section), studentCount: await countStudents(c.name, c.section) });
+      }
+    }
+
     const classBreakdown =
-      assigned.length > 0
-        ? await Promise.all(
-            assigned.map(async (c) => {
-              const count = await Student.countDocuments({
-                school: teacher.school, isActive: true, class: c.name, section: c.section,
-              });
-              return { classId: String(c._id), label: formatClassName(c.name, c.section), studentCount: count };
-            }),
-          )
+      breakdownMap.size > 0
+        ? [...breakdownMap.entries()]
+            .map(([classId, v]) => ({ classId, ...v }))
+            .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }))
         : await Promise.all(
+            // Legacy fallback for teachers whose classes were entered as free
+            // text before any Class refs existed (neither assigned nor owned).
             (teacher.classes || []).map(async (label) => {
               const { className, section } = parseClassLabel(label);
-              const query: Record<string, unknown> = { school: teacher.school, isActive: true, class: className };
-              if (section) query.section = section;
-              const count = await Student.countDocuments(query);
+              const count = await countStudents(className, section);
               return { label: formatClassName(className, section || undefined), studentCount: count };
             }),
           );
 
     const totalStudents = classBreakdown.reduce((sum, c) => sum + c.studentCount, 0);
 
-    // Attendance/fees/performance widgets only cover classes this teacher is
-    // the *class teacher* of -- a subject teacher with no class-teacher
+    // Attendance/performance widgets only cover classes this teacher is the
+    // *class teacher* of -- a subject teacher with no class-teacher
     // assignment sees the empty state here instead of stats pulled in from
     // classes they merely teach a subject in.
-    const ownedClasses: { _id: Types.ObjectId; name: string; section: string }[] = await Class.find({
-      classTeacher: teacher._id,
-      school: teacher.school,
-    }).select("name section").lean();
     const classIds = ownedClasses.map((c) => c._id);
 
     const todayStart = new Date();

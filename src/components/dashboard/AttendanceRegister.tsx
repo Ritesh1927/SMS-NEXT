@@ -57,7 +57,18 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
   const dayList = Array.from({ length: data.daysInMonth }, (_, i) => {
     const day = i + 1;
     const date = new Date(year, month - 1, day);
-    return { day, dow: date.getDay(), holiday: holidayConfig ? getHolidayInfo(date, holidayConfig) : null };
+    // A day already fully in the past (strictly before today) with no
+    // record is treated as Absent in the report — see `pastUnmarked` below.
+    const dayStart = new Date(year, month - 1, day);
+    dayStart.setHours(0, 0, 0, 0);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return {
+      day,
+      dow: date.getDay(),
+      holiday: holidayConfig ? getHolidayInfo(date, holidayConfig) : null,
+      past: dayStart.getTime() < todayStart.getTime(),
+    };
   });
 
   const rows = data.students.map((student, i) => {
@@ -70,6 +81,10 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
       if (st === "present") p++;
       else if (st === "absent") a++;
       else if (st === "late") l++;
+      // Unmarked past working day (not a holiday/weekly-off) counts as
+      // Absent so the report reflects reality: a missed marking session
+      // in the past can never read as "no data" forever.
+      else if (d.past && !d.holiday) a++;
     }
     const marked = p + a + l;
     return { student, i, rec, p, a, l, marked, pct: marked ? Math.round(((p + l) / marked) * 100) : 0 };
@@ -145,7 +160,8 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
           ...dayList.map((d) => {
             const st = r.rec?.[d.day];
             if (st) return STATUS_LETTER[st];
-            return d.holiday ? "-" : "";
+            if (d.holiday) return "-";
+            return d.past ? "A" : "";
           }),
           String(r.p),
           String(r.a),
@@ -167,7 +183,7 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
         14,
         finalY + 16,
       );
-      doc.text("P = Present   A = Absent   L = Late   - = Holiday / Weekly Off", 14, finalY + 28);
+      doc.text("P = Present   A = Absent (incl. unmarked past days)   L = Late   - = Holiday / Weekly Off", 14, finalY + 28);
       doc.text(
         `Generated on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
         pageWidth - 14,
@@ -236,7 +252,8 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
           ...dayList.map((d) => {
             const st = r.rec?.[d.day];
             if (st) return STATUS_LETTER[st];
-            return d.holiday ? "-" : "";
+            if (d.holiday) return "-";
+            return d.past ? "A" : "";
           }),
           r.p,
           r.a,
@@ -471,7 +488,11 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
                             >
                               {STATUS_LETTER[st]}
                             </span>
-                          ) : d.holiday ? null : (
+                          ) : d.holiday ? null : d.past ? (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                              A
+                            </span>
+                          ) : (
                             <span className="text-muted-foreground/30">–</span>
                           )}
                         </td>
@@ -549,7 +570,8 @@ export function AttendanceRegister({ data, month, year }: { data: RegisterData; 
           <div>
             <p className="text-sm font-semibold text-foreground">Notes &amp; Remarks</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Attendance is updated in real-time. Late means the student arrived after the class start time.
+              Attendance is updated in real-time. Late means the student arrived after the class start time. Past working
+              days without a marking are counted as Absent (shown as A).
             </p>
           </div>
         </CardContent>

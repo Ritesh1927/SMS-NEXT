@@ -403,7 +403,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               {pendingFeeByClass.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No pending fees. Everyone&apos;s paid up.</p>
               ) : (
-                <div className="space-y-4">
+                <div className="max-h-[320px] space-y-4 overflow-y-auto pr-1">
                   {pendingFeeByClass.map((c) => {
                     const color = dueColorByClass.get(c.name) ?? DUE_BAR_COLORS[0];
                     const pct = Math.max(2, Math.round((c.amount / maxDue) * 100));
@@ -448,7 +448,7 @@ export function SchoolAdminDashboard({ adminName, schoolName }: { adminName?: st
               {upcomingExams.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No upcoming exams scheduled.</p>
               ) : (
-                <div className="space-y-2.5">
+                <div className="max-h-[320px] space-y-2.5 overflow-y-auto pr-1">
                   {upcomingExams.map((e) => (
                     <button
                       key={e.examId}
@@ -671,7 +671,7 @@ function RecentActivities({ items }: { items: ActivityItem[] }) {
             <p className="text-sm text-muted-foreground">No recent activity yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
             {items.map((item, i) => {
               const { icon: Icon, from, to, label } = ACTIVITY_CONFIG[item.type] ?? ACTIVITY_CONFIG.notice;
               return (
@@ -780,7 +780,7 @@ function UpcomingEvents() {
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Holidays and events will appear here once scheduled.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="flex max-h-[360px] flex-col gap-5 overflow-y-auto">
             {groups.map((g) => (
               <div key={g.key}>
                 <div className="mb-1 flex items-center gap-2">

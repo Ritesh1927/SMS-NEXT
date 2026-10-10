@@ -271,7 +271,7 @@ export function TeacherDashboard() {
           {todaySchedule.length === 0 ? (
             <EmptyStateCompact message="No classes scheduled today." />
           ) : (
-            <div className="space-y-2.5">
+            <div className="max-h-[320px] space-y-2.5 overflow-y-auto pr-1">
               {todaySchedule.map((e) => {
                 const s = SCHEDULE_STATUS[e.status];
                 return (
@@ -302,7 +302,7 @@ export function TeacherDashboard() {
           {classBreakdown.length === 0 ? (
             <EmptyStateCompact message="No classes assigned yet. Ask your school admin to assign classes on your profile." />
           ) : (
-            <div className="space-y-3">
+            <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
               {classBreakdown.map((c, i) => {
                 const chip = CLASS_CHIP_COLORS[i % CLASS_CHIP_COLORS.length];
                 const short = c.label.replace(/^Class\s+/i, "").replace(/-/g, "");
@@ -359,7 +359,7 @@ export function TeacherDashboard() {
           {recentActivity.length === 0 ? (
             <EmptyStateCompact message="No recent activity yet." />
           ) : (
-            <div className="divide-y divide-border">
+            <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
               {recentActivity.map((item, i) => {
                 const cfg = ACTIVITY_CONFIG[item.type];
                 return (
@@ -394,7 +394,7 @@ export function TeacherDashboard() {
           {classSummary.length === 0 ? (
             <EmptyStateCompact message="No classes found." />
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[320px] overflow-x-auto overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -447,7 +447,7 @@ export function TeacherDashboard() {
 
       {fees && fees.data.length > 0 && (
         <RegionCard icon={IndianRupee} title="Student Fee Details" subtitle="Fee status across your students" accent="green" decoration={<HeaderBarsGlyph />}>
-          <div className="overflow-x-auto">
+          <div className="max-h-[320px] overflow-x-auto overflow-y-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
