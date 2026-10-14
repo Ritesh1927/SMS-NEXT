@@ -1053,10 +1053,17 @@ export function AdminTeacherExams() {
     (exams ?? []).filter((e) => !e.scheduledExamId && e.status === "completed").length +
     (terms ?? []).filter((t) => termEffectiveStatus(t, exams) === "completed").length;
 
-  const testsForResultPicker = (exams ?? []).filter(
-    (e) => !e.scheduledExamId && (rClass === "all" || `${e.class}::${e.section || ""}` === rClass),
-  );
-  const termsForResultPicker = (terms ?? []).filter((t) => rClass === "all" || `${t.class}::${t.section || ""}` === rClass);
+  // A record with section === "" is standard-wide (an ordinary standard's
+  // Exam term fans out to every section, since only stream standards --
+  // 11/12 -- scope a term to one section). Picking "Class 5-A" must still
+  // surface a standard-wide "Class 5" term, not just an exact "5::A" match.
+  const matchesResultClass = (entryClass: string, entrySection: string) => {
+    if (rClass === "all") return true;
+    const [selName, selSection] = rClass.split("::");
+    return entryClass === selName && (entrySection === "" || entrySection === selSection);
+  };
+  const testsForResultPicker = (exams ?? []).filter((e) => !e.scheduledExamId && matchesResultClass(e.class, e.section || ""));
+  const termsForResultPicker = (terms ?? []).filter((t) => matchesResultClass(t.class, t.section || ""));
 
   // An exam ("New Exam") is created for a whole standard, fanning out to
   // every section under it, rather than one specific section like a Test --
