@@ -239,19 +239,26 @@ export default function TeachersPage() {
           <EmptyState icon={Users} message="No staff match your filters." />
         </div>
       ) : (
-        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
+        <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-x-auto">
+          {/* Fixed-width columns (Type..Actions) add up past ~1050px once
+              Subjects and Class Teacher are both shown -- without a floor,
+              Name's flex-1/min-w-0 would shrink it to 0 and the name/
+              qualification text would vanish instead of truncating. A
+              min-width wrapper + horizontal scroll keeps every column at
+              its intended size on narrower viewports instead. */}
+          <div className="sm:min-w-[1200px]">
           <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
             <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Name</p>
             <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Type</p>
             <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
-            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
-            <p className="hidden xl:block w-36 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class Teacher</p>
+            <p className="w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
+            <p className="w-36 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class Teacher</p>
             <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
             <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
-              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
+              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-[180px]">
                 <Avatar className="h-11 w-11 shrink-0 border border-border">
                   <AvatarImage src={t.photo} alt={t.name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -288,10 +295,10 @@ export default function TeachersPage() {
               <div className="hidden sm:block w-32 shrink-0">
                 <p className="text-sm text-foreground/90">{t.phone || "—"}</p>
               </div>
-              <div className="hidden lg:block w-40 shrink-0">
+              <div className="hidden sm:block w-40 shrink-0">
                 <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
               </div>
-              <div className="hidden xl:block w-36 shrink-0">
+              <div className="hidden sm:block w-36 shrink-0">
                 {t.classTeacherOf ? (
                   <span className="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700">
                     Class {t.classTeacherOf.name}-{t.classTeacherOf.section}
@@ -332,6 +339,7 @@ export default function TeachersPage() {
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
 
