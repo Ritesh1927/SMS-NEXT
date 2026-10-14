@@ -56,7 +56,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const student = await Student.findById(studentId).select("class section");
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 
-    const results = await Result.find({ student: studentId }).populate("exam", "subject").sort({ createdAt: -1 });
+    // Parents only ever see published results -- a saved-but-unpublished
+    // mark is still a draft the subject teacher is working on, not yet
+    // meant to be visible. Matches /api/results/student/[studentId]'s rule.
+    const results = await Result.find({ student: studentId, isPublished: true }).populate("exam", "subject").sort({ createdAt: -1 });
 
     // Classmates' results, for real per-subject class averages.
     let classResults: { student: unknown; subject: string; percentage: number }[] = [];
@@ -65,7 +68,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       if (student.section) classmateQuery.section = student.section;
       const classmates = await Student.find(classmateQuery).select("_id");
       const classmateIds = classmates.map((c) => c._id);
-      const classmateResults = await Result.find({ student: { $in: classmateIds } }).populate("exam", "subject");
+      const classmateResults = await Result.find({ student: { $in: classmateIds }, isPublished: true }).populate("exam", "subject");
       classResults = classmateResults.map((r) => ({
         student: r.student,
         subject: (r.exam as unknown as { subject?: string } | null)?.subject || "General",
@@ -135,7 +138,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
       const classmates = await Student.find(classmateQuery).select("_id");
       const cmIds = classmates.map((c) => c._id);
       const cmResults = await Result.aggregate([
-        { $match: { student: { $in: cmIds } } },
+        { $match: { student: { $in: cmIds }, isPublished: true } },
         { $group: { _id: "$student", avg: { $avg: "$percentage" } } },
       ]);
       const higherCount = cmResults.filter((c) => c.avg > avgScore).length;
