@@ -3,10 +3,11 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
+import { Admin } from "@/models/Admin";
 import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
-import "@/models/Admin";
+import { holidayRejectionMessage } from "@/lib/holidays";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
@@ -66,6 +67,14 @@ export async function POST(req: Request) {
         { success: false, message: "Title, class, at least one subject with a date, totalMarks and passingMarks are required." },
         { status: 400 },
       );
+    }
+
+    // No test date may fall on a declared or weekly holiday -- same rule as
+    // attendance marking, checked before any permission/creation work.
+    const holidayConfig = (await Admin.findById(auth.schoolId).select("settings.holidays").lean())?.settings?.holidays || { weeklyOffDays: [0], dates: [] };
+    for (const slot of subjectList) {
+      const rejection = holidayRejectionMessage(slot.date, holidayConfig);
+      if (rejection) return NextResponse.json({ success: false, message: rejection }, { status: 400 });
     }
 
     if (auth.role === "teacher") {

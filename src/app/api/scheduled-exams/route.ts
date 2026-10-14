@@ -5,11 +5,12 @@ import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
-import "@/models/Admin";
+import { Admin } from "@/models/Admin";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
 import { isStreamStandard } from "@/lib/streamStandards";
+import { holidayRejectionMessage } from "@/lib/holidays";
 
 const EXAM_TYPE_MAP: Record<string, string> = {
   midterm: "mid-term",
@@ -96,6 +97,14 @@ export async function POST(req: Request) {
     // an ordinary standard -- a section must be named explicitly.
     if (isStreamStandard(cls) && !requestedSection) {
       return NextResponse.json({ success: false, message: "Please select a section for this standard." }, { status: 400 });
+    }
+
+    // No subject's exam date may fall on a declared or weekly holiday --
+    // checked per subject, since each has its own date within the term.
+    const holidayConfig = (await Admin.findById(auth.schoolId).select("settings.holidays").lean())?.settings?.holidays || { weeklyOffDays: [0], dates: [] };
+    for (const s of subjects as SubjectInput[]) {
+      const rejection = holidayRejectionMessage(s.date, holidayConfig);
+      if (rejection) return NextResponse.json({ success: false, message: `${s.subject}: ${rejection}` }, { status: 400 });
     }
 
     if (auth.role === "teacher") {

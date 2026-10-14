@@ -4,11 +4,12 @@ import { getAuthUser } from "@/lib/auth-server";
 import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
-import "@/models/Admin";
+import { Admin } from "@/models/Admin";
 import "@/models/Teacher";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { Class } from "@/models/Class";
+import { holidayRejectionMessage } from "@/lib/holidays";
 
 // Teachers can freely edit/delete a term up to 2 hours before it starts;
 // past that they must go through the ExamChangeRequest workflow. Matches
@@ -63,6 +64,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!existing) return NextResponse.json({ success: false, message: "Exam term not found." }, { status: 404 });
 
     const { title, class: cls, examType, startDate, endDate, description, status, subjects } = await req.json();
+
+    if (Array.isArray(subjects)) {
+      const holidayConfig = (await Admin.findById(auth.schoolId).select("settings.holidays").lean())?.settings?.holidays || { weeklyOffDays: [0], dates: [] };
+      for (const s of subjects as SubjectInput[]) {
+        const rejection = holidayRejectionMessage(s.date, holidayConfig);
+        if (rejection) return NextResponse.json({ success: false, message: `${s.subject}: ${rejection}` }, { status: 400 });
+      }
+    }
 
     if (auth.role === "teacher") {
       const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
