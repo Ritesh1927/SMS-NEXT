@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
 import { BulkImportDialog } from "@/components/dashboard/BulkImportDialog";
+import { isStreamStandard } from "@/lib/streamStandards";
 
 interface SubjectRow {
   _id: string;
@@ -73,6 +74,7 @@ export default function SubjectsPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
 
   const [singleStandard, setSingleStandard] = useState("");
+  const [singleSection, setSingleSection] = useState("");
   const [singleSubjectIds, setSingleSubjectIds] = useState<Set<string>>(new Set());
   const [bulkStandards, setBulkStandards] = useState<Set<string>>(new Set());
   const [bulkSubjectIds, setBulkSubjectIds] = useState<Set<string>>(new Set());
@@ -123,10 +125,36 @@ export default function SubjectsPage() {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [classes]);
 
-  // Any one section's assignedSubjects is authoritative for the whole
-  // standard, since assign/unassign always fan out to every sibling section.
-  const getAssignedIds = (standard: string): string[] => classAssignments.find((c) => c.name === standard)?.assignedSubjects.map((s) => s._id) || [];
-  const getAssignedSubjects = (standard: string): SubjectRow[] => classAssignments.find((c) => c.name === standard)?.assignedSubjects || [];
+  // For a non-stream standard, any one section's assignedSubjects is
+  // authoritative for the whole standard (assign/unassign fan out to every
+  // sibling section there). For a stream standard (11/12), `section` picks
+  // out that one section's own, independent subject list.
+  const getAssignedSubjectsFor = (standard: string, section: string | null): SubjectRow[] => {
+    const match = section ? classAssignments.find((c) => c.name === standard && c.section === section) : classAssignments.find((c) => c.name === standard);
+    return match?.assignedSubjects || [];
+  };
+  const getAssignedIdsFor = (standard: string, section: string | null): string[] => getAssignedSubjectsFor(standard, section).map((s) => s._id);
+
+  // One row per standard for ordinary standards, but one row per section for
+  // stream standards (11/12) -- each section needs its own display/expand
+  // state and its own subject list, since they're no longer kept in sync.
+  interface DisplayRow {
+    standard: string;
+    section: string | null;
+    sections: string[];
+    key: string;
+  }
+  const displayRows: DisplayRow[] = useMemo(() => {
+    const rows: DisplayRow[] = [];
+    for (const s of standards) {
+      if (isStreamStandard(s.name)) {
+        for (const sec of s.sections) rows.push({ standard: s.name, section: sec, sections: s.sections, key: `${s.name}::${sec}` });
+      } else {
+        rows.push({ standard: s.name, section: null, sections: s.sections, key: s.name });
+      }
+    }
+    return rows;
+  }, [standards]);
 
   const openCreateSubject = () => {
     setEditSubject(null);
@@ -210,12 +238,18 @@ export default function SubjectsPage() {
 
   const assignSingle = async () => {
     if (!singleStandard) return toast.error("Please select a standard.");
+    const isSingleStream = isStreamStandard(singleStandard);
+    if (isSingleStream && !singleSection) return toast.error("Please select a section.");
     if (singleSubjectIds.size === 0) return toast.error("Please select at least one subject.");
     const token = getToken();
     if (!token) return;
     setAssigning(true);
     try {
-      await apiPost("/subjects/assign", { standard: singleStandard, subjectIds: Array.from(singleSubjectIds) }, token);
+      await apiPost(
+        "/subjects/assign",
+        { standard: singleStandard, subjectIds: Array.from(singleSubjectIds), ...(isSingleStream ? { section: singleSection } : {}) },
+        token,
+      );
       toast.success("Subjects assigned.");
       setSingleSubjectIds(new Set());
       fetchAssignments();
@@ -245,13 +279,13 @@ export default function SubjectsPage() {
     }
   };
 
-  const removeSubjectFromStandard = async (standard: string, subjectId: string) => {
+  const removeSubjectFromStandard = async (standard: string, subjectId: string, section?: string) => {
     const token = getToken();
     try {
       const res = await fetch("/api/subjects/unassign", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ standard, subjectId }),
+        body: JSON.stringify({ standard, subjectId, ...(section ? { section } : {}) }),
       });
       const json = await res.json();
       if (!res.ok || json.success === false) throw new Error(json.message || "Failed to remove subject.");
@@ -274,7 +308,8 @@ export default function SubjectsPage() {
   // Standards legitimately vary in how many subjects they carry (a lower
   // grade may have fewer than a higher one), so "fewer than the school's
   // total subject count" is not a real gap. Zero subjects assigned at all is.
-  const standardsWithNoSubjects = standards.filter((s) => getAssignedIds(s.name).length === 0).length;
+  // Counted per display row, so an unconfigured stream section is caught too.
+  const standardsWithNoSubjects = displayRows.filter((r) => getAssignedIdsFor(r.standard, r.section).length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -417,6 +452,7 @@ export default function SubjectsPage() {
                       value={singleStandard}
                       onValueChange={(v) => {
                         setSingleStandard(v || "");
+                        setSingleSection("");
                         setSingleSubjectIds(new Set());
                       }}
                     >
@@ -433,11 +469,30 @@ export default function SubjectsPage() {
                     </Select>
                   </div>
 
+                  {isStreamStandard(singleStandard) && (
+                    <div className="space-y-2">
+                      <Label>Select Section</Label>
+                      <Select value={singleSection} onValueChange={(v) => setSingleSection(v || "")}>
+                        <SelectTrigger className="max-w-sm">
+                          <SelectValue placeholder="Choose a section…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(standards.find((s) => s.name === singleStandard)?.sections || []).map((sec) => (
+                            <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Class {singleStandard} splits into streams — each section needs its own subjects.</p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>Select Subjects to Assign</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                       {subjects.map((s) => {
-                        const assigned = singleStandard ? getAssignedIds(singleStandard).includes(s._id) : false;
+                        const isSingleStream = isStreamStandard(singleStandard);
+                        const singleReady = !!singleStandard && (!isSingleStream || !!singleSection);
+                        const assigned = singleReady ? getAssignedIdsFor(singleStandard, isSingleStream ? singleSection : null).includes(s._id) : false;
                         return (
                           <label
                             key={s._id}
@@ -457,29 +512,44 @@ export default function SubjectsPage() {
                     </div>
                   </div>
 
-                  <Button onClick={assignSingle} className="gap-2" disabled={assigning || !singleStandard || singleSubjectIds.size === 0}>
+                  <Button
+                    onClick={assignSingle}
+                    className="gap-2"
+                    disabled={assigning || !singleStandard || (isStreamStandard(singleStandard) && !singleSection) || singleSubjectIds.size === 0}
+                  >
                     {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Assign{singleSubjectIds.size > 0 ? ` ${singleSubjectIds.size}` : ""} Subject{singleSubjectIds.size !== 1 ? "s" : ""}
                   </Button>
 
-                  {singleStandard && getAssignedSubjects(singleStandard).length > 0 && (
-                    <div className="pt-4 border-t border-border space-y-2">
-                      <p className="text-sm font-medium text-foreground">
-                        Currently assigned to <span className="text-primary">Class {singleStandard}</span>:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {getAssignedSubjects(singleStandard).map((subj) => (
-                          <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-muted text-foreground/90 text-xs font-medium">
-                            <BookOpen className="h-3 w-3 shrink-0" />
-                            {subj.name}
-                            <button onClick={() => removeSubjectFromStandard(singleStandard, subj._id)} className="ml-1 rounded-full hover:bg-red-100 p-0.5" aria-label={`Remove ${subj.name}`}>
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))}
+                  {(() => {
+                    const isSingleStream = isStreamStandard(singleStandard);
+                    const singleReady = !!singleStandard && (!isSingleStream || !!singleSection);
+                    if (!singleReady) return null;
+                    const assignedHere = getAssignedSubjectsFor(singleStandard, isSingleStream ? singleSection : null);
+                    if (assignedHere.length === 0) return null;
+                    return (
+                      <div className="pt-4 border-t border-border space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Currently assigned to <span className="text-primary">Class {singleStandard}{isSingleStream ? `-${singleSection}` : ""}</span>:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {assignedHere.map((subj) => (
+                            <span key={subj._id} className="inline-flex items-center gap-1.5 pr-1.5 py-1 pl-2.5 rounded-full bg-muted text-foreground/90 text-xs font-medium">
+                              <BookOpen className="h-3 w-3 shrink-0" />
+                              {subj.name}
+                              <button
+                                onClick={() => removeSubjectFromStandard(singleStandard, subj._id, isSingleStream ? singleSection : undefined)}
+                                className="ml-1 rounded-full hover:bg-red-100 p-0.5"
+                                aria-label={`Remove ${subj.name}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </>
               )}
             </CardContent>
@@ -508,7 +578,7 @@ export default function SubjectsPage() {
                         <span className="text-xs text-muted-foreground">{bulkStandards.size} selected</span>
                       </div>
                       <div className="border border-border rounded-lg divide-y divide-border max-h-56 overflow-y-auto">
-                        {standards.map((s) => (
+                        {standards.filter((s) => !isStreamStandard(s.name)).map((s) => (
                           <label key={s.name} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer ${bulkStandards.has(s.name) ? "bg-primary/5" : "hover:bg-muted/50"}`}>
                             <input
                               type="checkbox"
@@ -529,6 +599,11 @@ export default function SubjectsPage() {
                           </label>
                         ))}
                       </div>
+                      {standards.some((s) => isStreamStandard(s.name)) && (
+                        <p className="text-xs text-muted-foreground">
+                          Classes 11 &amp; 12 aren&apos;t shown here — use Single Assignment above to assign subjects per section (stream).
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -586,16 +661,19 @@ export default function SubjectsPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {standards.map((s) => {
-                      const assignedSubjects = getAssignedSubjects(s.name);
-                      const isExpanded = expandedStandards.has(s.name);
+                    {displayRows.map((row) => {
+                      const assignedSubjects = getAssignedSubjectsFor(row.standard, row.section);
+                      const isExpanded = expandedStandards.has(row.key);
                       return (
-                        <div key={s.name}>
-                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/50 text-left" onClick={() => toggleExpanded(s.name)}>
+                        <div key={row.key}>
+                          <button className="w-full flex items-center justify-between px-6 py-3.5 hover:bg-muted/50 text-left" onClick={() => toggleExpanded(row.key)}>
                             <div className="flex items-center gap-3 min-w-0">
                               <School className="h-4 w-4 text-muted-foreground shrink-0" />
                               <span className="font-medium text-sm text-foreground truncate">
-                                Class {s.name} <span className="text-xs text-muted-foreground font-normal">({s.sections.length > 1 ? `Sections ${s.sections.join(", ")}` : `Section ${s.sections[0]}`})</span>
+                                Class {row.standard}{" "}
+                                <span className="text-xs text-muted-foreground font-normal">
+                                  ({row.section ? `Section ${row.section}` : row.sections.length > 1 ? `Sections ${row.sections.join(", ")}` : `Section ${row.sections[0]}`})
+                                </span>
                               </span>
                               <span className="text-xs shrink-0 px-2 py-0.5 rounded-full border border-border text-muted-foreground">
                                 {assignedSubjects.length} subject{assignedSubjects.length !== 1 ? "s" : ""}
@@ -617,7 +695,7 @@ export default function SubjectsPage() {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          removeSubjectFromStandard(s.name, subj._id);
+                                          removeSubjectFromStandard(row.standard, subj._id, row.section || undefined);
                                         }}
                                         className="ml-0.5 rounded-full hover:bg-red-100 p-0.5"
                                         aria-label={`Remove ${subj.name}`}
@@ -679,13 +757,15 @@ export default function SubjectsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {standards.map((c) => {
-                        const assignedSet = new Set(getAssignedIds(c.name));
+                      {displayRows.map((row) => {
+                        const assignedSet = new Set(getAssignedIdsFor(row.standard, row.section));
                         return (
-                          <TableRow key={c.name}>
+                          <TableRow key={row.key}>
                             <TableCell className="sticky left-0 bg-card border-r border-border">
-                              <p className="text-sm font-medium text-foreground">Class {c.name}</p>
-                              <p className="text-xs text-muted-foreground">{c.sections.length > 1 ? `Sections ${c.sections.join(", ")}` : `Sec. ${c.sections[0]}`}</p>
+                              <p className="text-sm font-medium text-foreground">Class {row.standard}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {row.section ? `Section ${row.section}` : row.sections.length > 1 ? `Sections ${row.sections.join(", ")}` : `Sec. ${row.sections[0]}`}
+                              </p>
                             </TableCell>
                             {subjects.map((s) => (
                               <TableCell key={s._id} className="text-center">

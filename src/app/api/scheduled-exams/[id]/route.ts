@@ -110,11 +110,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const examTypeMap: Record<string, string> = { midterm: "mid-term", final: "final", unit: "unit-test", annual: "final" };
       const mappedType = examTypeMap[term.examType] || "unit-test";
 
-      // The term spans every section of its standard, not just term.section
-      // (which is always "" for a standard-wide term) -- resolve the real
-      // section list from the standard's classes, same as creation does.
-      const sectionDocs = await Class.find({ school: auth.schoolId, name: term.class }).select("section");
-      const sections = sectionDocs.length > 0 ? sectionDocs.map((c) => c.section) : [term.section];
+      // A standard-wide term (term.section === "") spans every section of
+      // its standard -- resolve the real section list from the standard's
+      // classes, same as creation does. A section-scoped term (stream
+      // standards) stays scoped to that one section; it must never fan back
+      // out to siblings that may be a different stream entirely.
+      let sections: string[];
+      if (term.section) {
+        sections = [term.section];
+      } else {
+        const sectionDocs = await Class.find({ school: auth.schoolId, name: term.class }).select("section");
+        sections = sectionDocs.length > 0 ? sectionDocs.map((c) => c.section) : [term.section];
+      }
 
       await Exam.insertMany(
         sections.flatMap((section) =>
