@@ -143,8 +143,14 @@ export default function SubjectsPage() {
   };
 
   const saveSubject = async () => {
-    if (!subjectForm.name.trim()) {
+    const trimmedName = subjectForm.name.trim();
+    if (!trimmedName) {
       setNameError("Subject name is required.");
+      return;
+    }
+    const duplicate = subjects.some((s) => s._id !== editSubject?._id && s.name.toLowerCase() === trimmedName.toLowerCase());
+    if (duplicate) {
+      setNameError(`Subject "${trimmedName}" already exists.`);
       return;
     }
     const token = getToken();
