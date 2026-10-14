@@ -183,6 +183,15 @@ function clampMarks(value: number, totalMarks: number | undefined): number {
   return totalMarks !== undefined ? Math.min(clamped, totalMarks) : clamped;
 }
 
+// Marks fields use type="text" + this instead of type="number" -- a native
+// number input's spin arrows change the value on a stray scroll/trackpad
+// gesture while entering marks, silently corrupting a saved score. Marks
+// are always whole numbers (same integer semantics as clampMarks), so this
+// just strips anything that isn't a digit.
+function parseMarksInput(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
 // Validates a set of {date, startTime, endTime} slots that may share a
 // class/exam batch: every slot needs both times, end must be after start,
 // and two slots landing on the same date can't overlap in time-of-day.
@@ -1540,9 +1549,12 @@ export function AdminTeacherExams() {
                         <TableCell>
                           <div className="space-y-1">
                             <Input
-                              type="number" min={0} max={rTestMeta?.totalMarks}
+                              type="text" inputMode="numeric"
                               value={row.isAbsent ? "" : row.marksObtained ?? ""}
-                              onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
+                              onChange={(e) => {
+                                const digits = parseMarksInput(e.target.value);
+                                updateTestRow(row.student._id, { marksObtained: digits === "" ? null : clampMarks(Number(digits), rTestMeta?.totalMarks) });
+                              }}
                               disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                               placeholder={row.isAbsent ? "Absent" : undefined}
                               className="w-20 h-8"
@@ -1755,10 +1767,12 @@ export function AdminTeacherExams() {
                           <TableCell>
                             <div className="space-y-1">
                               <Input
-                                type="number" min={0}
-                                max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
+                                type="text" inputMode="numeric"
                                 value={row.isAbsent ? "" : row.marksObtained ?? ""}
-                                onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
+                                onChange={(e) => {
+                                  const digits = parseMarksInput(e.target.value);
+                                  updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: digits === "" ? null : clampMarks(Number(digits), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) });
+                                }}
                                 disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                                 placeholder={row.isAbsent ? "Absent" : undefined}
                                 className="w-20 h-8"
