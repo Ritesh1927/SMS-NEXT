@@ -32,7 +32,16 @@ export async function GET(req: Request) {
       .select("-password")
       .populate("assignedClasses", "name section")
       .sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, count: teachers.length, data: teachers });
+
+    // assignedClasses is which classes a teacher teaches (subjects); being
+    // the CLASS teacher of one is a separate, one-directional relationship
+    // that only lives on Class.classTeacher -- reverse-looked-up here so the
+    // Staff list can show it without an extra per-row request.
+    const classTeacherDocs = await Class.find({ school: auth.schoolId, classTeacher: { $in: teachers.map((t) => t._id) } }).select("name section classTeacher");
+    const classTeacherMap = new Map(classTeacherDocs.map((c) => [String(c.classTeacher), { name: c.name, section: c.section }]));
+    const data = teachers.map((t) => ({ ...t.toObject(), classTeacherOf: classTeacherMap.get(String(t._id)) || null }));
+
+    return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load teachers." },

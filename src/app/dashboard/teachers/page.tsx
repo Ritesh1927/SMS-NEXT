@@ -36,6 +36,7 @@ interface TeacherRow {
   subjects?: string[];
   classes?: string[];
   assignedClasses?: ClassOption[];
+  classTeacherOf?: { name: string; section: string } | null;
   qualification?: string;
   staffType: string;
   employmentType?: string;
@@ -245,6 +246,7 @@ export default function TeachersPage() {
             <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
             <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
+            <p className="hidden xl:block w-36 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Class Teacher</p>
             <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
@@ -288,6 +290,15 @@ export default function TeachersPage() {
               </div>
               <div className="hidden lg:block w-40 shrink-0">
                 <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
+              </div>
+              <div className="hidden xl:block w-36 shrink-0">
+                {t.classTeacherOf ? (
+                  <span className="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700">
+                    Class {t.classTeacherOf.name}-{t.classTeacherOf.section}
+                  </span>
+                ) : (
+                  <p className="text-sm text-muted-foreground">—</p>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
