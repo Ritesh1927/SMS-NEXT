@@ -506,6 +506,27 @@ export function MobileReportHeader({ track, subtitle }: { track: ReportTrack; su
   );
 }
 
+/**
+ * Desktop counterpart to MobileReportHeader's back button -- the PageHeader
+ * used at lg+ only ever got a "My reports" action, with no way back to the
+ * page the report was started from short of the browser's own back button.
+ * Same fromPath/home fallback and label logic, just rendered as a button
+ * for the PageHeader's actions slot instead of a header row. Uses
+ * useSearchParams, so render it inside a <Suspense> boundary.
+ */
+export function DesktopReportBackLink({ track }: { track: ReportTrack }) {
+  const fromPath = safeReturnPath(useSearchParams().get("from"));
+  const { home } = TRACK[track];
+  const target = fromPath ?? home;
+  const backLabel = target === home ? "Back to Dashboard" : `Back to ${describeRoute(target.split(/[?#]/)[0]).module}`;
+
+  return (
+    <Button variant="outline" className="rounded-xl" nativeButton={false} render={<Link href={target} aria-label={backLabel} title={backLabel} />}>
+      <ArrowLeft /> Back
+    </Button>
+  );
+}
+
 function FormSection({ step, title, description, children }: { step: number; title: string; description: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl bg-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_32px_-18px_rgba(80,72,229,0.18)] ring-1 ring-border/70 sm:p-6 dark:ring-white/10">

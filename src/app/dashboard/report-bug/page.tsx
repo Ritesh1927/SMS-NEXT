@@ -6,7 +6,7 @@ import { Bug, History } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BugReportForm, MobileReportHeader } from "@/components/bugs/BugReportForm";
+import { BugReportForm, DesktopReportBackLink, MobileReportHeader } from "@/components/bugs/BugReportForm";
 
 // Report a Bug -- full page for every school role. Opened from the floating
 // tab (which passes ?from=<page the bug happened on>) or My Reported Bugs.
@@ -25,9 +25,14 @@ export default function ReportBugPage() {
           subtitle="Tell us what went wrong. Your account and device details are attached automatically."
           accent="coral"
           actions={
-            <Button variant="outline" className="rounded-xl" nativeButton={false} render={<Link href="/dashboard/my-bugs" />}>
-              <History /> My reports
-            </Button>
+            <>
+              <Suspense fallback={<div className="h-9 w-20" />}>
+                <DesktopReportBackLink track="school" />
+              </Suspense>
+              <Button variant="outline" className="rounded-xl" nativeButton={false} render={<Link href="/dashboard/my-bugs" />}>
+                <History /> My reports
+              </Button>
+            </>
           }
         />
       </div>

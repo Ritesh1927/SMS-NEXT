@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { Bug } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BugReportForm, MobileReportHeader } from "@/components/bugs/BugReportForm";
+import { BugReportForm, DesktopReportBackLink, MobileReportHeader } from "@/components/bugs/BugReportForm";
 import { AdminPageHeader } from "@/components/super-admin/ui";
 
 // Report a Bug for Super Admins (filed as "System Administrator").
@@ -18,6 +18,11 @@ export default function SuperAdminReportBugPage() {
           icon={Bug}
           title="Report a Bug"
           description="Filed as System Administrator. It appears in the ticket list like any other report."
+          actions={
+            <Suspense fallback={<div className="h-9 w-20" />}>
+              <DesktopReportBackLink track="superadmin" />
+            </Suspense>
+          }
         />
       </div>
       <Suspense fallback={<Skeleton className="h-[520px] w-full rounded-2xl" />}>
