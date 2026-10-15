@@ -478,8 +478,8 @@ export default function TimetablePage() {
   };
 
   const handleAddPeriod = async () => {
-    if (!newLabel.trim() || !newStart || !newEnd) {
-      toast.error("Label, start time and end time are required.");
+    if (!newStart || !newEnd || (newIsBreak && !newLabel.trim())) {
+      toast.error(newIsBreak ? "Name, start time and end time are required." : "Start time and end time are required.");
       return;
     }
     const token = getToken();
@@ -487,7 +487,10 @@ export default function TimetablePage() {
     setAddingPeriod(true);
     try {
       const standard = manageStandard === DEFAULT_STANDARD ? undefined : manageStandard;
-      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak, standard }, token);
+      // A regular period's label is always auto-derived from its
+      // chronological position server-side ("Period N") -- only a break
+      // gets a real, user-chosen label.
+      await apiPost("/periods", { label: newIsBreak ? newLabel.trim() : undefined, startTime: newStart, endTime: newEnd, isBreak: newIsBreak, standard }, token);
       setNewLabel("");
       setNewStart("");
       setNewEnd("");
@@ -525,6 +528,13 @@ export default function TimetablePage() {
     setGenerating(true);
     try {
       const standard = manageStandard === DEFAULT_STANDARD ? undefined : manageStandard;
+      // Replace, not append -- re-running Quick Generate on a standard that
+      // already has periods would otherwise just collide with them under
+      // the new overlap guard. Only clears this standard's own custom
+      // periods, never the inherited default list.
+      for (const p of managePeriods.filter((p) => p.standard === (standard ?? null))) {
+        await fetch(`/api/periods/${p._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      }
       const toCreate = buildGeneratedPeriods(qStart, qCount, qDuration, qBreakAfter, qBreakMin, standard);
       for (const p of toCreate) await apiPost("/periods", p, token);
       refreshAfterPeriodChange();
@@ -973,11 +983,23 @@ export default function TimetablePage() {
 
           <div className="border-t border-border pt-4 space-y-3">
             <p className="text-sm font-semibold text-foreground">Add Manually</p>
+            <div className="flex items-center gap-2">
+              <input id="p-isbreak" type="checkbox" checked={newIsBreak} onChange={(e) => setNewIsBreak(e.target.checked)} className="h-4 w-4" />
+              <Label htmlFor="p-isbreak" className="cursor-pointer text-sm font-normal">
+                This is a break / lunch (not editable in timetable)
+              </Label>
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2 space-y-1.5">
-                <Label htmlFor="p-label">Label</Label>
-                <Input id="p-label" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. Period 8, Lunch, Assembly" maxLength={40} />
-              </div>
+              {newIsBreak ? (
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="p-label">Name</Label>
+                  <Input id="p-label" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. Lunch, Assembly, Recess" maxLength={40} />
+                </div>
+              ) : (
+                <p className="col-span-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  Labeled automatically by its position in the schedule — e.g. &quot;Period 3&quot;.
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="p-start">Start Time</Label>
                 <Input id="p-start" type="time" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
@@ -987,13 +1009,7 @@ export default function TimetablePage() {
                 <Input id="p-end" type="time" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <input id="p-isbreak" type="checkbox" checked={newIsBreak} onChange={(e) => setNewIsBreak(e.target.checked)} className="h-4 w-4" />
-              <Label htmlFor="p-isbreak" className="cursor-pointer text-sm font-normal">
-                This is a break / lunch (not editable in timetable)
-              </Label>
-            </div>
-            <Button className="w-full gap-2" onClick={handleAddPeriod} disabled={addingPeriod || !newLabel.trim() || !newStart || !newEnd}>
+            <Button className="w-full gap-2" onClick={handleAddPeriod} disabled={addingPeriod || !newStart || !newEnd || (newIsBreak && !newLabel.trim())}>
               <Plus className="h-4 w-4" />
               {addingPeriod ? "Adding…" : "Add Period"}
             </Button>

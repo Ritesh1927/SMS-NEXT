@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
-import { recomputePeriodNumbers } from "@/lib/periods";
+import { recomputePeriodNumbers, findOverlappingPeriod } from "@/lib/periods";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = getAuthUser(req);
@@ -18,7 +18,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const period = await SchoolPeriod.findOne({ _id: id, school: auth.schoolId });
     if (!period) return NextResponse.json({ success: false, message: "Period not found." }, { status: 404 });
 
-    if (label !== undefined) period.label = String(label).trim();
+    const nextStart = startTime !== undefined ? startTime : period.startTime;
+    const nextEnd = endTime !== undefined ? endTime : period.endTime;
+    if (nextStart >= nextEnd) {
+      return NextResponse.json({ success: false, message: "End time must be after start time." }, { status: 400 });
+    }
+    if (startTime !== undefined || endTime !== undefined) {
+      const conflict = await findOverlappingPeriod(auth.schoolId, period.standard, nextStart, nextEnd, id);
+      if (conflict) {
+        return NextResponse.json(
+          { success: false, message: `Overlaps with "${conflict.label}" (${conflict.startTime}–${conflict.endTime}).` },
+          { status: 400 },
+        );
+      }
+    }
+
+    // A non-break period's label is auto-derived (recomputePeriodNumbers
+    // overwrites it below); only a break's label is actually settable here.
+    if (label !== undefined && (isBreak ?? period.isBreak)) period.label = String(label).trim();
     if (startTime !== undefined) period.startTime = startTime;
     if (endTime !== undefined) period.endTime = endTime;
     if (isBreak !== undefined) period.isBreak = !!isBreak;
