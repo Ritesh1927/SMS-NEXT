@@ -3,7 +3,6 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { recomputePeriodNumbers } from "@/lib/periods";
-import { isClassTeacherOf } from "@/lib/teacherClasses";
 
 // GET /api/periods?standard=<name> — a standard's own period list, falling
 // back to the school-wide default (standard: null) if that standard hasn't
@@ -35,13 +34,12 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/periods — a schooladmin can add to any standard or the default
-// list; a teacher only to a standard they're the class teacher of (same
-// auto-grant isClassTeacherOf already gives elsewhere, e.g. homework) --
-// never the default list, which is school-wide.
+// POST /api/periods — period *structure* (count/duration/break/start time)
+// is admin-only. A class teacher can edit their own class's day-wise
+// subject/teacher assignments (see /api/timetable), but not this.
 export async function POST(req: Request) {
   const auth = getAuthUser(req);
-  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+  if (!auth || auth.role !== "schooladmin") {
     return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -53,11 +51,6 @@ export async function POST(req: Request) {
     }
 
     const normalizedStandard: string | null = standard || null;
-    if (auth.role === "teacher") {
-      if (!normalizedStandard || !(await isClassTeacherOf(auth.id, auth.schoolId, normalizedStandard))) {
-        return NextResponse.json({ success: false, message: "You can only manage periods for your own class." }, { status: 403 });
-      }
-    }
 
     const last = await SchoolPeriod.findOne({ school: auth.schoolId, standard: normalizedStandard }).sort({ order: -1 });
     const order = last ? last.order + 1 : 1;
