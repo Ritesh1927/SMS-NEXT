@@ -71,7 +71,13 @@ interface SchoolPeriod {
   isBreak: boolean;
   periodNumber: number | null;
   order: number;
+  standard: string | null;
 }
+
+// Sentinel for the Manage Periods dialog's standard selector -- Select
+// values must be non-empty strings, so the school-wide default list
+// (standard: null on the wire) needs its own stand-in value.
+const DEFAULT_STANDARD = "__default__";
 
 interface ClassOption {
   _id: string;
@@ -150,6 +156,12 @@ export default function TimetablePage() {
   const [busyTeachers, setBusyTeachers] = useState<Record<string, string>>({});
 
   const [manageOpen, setManageOpen] = useState(false);
+  // Dialog-local standard selection, independent of the page's main class
+  // dropdown -- lets an admin manage a different standard's periods without
+  // disturbing what's currently shown in the grid.
+  const [manageStandard, setManageStandard] = useState(DEFAULT_STANDARD);
+  const [managePeriods, setManagePeriods] = useState<SchoolPeriod[]>([]);
+  const [managePeriodsLoading, setManagePeriodsLoading] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newStart, setNewStart] = useState("");
   const [newEnd, setNewEnd] = useState("");
@@ -203,33 +215,84 @@ export default function TimetablePage() {
   const usingSubjectFallback = !!editSubject && subjectMatchedTeachers.length === 0 && classTeachers.length > 0;
   const filteredTeachers = usingSubjectFallback ? classTeachers : subjectMatchedTeachers;
 
-  const loadPeriods = () => {
+  // Standards this teacher is the class teacher of (deduped) -- gates and
+  // populates their Manage Periods access. A teacher's grid itself stays on
+  // the default list (see effectiveStandard below); this is only used by
+  // the Manage Periods dialog.
+  const myClassTeacherStandards = useMemo(() => {
+    if (!isTeacher || !user) return [];
+    return [...new Set(classes.filter((c) => c.classTeacher?._id === user.id).map((c) => c.name))];
+  }, [isTeacher, user, classes]);
+
+  // Which standard's period structure the main grid should render against.
+  // Admin/parent always operate on one specific class, so this tracks that
+  // class's standard; a teacher's own view aggregates entries across
+  // potentially several classes/standards, so it stays on the default list.
+  const effectiveStandard: string | null = isAdmin
+    ? selectedClass?.name || null
+    : isParent
+      ? children.find((c) => c._id === selectedChildId)?.class || null
+      : null;
+
+  const loadPeriods = (standard: string | null) => {
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: SchoolPeriod[] }>("/periods", token)
+    const url = standard ? `/periods?standard=${encodeURIComponent(standard)}` : "/periods";
+    apiGet<{ success: boolean; data: SchoolPeriod[] }>(url, token)
       .then((res) => setPeriods(res.data))
       .catch(() => setPeriods([]))
       .finally(() => setPeriodsLoading(false));
   };
 
-  useEffect(() => {
-    loadPeriods();
-  }, []);
+  const loadManagePeriods = (standard: string) => {
+    const token = getToken();
+    if (!token) return;
+    setManagePeriodsLoading(true);
+    const url = standard === DEFAULT_STANDARD ? "/periods" : `/periods?standard=${encodeURIComponent(standard)}`;
+    apiGet<{ success: boolean; data: SchoolPeriod[] }>(url, token)
+      .then((res) => setManagePeriods(res.data))
+      .catch(() => setManagePeriods([]))
+      .finally(() => setManagePeriodsLoading(false));
+  };
+
+  // Refreshes both the dialog's own list and the main grid's -- cheap to do
+  // unconditionally, and avoids tracking whether they happen to be the same
+  // standard right now.
+  const refreshAfterPeriodChange = () => {
+    loadManagePeriods(manageStandard);
+    loadPeriods(effectiveStandard);
+  };
 
   useEffect(() => {
-    if (!isAdmin) return;
+    loadPeriods(effectiveStandard);
+  }, [effectiveStandard]);
+
+  useEffect(() => {
+    if (!manageOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: refetch whenever the dialog opens or its standard selector changes.
+    loadManagePeriods(manageStandard);
+  }, [manageOpen, manageStandard]);
+
+  useEffect(() => {
+    // Admin needs the full class list to pick one; a teacher needs it too
+    // now, just to work out which standards they're a class teacher of for
+    // Manage Periods -- they still view their own aggregate grid, not a
+    // selected class.
+    if (!isAdmin && !isTeacher) return;
     const token = getToken();
     if (!token) return;
     apiGet<{ success: boolean; data: ClassOption[] }>("/classes", token)
       .then((res) => {
         setClasses(res.data);
-        if (res.data.length > 0) setSelectedClassId(res.data[0]._id);
+        if (isAdmin && res.data.length > 0) setSelectedClassId(res.data[0]._id);
       })
       .catch(() => {});
-    apiGet<{ success: boolean; data: TeacherOption[] }>("/teachers", token)
-      .then((res) => setTeachers(res.data))
-      .catch(() => {});
-  }, [isAdmin]);
+    if (isAdmin) {
+      apiGet<{ success: boolean; data: TeacherOption[] }>("/teachers", token)
+        .then((res) => setTeachers(res.data))
+        .catch(() => {});
+    }
+  }, [isAdmin, isTeacher]);
 
   useEffect(() => {
     const token = getToken();
@@ -379,12 +442,13 @@ export default function TimetablePage() {
     if (!token) return;
     setAddingPeriod(true);
     try {
-      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak }, token);
+      const standard = manageStandard === DEFAULT_STANDARD ? undefined : manageStandard;
+      await apiPost("/periods", { label: newLabel.trim(), startTime: newStart, endTime: newEnd, isBreak: newIsBreak, standard }, token);
       setNewLabel("");
       setNewStart("");
       setNewEnd("");
       setNewIsBreak(false);
-      loadPeriods();
+      refreshAfterPeriodChange();
       toast.success("Period added.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add period.");
@@ -400,7 +464,7 @@ export default function TimetablePage() {
       const res = await fetch(`/api/periods/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       const json = await res.json();
       if (!res.ok || json.success === false) throw new Error(json.message || "Failed to remove.");
-      loadPeriods();
+      refreshAfterPeriodChange();
       toast.success("Period removed.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove period.");
@@ -422,18 +486,19 @@ export default function TimetablePage() {
         return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
       };
       let cursor = timeToMins(qStart);
-      const toCreate: { label: string; startTime: string; endTime: string; isBreak: boolean }[] = [];
+      const standard = manageStandard === DEFAULT_STANDARD ? undefined : manageStandard;
+      const toCreate: { label: string; startTime: string; endTime: string; isBreak: boolean; standard?: string }[] = [];
       for (let i = 1; i <= qCount; i++) {
         const end = cursor + qDuration;
-        toCreate.push({ label: `Period ${i}`, startTime: minsToTime(cursor), endTime: minsToTime(end), isBreak: false });
+        toCreate.push({ label: `Period ${i}`, startTime: minsToTime(cursor), endTime: minsToTime(end), isBreak: false, standard });
         cursor = end;
         if (i === qBreakAfter && i < qCount) {
-          toCreate.push({ label: "Break", startTime: minsToTime(cursor), endTime: minsToTime(cursor + qBreakMin), isBreak: true });
+          toCreate.push({ label: "Break", startTime: minsToTime(cursor), endTime: minsToTime(cursor + qBreakMin), isBreak: true, standard });
           cursor += qBreakMin;
         }
       }
       for (const p of toCreate) await apiPost("/periods", p, token);
-      loadPeriods();
+      refreshAfterPeriodChange();
       toast.success(`${toCreate.length} periods generated.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate periods.");
@@ -471,10 +536,31 @@ export default function TimetablePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setManageOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setManageStandard(selectedClass?.name || DEFAULT_STANDARD);
+                  setManageOpen(true);
+                }}
+              >
                 <Settings className="h-4 w-4" /> Manage Periods
               </Button>
             </>
+          )}
+          {isTeacher && myClassTeacherStandards.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setManageStandard(myClassTeacherStandards[0] || DEFAULT_STANDARD);
+                setManageOpen(true);
+              }}
+            >
+              <Settings className="h-4 w-4" /> Manage Periods
+            </Button>
           )}
           {isParent && children.length > 1 && (
             <Select
@@ -754,17 +840,50 @@ export default function TimetablePage() {
         </Dialog>
       )}
 
-      {isAdmin && (
+      {(isAdmin || myClassTeacherStandards.length > 0) && (
         <Dialog open={manageOpen} onOpenChange={setManageOpen}>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Manage Periods</DialogTitle>
             </DialogHeader>
+
+            <div className="space-y-1.5">
+              <Label>Standard</Label>
+              <Select
+                items={
+                  isAdmin
+                    ? [{ value: DEFAULT_STANDARD, label: "School Default" }, ...[...new Set(classes.map((c) => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map((name) => ({ value: name, label: `Class ${name}` }))]
+                    : myClassTeacherStandards.map((name) => ({ value: name, label: `Class ${name}` }))
+                }
+                value={manageStandard}
+                onValueChange={(v) => v && setManageStandard(v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {isAdmin && <SelectItem value={DEFAULT_STANDARD}>School Default</SelectItem>}
+                  {(isAdmin ? [...new Set(classes.map((c) => c.name))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) : myClassTeacherStandards).map((name) => (
+                    <SelectItem key={name} value={name}>
+                      Class {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {manageStandard !== DEFAULT_STANDARD && managePeriods.length > 0 && managePeriods[0].standard === null && (
+                <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  Using the school&apos;s default periods — add or edit one below to start customizing Class {manageStandard}.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {periods.length === 0 ? (
+              {managePeriodsLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Loading…</p>
+              ) : managePeriods.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No periods yet. Add your first period below.</p>
               ) : (
-                periods.map((p) => (
+                managePeriods.map((p) => (
                   <div
                     key={p._id}
                     className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border ${

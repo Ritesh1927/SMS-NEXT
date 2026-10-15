@@ -3,10 +3,19 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { recomputePeriodNumbers } from "@/lib/periods";
+import { isClassTeacherOf } from "@/lib/teacherClasses";
+
+// A teacher may only touch a period that already belongs to a standard
+// they're the class teacher of -- never the school-wide default list.
+async function canManage(auth: { role: string; id: string; schoolId: string }, standard: string | null) {
+  if (auth.role === "schooladmin") return true;
+  if (auth.role !== "teacher" || !standard) return false;
+  return isClassTeacherOf(auth.id, auth.schoolId, standard);
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
     return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -17,6 +26,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const period = await SchoolPeriod.findOne({ _id: id, school: auth.schoolId });
     if (!period) return NextResponse.json({ success: false, message: "Period not found." }, { status: 404 });
+    if (!(await canManage(auth, period.standard))) {
+      return NextResponse.json({ success: false, message: "You can only manage periods for your own class." }, { status: 403 });
+    }
 
     if (label !== undefined) period.label = String(label).trim();
     if (startTime !== undefined) period.startTime = startTime;
@@ -25,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (order !== undefined) period.order = Number(order);
 
     await period.save();
-    await recomputePeriodNumbers(auth.schoolId);
+    await recomputePeriodNumbers(auth.schoolId, period.standard);
 
     const updated = await SchoolPeriod.findById(period._id);
     return NextResponse.json({ success: true, data: updated });
@@ -39,7 +51,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
     return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -48,9 +60,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const { id } = await params;
     const period = await SchoolPeriod.findOne({ _id: id, school: auth.schoolId });
     if (!period) return NextResponse.json({ success: false, message: "Period not found." }, { status: 404 });
+    if (!(await canManage(auth, period.standard))) {
+      return NextResponse.json({ success: false, message: "You can only manage periods for your own class." }, { status: 403 });
+    }
 
+    const standard = period.standard;
     await period.deleteOne();
-    await recomputePeriodNumbers(auth.schoolId);
+    await recomputePeriodNumbers(auth.schoolId, standard);
 
     return NextResponse.json({ success: true, message: "Period deleted." });
   } catch (err) {

@@ -3,9 +3,9 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { TimetableEntry, WEEKDAYS, type Weekday } from "@/models/TimetableEntry";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
-// Imported for their side effect of registering the schemas .populate() below
-// needs — this route never queries them directly.
-import "@/models/Class";
+import { Class } from "@/models/Class";
+// Imported for its side effect of registering the schema .populate() below
+// needs — this route never queries it directly.
 import "@/models/Teacher";
 
 // POST /api/timetable — admin creates/updates a single grid cell. Ported
@@ -53,7 +53,18 @@ export async function POST(req: Request) {
       }
     }
 
-    const schoolPeriod = await SchoolPeriod.findOne({ school: auth.schoolId, periodNumber: pNum, isBreak: false });
+    // Resolve this period's time from the class's own standard if it has a
+    // customized period list, else the school-wide default -- same
+    // scoped-then-fallback rule GET /api/periods?standard= uses.
+    const cls = await Class.findOne({ _id: classId, school: auth.schoolId }).select("name").lean();
+    const standard = cls?.name || null;
+    const hasCustomPeriods = standard ? await SchoolPeriod.exists({ school: auth.schoolId, standard }) : false;
+    const schoolPeriod = await SchoolPeriod.findOne({
+      school: auth.schoolId,
+      standard: hasCustomPeriods ? standard : null,
+      periodNumber: pNum,
+      isBreak: false,
+    });
     const resolvedStart = startTime || schoolPeriod?.startTime || "";
     const resolvedEnd = endTime || schoolPeriod?.endTime || "";
 
