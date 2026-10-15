@@ -675,8 +675,8 @@ export default function TimetablePage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-separate border-spacing-0">
             <thead>
-              <tr className="bg-gradient-to-b from-muted/70 to-muted/30">
-                <th className="sticky left-0 z-10 bg-muted/70 p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[140px] border-b border-border">
+              <tr className="bg-gradient-to-b from-muted/90 to-muted/40">
+                <th className="sticky left-0 z-10 bg-muted/90 p-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[150px] border-b-2 border-border">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-primary" /> Time
                   </div>
@@ -686,8 +686,8 @@ export default function TimetablePage() {
                   return (
                     <th
                       key={day}
-                      className={`p-3.5 text-center text-xs font-semibold uppercase tracking-wider border-b-2 ${
-                        isToday ? "text-primary border-primary bg-primary/5" : "text-muted-foreground border-border"
+                      className={`p-3.5 text-center text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+                        isToday ? "text-primary border-primary bg-primary/10" : "text-muted-foreground border-border"
                       }`}
                     >
                       <div className="flex flex-col items-center gap-1">
@@ -723,18 +723,35 @@ export default function TimetablePage() {
                   </td>
                 </tr>
               ) : (
-                periods.map((period) => {
-                  const rowBg = period.isBreak ? "bg-amber-50/40" : "hover:bg-muted/40";
+                periods.map((period, periodIdx) => {
+                  const rowBg = period.isBreak ? "bg-amber-50/50" : periodIdx % 2 === 1 ? "bg-muted/[0.15] hover:bg-muted/40" : "hover:bg-muted/40";
                   return (
                     <tr key={period._id} className={`${rowBg} transition-colors group`}>
                       <td
                         className={`sticky left-0 z-10 p-3 border-b border-border ${
-                          period.isBreak ? "bg-amber-50/40" : "bg-card group-hover:bg-muted/40"
+                          period.isBreak ? "bg-amber-50/50" : periodIdx % 2 === 1 ? "bg-muted/[0.15] group-hover:bg-muted/40" : "bg-card group-hover:bg-muted/40"
                         } transition-colors`}
                       >
-                        <div className="text-xs font-semibold text-foreground">{period.label}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {formatTime(period.startTime)} – {formatTime(period.endTime)}
+                        <div className="flex items-center gap-2.5">
+                          {period.isBreak ? (
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                              <Coffee className="h-3.5 w-3.5" />
+                            </span>
+                          ) : (
+                            <span
+                              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                                period.periodNumber === currentPeriod ? "bg-primary text-white shadow-sm shadow-primary/40" : "bg-primary/10 text-primary"
+                              }`}
+                            >
+                              {period.periodNumber}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-foreground truncate">{period.label}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {formatTime(period.startTime)} – {formatTime(period.endTime)}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       {period.isBreak ? (
@@ -752,50 +769,56 @@ export default function TimetablePage() {
                           const isCurrent = isToday && pNum === currentPeriod;
                           const subj = entry ? subjectColor(entry.subject, uniqueSubjects) : null;
                           return (
-                            <td key={day} className={`p-1.5 border-b border-border ${isToday ? "bg-primary/[0.03]" : ""}`}>
+                            <td key={day} className={`p-2 border-b border-border ${isToday ? "bg-primary/[0.06]" : ""}`}>
                               {entry && subj ? (
                                 <div
                                   onClick={() => openEditModal(day, pNum)}
                                   style={subj.style}
-                                  className={`relative rounded-xl p-2.5 border text-center transition-all ${
-                                    canEditGrid ? "cursor-pointer hover:shadow-md hover:-translate-y-0.5" : "cursor-default"
+                                  className={`relative rounded-xl border text-center transition-all overflow-hidden ${
+                                    canEditGrid ? "cursor-pointer hover:shadow-lg hover:-translate-y-0.5" : "cursor-default shadow-sm"
                                   } ${isCurrent ? "ring-2 ring-primary ring-offset-1 shadow-md" : ""}`}
                                 >
-                                  <p className="text-xs font-semibold leading-tight">{entry.subject}</p>
-                                  {entry.teacherId?.name && (
-                                    <div className="flex items-center justify-center gap-1 mt-1">
-                                      <span
-                                        style={{ backgroundColor: subj.style.color }}
-                                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white shrink-0"
-                                      >
-                                        {initials(entry.teacherId.name)}
-                                      </span>
-                                      <p className="text-[10px] opacity-70 truncate">{entry.teacherId.name}</p>
+                                  <span className="absolute inset-x-0 top-0 h-[3px]" style={{ backgroundColor: subj.dot }} />
+                                  <div className="p-2.5 pt-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <BookOpen className="h-3 w-3 shrink-0 opacity-70" style={{ color: subj.dot }} />
+                                      <p className="text-xs font-bold leading-tight">{entry.subject}</p>
                                     </div>
-                                  )}
-                                  {((isTeacher && teacherView === "schedule") || isParent) && entry.classId && (
-                                    <p className="text-[10px] opacity-60 mt-0.5">
-                                      {entry.classId.name}
-                                      {entry.classId.section ? `-${entry.classId.section}` : ""}
-                                    </p>
-                                  )}
-                                  {isCurrent && (
-                                    <span className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold bg-primary text-white px-1.5 py-0 rounded">
-                                      <span className="h-1 w-1 rounded-full bg-white animate-pulse" /> NOW
-                                    </span>
-                                  )}
+                                    {entry.teacherId?.name && (
+                                      <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                                        <span
+                                          style={{ backgroundColor: subj.style.color }}
+                                          className="flex h-4 w-4 items-center justify-center rounded-full text-[7.5px] font-bold text-white shrink-0 shadow-sm"
+                                        >
+                                          {initials(entry.teacherId.name)}
+                                        </span>
+                                        <p className="text-[10.5px] font-medium opacity-80 truncate">{entry.teacherId.name}</p>
+                                      </div>
+                                    )}
+                                    {((isTeacher && teacherView === "schedule") || isParent) && entry.classId && (
+                                      <p className="text-[10px] opacity-60 mt-0.5">
+                                        {entry.classId.name}
+                                        {entry.classId.section ? `-${entry.classId.section}` : ""}
+                                      </p>
+                                    )}
+                                    {isCurrent && (
+                                      <span className="mt-1.5 inline-flex items-center gap-1 text-[9px] font-bold bg-primary text-white px-1.5 py-0.5 rounded-full shadow-sm">
+                                        <span className="h-1 w-1 rounded-full bg-white animate-pulse" /> NOW
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               ) : (
                                 <div
                                   onClick={() => openEditModal(day, pNum)}
-                                  className={`group/cell h-full min-h-[48px] flex items-center justify-center rounded-xl border border-dashed transition-colors ${
-                                    canEditGrid ? "cursor-pointer border-border/60 hover:border-primary/40 hover:bg-primary/5" : "border-transparent"
+                                  className={`group/cell h-full min-h-[56px] flex items-center justify-center rounded-xl border border-dashed transition-colors ${
+                                    canEditGrid ? "cursor-pointer border-border hover:border-primary/50 hover:bg-primary/[0.04]" : "border-border/30"
                                   }`}
                                 >
                                   {canEditGrid ? (
-                                    <Plus className="h-3.5 w-3.5 text-muted-foreground/30 group-hover/cell:text-primary/60 transition-colors" />
+                                    <Plus className="h-4 w-4 text-muted-foreground/40 group-hover/cell:text-primary/70 group-hover/cell:scale-110 transition-all" />
                                   ) : (
-                                    <span className="text-muted-foreground/40 text-xs">—</span>
+                                    <span className="text-muted-foreground/30 text-xs">—</span>
                                   )}
                                 </div>
                               )}
