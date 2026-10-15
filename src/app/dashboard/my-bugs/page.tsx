@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Bug, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowLeft, Bug, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,9 +52,14 @@ export default function MyBugsPage() {
         subtitle="Track the status of issues you've reported to the EduNivo support team."
         accent="coral"
         actions={
-          <Button nativeButton={false} render={<Link href={reportHref} />} className="rounded-xl bg-gradient-to-r from-primary to-accent font-semibold shadow-md shadow-primary/25">
-            <Plus /> Report a bug
-          </Button>
+          <>
+            <Button variant="outline" nativeButton={false} render={<Link href="/dashboard" aria-label="Back to Dashboard" title="Back to Dashboard" />} className="rounded-xl">
+              <ArrowLeft /> Back
+            </Button>
+            <Button nativeButton={false} render={<Link href={reportHref} />} className="rounded-xl bg-gradient-to-r from-primary to-accent font-semibold shadow-md shadow-primary/25">
+              <Plus /> Report a bug
+            </Button>
+          </>
         }
       />
 
