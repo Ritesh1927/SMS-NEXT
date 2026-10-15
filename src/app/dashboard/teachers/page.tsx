@@ -34,8 +34,11 @@ interface TeacherRow {
   teacherId: string;
   designation?: string;
   subjects?: string[];
+  primarySubject?: string;
+  department?: string;
   classes?: string[];
   assignedClasses?: ClassOption[];
+  classTeacherOf?: string[];
   qualification?: string;
   staffType: string;
   employmentType?: string;
@@ -55,6 +58,34 @@ interface ApiMessageResponse {
   tempPassword?: string;
 }
 
+// Non-teaching departments render as a role title in the Type column and
+// the filter (Accounts → Accountant, Library → Librarian, ...), instead of
+// the generic "Non-Teaching" label. Keys are lowercase department names.
+const DEPARTMENT_ROLES: Record<string, string> = {
+  accounts: "Accountant",
+  account: "Accountant",
+  library: "Librarian",
+  administration: "Administrator",
+  admin: "Administrator",
+  lab: "Lab Technician",
+  laboratory: "Lab Technician",
+  office: "Office Staff",
+  "front office": "Receptionist",
+  reception: "Receptionist",
+  transport: "Transport Staff",
+  canteen: "Canteen Staff",
+  security: "Security Staff",
+  housekeeping: "Housekeeping",
+  facilities: "Support Staff",
+  other: "Support Staff",
+};
+
+function staffRole(t: Pick<TeacherRow, "staffType" | "department">): string {
+  if (t.staffType === "teaching") return "Teacher";
+  const dept = (t.department || "").trim().toLowerCase();
+  return DEPARTMENT_ROLES[dept] || "Staff";
+}
+
 export default function TeachersPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -62,7 +93,10 @@ export default function TeachersPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [staffFilter, setStaffFilter] = useState<"" | "teaching" | "non-teaching">("");
+  // Role filter: a role label ("Teacher", "Accountant", ...), the special
+  // "non-teaching" group value used by the stat card, or "" for everyone.
+  // Defaults to Teacher per the common case — most staff lists are teachers.
+  const [staffFilter, setStaffFilter] = useState<string>("Teacher");
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<TeacherRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -131,11 +165,21 @@ export default function TeachersPage() {
     teaching: allTeachers.filter((t) => t.staffType === "teaching").length,
     nonTeaching: allTeachers.filter((t) => t.staffType !== "teaching").length,
   };
+  // One dropdown option per role actually present in the school's staff
+  // (Teacher plus each mapped non-teaching role), sorted alphabetically.
+  const roleOptions = [...new Set(allTeachers.map(staffRole))].sort((a, b) => a.localeCompare(b));
   const filteredTeachers = allTeachers.filter((t) => {
-    if (staffFilter && t.staffType !== staffFilter) return false;
+    if (staffFilter === "non-teaching") {
+      if (t.staffType === "teaching") return false;
+    } else if (staffFilter && staffRole(t) !== staffFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!t.name.toLowerCase().includes(q) && !t.email.toLowerCase().includes(q) && !(t.subjects || []).some((s) => s.toLowerCase().includes(q))) {
+      if (
+        !t.name.toLowerCase().includes(q) &&
+        !t.email.toLowerCase().includes(q) &&
+        !(t.department || "").toLowerCase().includes(q) &&
+        !(t.subjects || []).some((s) => s.toLowerCase().includes(q))
+      ) {
         return false;
       }
     }
@@ -183,8 +227,8 @@ export default function TeachersPage() {
               value={counts.teaching}
               label="Teaching"
               sublabel={counts.total > 0 ? `${Math.round((counts.teaching / counts.total) * 100)}% of staff` : undefined}
-              active={staffFilter === "teaching"}
-              onClick={() => setStaffFilter(staffFilter === "teaching" ? "" : "teaching")}
+              active={staffFilter === "Teacher"}
+              onClick={() => setStaffFilter(staffFilter === "Teacher" ? "" : "Teacher")}
             />
             <StatFilterCard
               icon={Briefcase}
@@ -203,14 +247,17 @@ export default function TeachersPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search by name, email, subject, department..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
-            <Select value={staffFilter || "all"} onValueChange={(v) => setStaffFilter(v === "all" ? "" : (v as "teaching" | "non-teaching"))}>
+            <Select value={staffFilter || "all"} onValueChange={(v) => setStaffFilter(!v || v === "all" ? "" : v)}>
               <SelectTrigger className="w-full sm:w-44">
-                <SelectValue placeholder="All Types" />
+                <SelectValue placeholder="All Staff" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="teaching">Teaching</SelectItem>
-                <SelectItem value="non-teaching">Non-Teaching</SelectItem>
+                <SelectItem value="all">All Staff</SelectItem>
+                {roleOptions.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {staffFilter !== "" && (
@@ -219,7 +266,7 @@ export default function TeachersPage() {
                 onClick={() => setStaffFilter("")}
                 className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-primary/10 text-primary px-3 py-1.5 text-xs font-semibold hover:bg-primary/15 transition-colors"
               >
-                {staffFilter === "teaching" ? "Teaching only" : "Non-Teaching only"}
+                {staffFilter === "non-teaching" ? "Non-Teaching" : staffFilter} only
                 <X className="h-3 w-3" />
               </button>
             )}
@@ -240,16 +287,16 @@ export default function TeachersPage() {
       ) : (
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] overflow-hidden">
           <div className="hidden sm:flex items-center gap-4 px-5 py-3 border-b border-border">
-            <p className="flex-1 max-w-sm text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Name</p>
-            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Type</p>
+            <p className="flex-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Name</p>
+            <p className="w-28 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Role</p>
             <p className="w-48 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Email</p>
             <p className="w-32 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Phone</p>
-            <p className="hidden lg:block w-40 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
+            <p className="hidden lg:block w-44 shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Subjects</p>
             <p className="w-[136px] shrink-0 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider text-right ml-auto">Actions</p>
           </div>
           {filteredTeachers.map((t) => (
             <div key={t._id} className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-0 transition-colors hover:bg-muted/40">
-              <div className="flex items-center gap-3 flex-1 max-w-sm min-w-0">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
                 <Avatar className="h-11 w-11 shrink-0 border border-border">
                   <AvatarImage src={t.photo} alt={t.name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -258,12 +305,16 @@ export default function TeachersPage() {
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground truncate">{t.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{t.name}</p>
                     {!t.isActive && (
                       <span className={`shrink-0 ${statusPillClass("destructive")}`}>Inactive</span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.qualification || t.teacherId}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    {t.classTeacherOf && t.classTeacherOf.length > 0
+                      ? `${t.qualification ? `${t.qualification} · ` : ""}Class Teacher — ${t.classTeacherOf.join(", ")}`
+                      : t.qualification || t.teacherId}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5 sm:hidden truncate">
                     {t.email}
                     {t.phone ? ` · ${t.phone}` : ""}
@@ -277,17 +328,28 @@ export default function TeachersPage() {
                     t.staffType === "teaching" ? "bg-info/10 text-blue-700" : "bg-amber-50 text-amber-700"
                   }`}
                 >
-                  {t.staffType === "teaching" ? "Teaching" : "Non-Teaching"}
+                  {staffRole(t)}
                 </span>
               </div>
               <div className="hidden sm:block w-48 shrink-0">
-                <p className="text-sm text-foreground/90 truncate">{t.email}</p>
+                <p className="text-sm text-foreground/90 truncate" title={t.email}>{t.email}</p>
               </div>
               <div className="hidden sm:block w-32 shrink-0">
                 <p className="text-sm text-foreground/90">{t.phone || "—"}</p>
               </div>
-              <div className="hidden lg:block w-40 shrink-0">
-                <p className="text-sm text-foreground/90 truncate">{t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—"}</p>
+              <div className="hidden lg:block w-44 shrink-0">
+                <p
+                  className="text-sm text-foreground/90 truncate"
+                  title={
+                    t.staffType === "teaching"
+                      ? t.primarySubject || (t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "")
+                      : ""
+                  }
+                >
+                  {t.staffType === "teaching"
+                    ? t.primarySubject || (t.subjects && t.subjects.length > 0 ? t.subjects.join(", ") : "—")
+                    : "—"}
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">

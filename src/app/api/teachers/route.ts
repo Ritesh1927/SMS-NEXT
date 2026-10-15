@@ -32,7 +32,29 @@ export async function GET(req: Request) {
       .select("-password")
       .populate("assignedClasses", "name section")
       .sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, count: teachers.length, data: teachers });
+
+    // Class-teachership is its own relationship (Class.classTeacher points
+    // back at the teacher) and is NOT the same as assignedClasses — the
+    // staff list only shows the class a teacher is class teacher of, so
+    // attach those labels here.
+    const classTeacherClasses = await Class.find({
+      school: auth.schoolId,
+      classTeacher: { $in: teachers.map((t) => t._id) },
+    }).select("name section classTeacher");
+    const classTeacherOf = new Map<string, string[]>();
+    for (const c of classTeacherClasses) {
+      const key = String(c.classTeacher);
+      const list = classTeacherOf.get(key) || [];
+      list.push(`${c.name}-${c.section}`);
+      classTeacherOf.set(key, list);
+    }
+
+    const data = teachers.map((t) => {
+      const obj = t.toObject() as unknown as Record<string, unknown>;
+      obj.classTeacherOf = classTeacherOf.get(String(t._id)) || [];
+      return obj;
+    });
+    return NextResponse.json({ success: true, count: teachers.length, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load teachers." },
