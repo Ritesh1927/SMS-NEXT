@@ -36,6 +36,20 @@ export function isHoliday(date: Date | string, config: HolidayConfig): boolean {
   return !!getHolidayInfo(date, config);
 }
 
+// Shared "can't schedule on a holiday" rejection message -- used by the Test
+// and Exam Term create/edit routes to block exam dates the same way
+// /api/attendance blocks marking attendance on a holiday. Returns null when
+// the date is clear to schedule on.
+export function holidayRejectionMessage(date: Date | string, config: HolidayConfig): string | null {
+  const holiday = getHolidayInfo(date, config);
+  if (!holiday) return null;
+  const d = typeof date === "string" ? new Date(date) : date;
+  const formatted = d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  return holiday.type === "custom"
+    ? `Cannot schedule on ${formatted} — ${holiday.name} is a declared holiday.`
+    : `Cannot schedule on ${formatted} — it's a weekly holiday.`;
+}
+
 // Separate from getHolidayInfo -- an event never blocks attendance, so it's
 // deliberately not folded into that function's holiday/weekly result.
 export function getEventInfo(date: Date | string, events: { date: string | Date; name: string }[]): { name: string } | null {

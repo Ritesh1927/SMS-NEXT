@@ -3,8 +3,10 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
+import { Admin } from "@/models/Admin";
 import { teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
+import { holidayRejectionMessage } from "@/lib/holidays";
 
 function requireAdminOrTeacher(req: Request) {
   const auth = getAuthUser(req);
@@ -39,6 +41,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const body = await req.json();
+
+    if (body.date) {
+      const holidayConfig = (await Admin.findById(auth.schoolId).select("settings.holidays").lean())?.settings?.holidays || { weeklyOffDays: [0], dates: [] };
+      const rejection = holidayRejectionMessage(body.date, holidayConfig);
+      if (rejection) return NextResponse.json({ success: false, message: rejection }, { status: 400 });
+    }
 
     if (auth.role === "teacher") {
       const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);

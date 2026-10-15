@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import {
   AlertTriangle, Bell, Bug, LogOut, Megaphone, Search, Users, GraduationCap, School as SchoolIcon, Loader2, Settings as SettingsIcon,
 } from "lucide-react";
@@ -15,6 +16,9 @@ import { ProfileMenuItem } from "@/components/dashboard/ProfileMenuItem";
 import { getToken, type AuthUser } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { formatClassName } from "@/lib/helpers";
+import { ticketFetch } from "@/lib/bugReports/client";
+import { BUG_REPORTS_CHANGED_EVENT } from "@/lib/bugReports/events";
+import { REPORT_PAGE } from "@/components/bugs/BugReportForm";
 
 const ROLE_LABEL: Record<string, string> = {
   schooladmin: "School Admin",
@@ -89,6 +93,7 @@ export function DashboardTopBar({
   onLogout: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const canSearch = user.role === "schooladmin";
 
   const [query, setQuery] = useState("");
@@ -144,6 +149,27 @@ export function DashboardTopBar({
 
   const isNew = (n: NoticeItem) => !lastSeen || new Date(n.createdAt) > new Date(lastSeen);
   const newCount = notices.filter(isNew).length;
+
+  // Bug-report updates the user hasn't opened yet -- same count the
+  // (now mobile-only) floating ReportBugButton tracked, mirrored here so
+  // its desktop replacement below keeps the same red-dot behavior.
+  const [bugUnread, setBugUnread] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      const token = getToken();
+      if (!token) return;
+      ticketFetch<{ count: number }>(getToken, "/bug-reports/unread")
+        .then((r) => setBugUnread(r.count))
+        .catch(() => {});
+    };
+    refresh();
+    const id = window.setInterval(() => document.visibilityState === "visible" && refresh(), 60_000);
+    window.addEventListener(BUG_REPORTS_CHANGED_EVENT, refresh);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener(BUG_REPORTS_CHANGED_EVENT, refresh);
+    };
+  }, []);
 
   const markAllSeen = () => {
     if (notices.length === 0) return;
@@ -323,6 +349,29 @@ export function DashboardTopBar({
       )}
 
       <div className={`flex items-center gap-2.5 shrink-0 ${licenseWarning ? "" : "ml-auto"}`}>
+        {pathname !== REPORT_PAGE.school && (
+          <Button
+            variant="ghost"
+            size="icon"
+            nativeButton={false}
+            render={
+              <Link
+                href={`${REPORT_PAGE.school}?from=${encodeURIComponent(pathname)}`}
+                aria-label={bugUnread ? `Report a bug (${bugUnread} report updates)` : "Report a bug"}
+                title="Report a bug"
+              />
+            }
+            className="relative h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <Bug className="h-[18px] w-[18px]" />
+            {bugUnread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white ring-2 ring-card">
+                {bugUnread > 9 ? "9+" : bugUnread}
+              </span>
+            )}
+          </Button>
+        )}
+
         <DropdownMenu onOpenChange={handleBellOpen}>
           <DropdownMenuTrigger
             render={

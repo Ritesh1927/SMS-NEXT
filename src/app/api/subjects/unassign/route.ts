@@ -4,7 +4,8 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 
 // Mirrors assign/route.ts: removes a subject from every section of a
-// standard at once, since subjects are assigned per-standard.
+// standard at once, since subjects are assigned per-standard. An optional
+// `section` scopes the removal to that one section instead (stream standards).
 export async function DELETE(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "schooladmin") {
@@ -12,18 +13,23 @@ export async function DELETE(req: Request) {
   }
 
   try {
-    const { standard, subjectId } = await req.json();
+    const { standard, subjectId, section } = await req.json();
     if (!standard || !subjectId) {
       return NextResponse.json({ success: false, message: "standard and subjectId are required." }, { status: 400 });
     }
 
     await connectDB();
-    const sections = await Class.find({ school: auth.schoolId, name: standard }).select("_id");
-    if (sections.length === 0) return NextResponse.json({ success: false, message: "Standard not found." }, { status: 404 });
+    const query: Record<string, unknown> = { school: auth.schoolId, name: standard };
+    if (section) query.section = section;
 
-    await Class.updateMany({ school: auth.schoolId, name: standard }, { $pull: { assignedSubjects: subjectId } });
+    const sections = await Class.find(query).select("_id");
+    if (sections.length === 0) {
+      return NextResponse.json({ success: false, message: section ? "Section not found." : "Standard not found." }, { status: 404 });
+    }
 
-    return NextResponse.json({ success: true, message: `Subject removed from Class ${standard}.` });
+    await Class.updateMany(query, { $pull: { assignedSubjects: subjectId } });
+
+    return NextResponse.json({ success: true, message: `Subject removed from Class ${standard}${section ? `-${section}` : ""}.` });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to remove subject." },

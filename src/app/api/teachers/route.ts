@@ -33,28 +33,15 @@ export async function GET(req: Request) {
       .populate("assignedClasses", "name section")
       .sort({ createdAt: -1 });
 
-    // Class-teachership is its own relationship (Class.classTeacher points
-    // back at the teacher) and is NOT the same as assignedClasses — the
-    // staff list only shows the class a teacher is class teacher of, so
-    // attach those labels here.
-    const classTeacherClasses = await Class.find({
-      school: auth.schoolId,
-      classTeacher: { $in: teachers.map((t) => t._id) },
-    }).select("name section classTeacher");
-    const classTeacherOf = new Map<string, string[]>();
-    for (const c of classTeacherClasses) {
-      const key = String(c.classTeacher);
-      const list = classTeacherOf.get(key) || [];
-      list.push(`${c.name}-${c.section}`);
-      classTeacherOf.set(key, list);
-    }
+    // assignedClasses is which classes a teacher teaches (subjects); being
+    // the CLASS teacher of one is a separate, one-directional relationship
+    // that only lives on Class.classTeacher -- reverse-looked-up here so the
+    // Staff list can show it without an extra per-row request.
+    const classTeacherDocs = await Class.find({ school: auth.schoolId, classTeacher: { $in: teachers.map((t) => t._id) } }).select("name section classTeacher");
+    const classTeacherMap = new Map(classTeacherDocs.map((c) => [String(c.classTeacher), { name: c.name, section: c.section }]));
+    const data = teachers.map((t) => ({ ...t.toObject(), classTeacherOf: classTeacherMap.get(String(t._id)) || null }));
 
-    const data = teachers.map((t) => {
-      const obj = t.toObject() as unknown as Record<string, unknown>;
-      obj.classTeacherOf = classTeacherOf.get(String(t._id)) || [];
-      return obj;
-    });
-    return NextResponse.json({ success: true, count: teachers.length, data });
+    return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load teachers." },

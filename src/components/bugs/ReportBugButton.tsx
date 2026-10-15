@@ -19,6 +19,12 @@ const UNREAD_POLL_MS = 60_000;
  * the label. It links to the Report a Bug page, passing the current page as
  * ?from= so the report records where the problem happened. The red dot
  * counts reports with replies/status updates the user hasn't opened yet.
+ *
+ * Desktop (lg+) gets an equivalent icon in the top bar instead (see
+ * DashboardTopBar's Bug button) -- the floating tab there just sat on top of
+ * page content. This stays for mobile/tablet, which has no other one-tap
+ * way to start a new report (My Reported Bugs has one too, but that's two
+ * taps away).
  */
 export function ReportBugButton({ track }: { track: ReportTrack }) {
   const pathname = usePathname();
@@ -50,10 +56,10 @@ export function ReportBugButton({ track }: { track: ReportTrack }) {
       href={`${REPORT_PAGE[track]}?from=${encodeURIComponent(pathname)}`}
       aria-label={unread ? `Report a bug (${unread} report updates)` : "Report a bug"}
       className={cn(
-        "group/bug fixed top-[58%] right-0 z-40 flex -translate-y-1/2 items-center gap-0 overflow-hidden rounded-l-2xl py-2.5 pr-2 pl-2.5 text-white lg:top-1/2",
+        "group/bug fixed top-[58%] right-0 z-40 flex -translate-y-1/2 items-center gap-0 overflow-hidden rounded-l-2xl py-2.5 pr-2 pl-2.5 text-white",
         "bg-gradient-to-b from-primary to-accent shadow-[0_10px_30px_-8px_rgba(80,72,229,0.6)] ring-1 ring-white/20",
         "transition-all duration-300 ease-out hover:gap-2 hover:pr-3.5 focus-visible:gap-2 focus-visible:pr-3.5 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none",
-        "print:hidden",
+        "print:hidden lg:hidden",
       )}
     >
       <span className="relative flex h-6 w-6 items-center justify-center">

@@ -27,6 +27,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
+    if (name !== undefined) {
+      const trimmedName = String(name).trim();
+      if (!trimmedName) {
+        return NextResponse.json({ success: false, message: "Subject name is required." }, { status: 400 });
+      }
+      // Case-insensitive, same check as create -- prevents renaming into a
+      // collision with another subject that already has this name.
+      const duplicate = await Subject.findOne({
+        school: auth.schoolId,
+        name: { $regex: `^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+        _id: { $ne: id },
+      });
+      if (duplicate) {
+        return NextResponse.json({ success: false, message: `Subject "${trimmedName}" already exists.` }, { status: 400 });
+      }
+    }
+
     const update: Record<string, unknown> = {};
     if (name !== undefined) update.name = String(name).trim();
     if (code !== undefined) update.code = String(code).trim().toUpperCase();

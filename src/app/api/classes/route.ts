@@ -4,6 +4,7 @@ import { getAuthUser } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
+import { isStreamStandard } from "@/lib/streamStandards";
 import "@/models/Subject";
 import "@/models/Teacher";
 
@@ -91,8 +92,11 @@ export async function POST(req: Request) {
     // A new section of an existing standard shares that standard's subjects
     // automatically — subjects are assigned per standard (Subject & Class),
     // not per section, so every sibling section should start in sync rather
-    // than needing a manual re-assignment.
-    const sibling = await Class.findOne({ school: auth.schoolId, name }).select("assignedSubjects");
+    // than needing a manual re-assignment. Stream standards (11/12) are the
+    // exception: each section is its own stream, so a new section must start
+    // empty rather than inheriting a sibling's (possibly different-stream)
+    // subject list.
+    const sibling = isStreamStandard(name) ? null : await Class.findOne({ school: auth.schoolId, name }).select("assignedSubjects");
 
     const cls = await Class.create({
       name, section, classTeacher: classTeacher || null, room: room || "", school: auth.schoolId,

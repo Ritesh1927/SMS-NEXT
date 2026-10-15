@@ -19,6 +19,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
+import { isStreamStandard } from "@/lib/streamStandards";
 
 type ExamType = "class-test" | "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -180,6 +181,15 @@ function clampMarks(value: number, totalMarks: number | undefined): number {
   if (Number.isNaN(value)) return 0;
   const clamped = Math.max(0, value);
   return totalMarks !== undefined ? Math.min(clamped, totalMarks) : clamped;
+}
+
+// Marks fields use type="text" + this instead of type="number" -- a native
+// number input's spin arrows change the value on a stray scroll/trackpad
+// gesture while entering marks, silently corrupting a saved score. Marks
+// are always whole numbers (same integer semantics as clampMarks), so this
+// just strips anything that isn't a digit.
+function parseMarksInput(raw: string): string {
+  return raw.replace(/\D/g, "");
 }
 
 // Validates a set of {date, startTime, endTime} slots that may share a
@@ -561,8 +571,17 @@ export function AdminTeacherExams() {
       description: term.description || "",
     });
     try {
-      const subRes = await apiGet<SubjectsResponse>(`/subjects/standard/${encodeURIComponent(term.class)}`, token);
-      setTermSubjectOptions(subRes.data);
+      // A section-scoped term (stream standards) needs that section's own
+      // subjects, not the standard-wide list -- resolve its Class._id the
+      // same way the Test dialog already does (classes.find by name+section).
+      const subjectsUrl = term.section
+        ? (() => {
+            const cls = classes.find((c) => c.name === term.class && c.section === term.section);
+            return cls ? `/subjects/class/${cls._id}` : null;
+          })()
+        : `/subjects/standard/${encodeURIComponent(term.class)}`;
+      const subRes = subjectsUrl ? await apiGet<SubjectsResponse>(subjectsUrl, token) : null;
+      setTermSubjectOptions(subRes?.data || []);
       const res = await apiGet<{ success: boolean; data: TermRow }>(`/scheduled-exams/${term._id}`, token);
       const subs = res.data.subjects || [];
       setTermSubjects(
@@ -583,6 +602,10 @@ export function AdminTeacherExams() {
 
   const handleTermSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isStreamStandard(termForm.class) && !termForm.section) {
+      toast.error("Please select a section.");
+      return;
+    }
     const validSubjects = termSubjects.filter((s) => s.subject.trim() && s.date && s.totalMarks);
     if (validSubjects.length === 0) {
       toast.error("Add at least one subject with a date and total marks.");
@@ -1039,10 +1062,17 @@ export function AdminTeacherExams() {
     (exams ?? []).filter((e) => !e.scheduledExamId && e.status === "completed").length +
     (terms ?? []).filter((t) => termEffectiveStatus(t, exams) === "completed").length;
 
-  const testsForResultPicker = (exams ?? []).filter(
-    (e) => !e.scheduledExamId && (rClass === "all" || `${e.class}::${e.section || ""}` === rClass),
-  );
-  const termsForResultPicker = (terms ?? []).filter((t) => rClass === "all" || `${t.class}::${t.section || ""}` === rClass);
+  // A record with section === "" is standard-wide (an ordinary standard's
+  // Exam term fans out to every section, since only stream standards --
+  // 11/12 -- scope a term to one section). Picking "Class 5-A" must still
+  // surface a standard-wide "Class 5" term, not just an exact "5::A" match.
+  const matchesResultClass = (entryClass: string, entrySection: string) => {
+    if (rClass === "all") return true;
+    const [selName, selSection] = rClass.split("::");
+    return entryClass === selName && (entrySection === "" || entrySection === selSection);
+  };
+  const testsForResultPicker = (exams ?? []).filter((e) => !e.scheduledExamId && matchesResultClass(e.class, e.section || ""));
+  const termsForResultPicker = (terms ?? []).filter((t) => matchesResultClass(t.class, t.section || ""));
 
   // An exam ("New Exam") is created for a whole standard, fanning out to
   // every section under it, rather than one specific section like a Test --
@@ -1519,9 +1549,12 @@ export function AdminTeacherExams() {
                         <TableCell>
                           <div className="space-y-1">
                             <Input
-                              type="number" min={0} max={rTestMeta?.totalMarks}
+                              type="text" inputMode="numeric"
                               value={row.isAbsent ? "" : row.marksObtained ?? ""}
-                              onChange={(e) => updateTestRow(row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTestMeta?.totalMarks) })}
+                              onChange={(e) => {
+                                const digits = parseMarksInput(e.target.value);
+                                updateTestRow(row.student._id, { marksObtained: digits === "" ? null : clampMarks(Number(digits), rTestMeta?.totalMarks) });
+                              }}
                               disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                               placeholder={row.isAbsent ? "Absent" : undefined}
                               className="w-20 h-8"
@@ -1734,10 +1767,12 @@ export function AdminTeacherExams() {
                           <TableCell>
                             <div className="space-y-1">
                               <Input
-                                type="number" min={0}
-                                max={rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks}
+                                type="text" inputMode="numeric"
                                 value={row.isAbsent ? "" : row.marksObtained ?? ""}
-                                onChange={(e) => updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: e.target.value === "" ? null : clampMarks(Number(e.target.value), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) })}
+                                onChange={(e) => {
+                                  const digits = parseMarksInput(e.target.value);
+                                  updateSubjectRow(rActiveSubjectId, row.student._id, { marksObtained: digits === "" ? null : clampMarks(Number(digits), rTermSubjects.find((s) => s._id === rActiveSubjectId)?.totalMarks) });
+                                }}
                                 disabled={!currentCanEnterMarks || row.isAbsent || row.isPublished}
                                 placeholder={row.isAbsent ? "Absent" : undefined}
                                 className="w-20 h-8"
@@ -2018,6 +2053,13 @@ export function AdminTeacherExams() {
                         onValueChange={(v) => {
                           if (!v) return;
                           setTermForm((f) => ({ ...f, class: v, section: "" }));
+                          if (isStreamStandard(v)) {
+                            // Wait for the Section field below -- a stream
+                            // standard has no single standard-wide subject list.
+                            setTermSubjectOptions([]);
+                            setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]);
+                            return;
+                          }
                           const token = getToken();
                           if (token) {
                             apiGet<SubjectsResponse>(`/subjects/standard/${encodeURIComponent(v)}`, token)
@@ -2053,6 +2095,35 @@ export function AdminTeacherExams() {
                     </Select>
                   </Field>
                 </div>
+                {isStreamStandard(termForm.class) && (
+                  <Field label="Section" required>
+                    <Select
+                      value={termForm.section}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        setTermForm((f) => ({ ...f, section: v }));
+                        const cls = classes.find((c) => c.name === termForm.class && c.section === v);
+                        const token = getToken();
+                        if (token && cls) {
+                          apiGet<SubjectsResponse>(`/subjects/class/${cls._id}`, token)
+                            .then((res) => {
+                              setTermSubjectOptions(res.data);
+                              setTermSubjects(res.data.map((s) => ({ subject: s.name, date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" })));
+                            })
+                            .catch(() => { setTermSubjectOptions([]); setTermSubjects([{ subject: "", date: "", totalMarks: "100", startTime: "09:00", endTime: "10:00" }]); });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full max-w-[200px] rounded-xl"><SelectValue placeholder="Select a section" /></SelectTrigger>
+                      <SelectContent>
+                        {(standardOptions.find((s) => s.name === termForm.class)?.sections || []).map((sec) => (
+                          <SelectItem key={sec} value={sec}>Section {sec}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Class {termForm.class} splits into streams — each section has its own subjects.</p>
+                  </Field>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Start Date" required>
                     <Input
@@ -2086,9 +2157,9 @@ export function AdminTeacherExams() {
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Subjects &amp; Schedule</p>
                 <Button type="button" size="sm" variant="outline" onClick={addTermSubjectRow} className="gap-1 rounded-lg"><Plus className="h-3.5 w-3.5" /> Add Subject</Button>
               </div>
-              {termForm.class && termSubjectOptions.length === 0 && (
+              {termForm.class && termSubjectOptions.length === 0 && (!isStreamStandard(termForm.class) || termForm.section) && (
                 <p className="text-xs text-amber-600 mb-2 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
-                  No subjects are assigned to Class {termForm.class} yet — assign some from Subject &amp; Class, or type names in below.
+                  No subjects are assigned to Class {termForm.class}{termForm.section ? `-${termForm.section}` : ""} yet — assign some from Subject &amp; Class, or type names in below.
                 </p>
               )}
               <div className="space-y-3">

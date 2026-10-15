@@ -53,12 +53,25 @@ export async function POST(req: Request) {
     if (!name || !String(name).trim()) {
       return NextResponse.json({ success: false, message: "Subject name is required." }, { status: 400 });
     }
+    const trimmedName = String(name).trim();
 
     await connectDB();
-    const code = await generateCode(auth.schoolId, name);
+
+    // Case-insensitive: "Economics" and "economics" are the same subject --
+    // only the auto-generated code was ever deduplicated, which let the two
+    // coexist with different codes. Matches the check bulk-import already does.
+    const duplicate = await Subject.findOne({
+      school: auth.schoolId,
+      name: { $regex: `^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" },
+    });
+    if (duplicate) {
+      return NextResponse.json({ success: false, message: `Subject "${trimmedName}" already exists.` }, { status: 400 });
+    }
+
+    const code = await generateCode(auth.schoolId, trimmedName);
 
     const subject = await Subject.create({
-      name: String(name).trim(),
+      name: trimmedName,
       code,
       description: String(description || "").trim(),
       school: auth.schoolId,

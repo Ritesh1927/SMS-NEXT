@@ -3,17 +3,21 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { TimetableEntry, WEEKDAYS, type Weekday } from "@/models/TimetableEntry";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
-// Imported for their side effect of registering the schemas .populate() below
-// needs — this route never queries them directly.
-import "@/models/Class";
+import { Class } from "@/models/Class";
+import { isClassTeacherOfSection } from "@/lib/teacherClasses";
+// Imported for its side effect of registering the schema .populate() below
+// needs — this route never queries it directly.
 import "@/models/Teacher";
 
-// POST /api/timetable — admin creates/updates a single grid cell. Ported
-// from SMS-BACKEND's timetableEntry.controller.js upsertEntry, including its
+// POST /api/timetable — admin creates/updates a single grid cell for any
+// class; a teacher may do the same, but only for the one class they're the
+// class teacher of (day-wise subject/teacher assignment, not period
+// structure — that stays admin-only, see /api/periods). Ported from
+// SMS-BACKEND's timetableEntry.controller.js upsertEntry, including its
 // teacher-double-booking check.
 export async function POST(req: Request) {
   const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
     return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
   }
 
@@ -35,6 +39,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "periodNumber must be >= 1." }, { status: 400 });
     }
 
+    const cls = await Class.findOne({ _id: classId, school: auth.schoolId }).select("name section").lean();
+    if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
+
+    if (auth.role === "teacher") {
+      const allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
+      if (!allowed) {
+        return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+      }
+    }
+
     if (teacherId) {
       const conflict = await TimetableEntry.findOne({
         school: auth.schoolId,
@@ -53,7 +67,17 @@ export async function POST(req: Request) {
       }
     }
 
-    const schoolPeriod = await SchoolPeriod.findOne({ school: auth.schoolId, periodNumber: pNum, isBreak: false });
+    // Resolve this period's time from the class's own standard if it has a
+    // customized period list, else the school-wide default -- same
+    // scoped-then-fallback rule GET /api/periods?standard= uses.
+    const standard = cls.name || null;
+    const hasCustomPeriods = standard ? await SchoolPeriod.exists({ school: auth.schoolId, standard }) : false;
+    const schoolPeriod = await SchoolPeriod.findOne({
+      school: auth.schoolId,
+      standard: hasCustomPeriods ? standard : null,
+      periodNumber: pNum,
+      isBreak: false,
+    });
     const resolvedStart = startTime || schoolPeriod?.startTime || "";
     const resolvedEnd = endTime || schoolPeriod?.endTime || "";
 
