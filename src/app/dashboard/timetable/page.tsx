@@ -64,6 +64,15 @@ function formatTime(t: string): string {
   return `${hour12}:${String(m || 0).padStart(2, "0")}`;
 }
 
+// Quick Generate's count/duration/break fields use type="text" + this
+// instead of type="number" -- a native number input's spin arrows change
+// the value on a stray scroll/trackpad gesture while filling the form out.
+// Digit-only, since these are all whole numbers (period counts, minutes).
+function parseIntInput(raw: string): number {
+  const digits = raw.replace(/\D/g, "");
+  return digits === "" ? 0 : Number(digits);
+}
+
 // Shared by the single-standard and bulk/group Quick Generate flows.
 function buildGeneratedPeriods(start: string, count: number, duration: number, breakAfter: number, breakMin: number, standard?: string) {
   const minsToTime = (mins: number) => {
@@ -935,19 +944,19 @@ export default function TimetablePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Number of Periods</Label>
-                <Input type="number" min={1} max={20} value={qCount} onChange={(e) => setQCount(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={qCount} onChange={(e) => setQCount(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Period Duration (min)</Label>
-                <Input type="number" min={10} max={120} value={qDuration} onChange={(e) => setQDuration(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={qDuration} onChange={(e) => setQDuration(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Break After Period</Label>
-                <Input type="number" min={0} max={qCount} value={qBreakAfter} onChange={(e) => setQBreakAfter(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={qBreakAfter} onChange={(e) => setQBreakAfter(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Break Duration (min)</Label>
-                <Input type="number" min={0} max={60} value={qBreakMin} onChange={(e) => setQBreakMin(+e.target.value)} disabled={qBreakAfter === 0} />
+                <Input type="text" inputMode="numeric" value={qBreakMin} onChange={(e) => setQBreakMin(parseIntInput(e.target.value))} disabled={qBreakAfter === 0} />
               </div>
             </div>
             <Button className="w-full gap-2" onClick={handleQuickGenerate} disabled={generating || qCount < 1}>
@@ -1030,19 +1039,19 @@ export default function TimetablePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Number of Periods</Label>
-                <Input type="number" min={1} max={20} value={bulkQCount} onChange={(e) => setBulkQCount(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={bulkQCount} onChange={(e) => setBulkQCount(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Period Duration (min)</Label>
-                <Input type="number" min={10} max={120} value={bulkQDuration} onChange={(e) => setBulkQDuration(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={bulkQDuration} onChange={(e) => setBulkQDuration(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Break After Period</Label>
-                <Input type="number" min={0} max={bulkQCount} value={bulkQBreakAfter} onChange={(e) => setBulkQBreakAfter(+e.target.value)} />
+                <Input type="text" inputMode="numeric" value={bulkQBreakAfter} onChange={(e) => setBulkQBreakAfter(parseIntInput(e.target.value))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Break Duration (min)</Label>
-                <Input type="number" min={0} max={60} value={bulkQBreakMin} onChange={(e) => setBulkQBreakMin(+e.target.value)} disabled={bulkQBreakAfter === 0} />
+                <Input type="text" inputMode="numeric" value={bulkQBreakMin} onChange={(e) => setBulkQBreakMin(parseIntInput(e.target.value))} disabled={bulkQBreakAfter === 0} />
               </div>
             </div>
             <Button className="w-full gap-2" onClick={handleBulkGenerate} disabled={bulkGenerating || bulkStandards.size === 0 || bulkQCount < 1}>
