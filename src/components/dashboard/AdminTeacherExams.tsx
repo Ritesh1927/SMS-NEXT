@@ -1037,6 +1037,10 @@ export function AdminTeacherExams() {
   if (!user) return null;
 
   const subjects = Array.from(new Set((exams ?? []).map((e) => e.subject))).sort();
+  // Stream standards (11/12) have one Class doc per section, but this filter
+  // only ever matches on the standard name -- dedupe so "Class 11" doesn't
+  // show up once per section.
+  const uniqueClassNames = Array.from(new Map(classes.map((c) => [c.name, c])).values());
   const filteredExams = (exams ?? []).filter((exam) => {
     if (exam.scheduledExamId) return false;
     if (search && !exam.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -1214,7 +1218,7 @@ export function AdminTeacherExams() {
                 <SelectTrigger className="sm:w-40"><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => (
+                  {uniqueClassNames.map((c) => (
                     <SelectItem key={c._id} value={c.name}>Class {c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1301,7 +1305,7 @@ export function AdminTeacherExams() {
                 <SelectTrigger className="sm:w-40"><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All classes</SelectItem>
-                  {classes.map((c) => (
+                  {uniqueClassNames.map((c) => (
                     <SelectItem key={c._id} value={c.name}>Class {c.name}</SelectItem>
                   ))}
                 </SelectContent>
