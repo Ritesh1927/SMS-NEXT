@@ -116,6 +116,9 @@ export const INTERNAL_TIMELINE_TYPES: TimelineType[] = ["internal_note", "develo
 export const ADMIN_COMMENT_TYPES = ["reply", "internal_note", "developer_note"] as const;
 export type AdminCommentType = (typeof ADMIN_COMMENT_TYPES)[number];
 
+/** Message-style timeline entries a super admin can delete -- not status/priority/assignment history, which is audit trail, not chat. */
+export const DELETABLE_TIMELINE_TYPES: TimelineType[] = ["reply", "reporter_comment", "internal_note", "developer_note"];
+
 export const RETENTION_OPTIONS = [
   { days: 7, label: "7 days" },
   { days: 15, label: "15 days" },

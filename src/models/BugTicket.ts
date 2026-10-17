@@ -92,7 +92,7 @@ export interface IBugTicket extends Document {
   closedAt: Date | null;
   isArchived: boolean;
   archivedAt: Date | null;
-  timeline: ITimelineEntry[];
+  timeline: mongoose.Types.DocumentArray<ITimelineEntry>;
   /** Unread flags power the in-app badges on both sides. */
   adminUnread: boolean;
   reporterUnread: boolean;

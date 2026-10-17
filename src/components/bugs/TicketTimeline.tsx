@@ -2,10 +2,10 @@
 
 import type { ComponentType } from "react";
 import {
-  Archive, ArchiveRestore, ArrowRight, Bug, CheckCircle2, Code2, Flag, Lock, MessageSquare, MessageSquareReply, UserCheck,
+  Archive, ArchiveRestore, ArrowRight, Bug, CheckCircle2, Code2, Flag, Lock, MessageSquare, MessageSquareReply, Trash2, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, type TimelineType } from "@/lib/bugReports/constants";
+import { DELETABLE_TIMELINE_TYPES, ROLE_LABELS, type TimelineType } from "@/lib/bugReports/constants";
 import { formatDateTime, timeAgo } from "@/lib/bugReports/client";
 import type { TimelineEntryDTO } from "@/lib/bugReports/types";
 import { PriorityBadge, StatusBadge } from "./TicketBadges";
@@ -29,7 +29,18 @@ const TYPE_META: Record<TimelineType, { icon: ComponentType<{ className?: string
  * Vertical activity feed. Reporters receive only public entries from the
  * API; Super Admins also see internal/developer notes, clearly marked.
  */
-export function TicketTimeline({ entries, viewer }: { entries: TimelineEntryDTO[]; viewer: "reporter" | "admin" }) {
+export function TicketTimeline({
+  entries,
+  viewer,
+  onDeleteEntry,
+  deletingEntryId,
+}: {
+  entries: TimelineEntryDTO[];
+  viewer: "reporter" | "admin";
+  /** Admin-only: deletes one chat message from the timeline. */
+  onDeleteEntry?: (entryId: string) => void;
+  deletingEntryId?: string | null;
+}) {
   if (!entries.length) return <p className="text-sm text-muted-foreground">No activity yet.</p>;
 
   return (
@@ -46,6 +57,8 @@ export function TicketTimeline({ entries, viewer }: { entries: TimelineEntryDTO[
               ? "EduNivo Support"
               : entry.actorName || ROLE_LABELS[entry.actorRole];
         const hasBubble = Boolean(entry.message) && entry.type !== "created";
+        const canDelete = viewer === "admin" && !!onDeleteEntry && DELETABLE_TIMELINE_TYPES.includes(entry.type);
+        const deleting = deletingEntryId === entry._id;
 
         return (
           <li
@@ -89,6 +102,18 @@ export function TicketTimeline({ entries, viewer }: { entries: TimelineEntryDTO[
                 <time dateTime={entry.createdAt} title={formatDateTime(entry.createdAt)} className="text-[11.5px] text-muted-foreground">
                   · {timeAgo(entry.createdAt)}
                 </time>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteEntry!(entry._id)}
+                    disabled={deleting}
+                    aria-label="Delete this message"
+                    title="Delete this message"
+                    className="ml-auto rounded-md p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </p>
 
               {hasBubble && (

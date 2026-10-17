@@ -52,6 +52,8 @@ export default function AdminTicketDetailPage() {
   const [resolution, setResolution] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState<string | null>(null);
 
   const hydrate = (t: AdminTicketDTO) => {
     setTicket(t);
@@ -117,6 +119,21 @@ export default function AdminTicketDetailPage() {
     const res = await ticketFetch<{ data: AdminTicketDTO }>(getSuperAdminToken, `/superadmin/tickets/${id}/comments`, { method: "POST", body: payload });
     hydrate(res.data);
     toast.success(payload.type === "reply" ? "Reply sent. The reporter has been notified." : "Note added");
+  };
+
+  const deleteEntry = async () => {
+    if (!deleteEntryId) return;
+    setDeletingEntry(deleteEntryId);
+    try {
+      const res = await ticketFetch<{ data: AdminTicketDTO }>(getSuperAdminToken, `/superadmin/tickets/${id}/comments/${deleteEntryId}`, { method: "DELETE" });
+      hydrate(res.data);
+      toast.success("Message deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setDeletingEntry(null);
+      setDeleteEntryId(null);
+    }
   };
 
   const timeline = useMemo(() => {
@@ -262,7 +279,7 @@ export default function AdminTicketDetailPage() {
                 );
               })}
             </div>
-            <TicketTimeline entries={timeline} viewer="admin" />
+            <TicketTimeline entries={timeline} viewer="admin" onDeleteEntry={setDeleteEntryId} deletingEntryId={deletingEntry} />
             <div className="mt-5">
               <CommentComposer mode="admin" getToken={getSuperAdminToken} limits={limits} allowAttachments team={team} onSubmit={addComment} />
             </div>
@@ -432,6 +449,17 @@ export default function AdminTicketDetailPage() {
         variant="destructive"
         loading={saving === "delete"}
         onConfirm={deleteTicket}
+      />
+
+      <ConfirmDialog
+        open={deleteEntryId !== null}
+        onOpenChange={(open) => !open && setDeleteEntryId(null)}
+        title="Delete this message?"
+        description="This removes it from the timeline for everyone, including the reporter. This can't be undone."
+        confirmLabel="Delete message"
+        variant="destructive"
+        loading={deletingEntry !== null}
+        onConfirm={deleteEntry}
       />
     </TicketsAdminShell>
   );
