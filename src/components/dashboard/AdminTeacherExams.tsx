@@ -1714,6 +1714,21 @@ export function AdminTeacherExams() {
                 </div>
               </div>
 
+              {canPublishAllSubjects && !allTermRowsComplete && !allTermRowsPublished && (() => {
+                const incomplete = sectionSubjects
+                  .map((s) => {
+                    const rows = rSubjectRows[s._id] || [];
+                    const savedCount = rows.filter((r) => r.marksObtained !== null || r.isAbsent).length;
+                    return { subject: s.subject, savedCount, total: rows.length };
+                  })
+                  .filter((s) => s.total === 0 || s.savedCount < s.total);
+                return incomplete.length > 0 ? (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                    Still need marks before you can publish all: {incomplete.map((s) => `${s.subject} (${s.savedCount}/${s.total})`).join(", ")}
+                  </p>
+                ) : null;
+              })()}
+
               <div className="flex flex-wrap gap-2">
                 {sectionSubjects.map((s) => {
                   const rows = rSubjectRows[s._id] || [];
