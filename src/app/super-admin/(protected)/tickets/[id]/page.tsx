@@ -455,7 +455,7 @@ export default function AdminTicketDetailPage() {
         open={deleteEntryId !== null}
         onOpenChange={(open) => !open && setDeleteEntryId(null)}
         title="Delete this message?"
-        description="This removes it from the timeline for everyone, including the reporter. This can't be undone."
+        description="The message disappears for everyone, including the reporter. If it's attached to a status or priority change, that change stays on the timeline -- only the note goes. This can't be undone."
         confirmLabel="Delete message"
         variant="destructive"
         loading={deletingEntry !== null}

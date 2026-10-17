@@ -116,8 +116,11 @@ export const INTERNAL_TIMELINE_TYPES: TimelineType[] = ["internal_note", "develo
 export const ADMIN_COMMENT_TYPES = ["reply", "internal_note", "developer_note"] as const;
 export type AdminCommentType = (typeof ADMIN_COMMENT_TYPES)[number];
 
-/** Message-style timeline entries a super admin can delete -- not status/priority/assignment history, which is audit trail, not chat. */
+/** Message-style timeline entries a super admin can delete outright -- not status/priority/assignment history, which is audit trail, not chat. */
 export const DELETABLE_TIMELINE_TYPES: TimelineType[] = ["reply", "reporter_comment", "internal_note", "developer_note"];
+
+/** Audit entries that stay (the status/priority transition is kept), but whose optional attached note can be cleared on its own. */
+export const NOTE_CLEARABLE_TIMELINE_TYPES: TimelineType[] = ["status_change", "priority_change"];
 
 export const RETENTION_OPTIONS = [
   { days: 7, label: "7 days" },

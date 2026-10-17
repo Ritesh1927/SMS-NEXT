@@ -5,7 +5,7 @@ import {
   Archive, ArchiveRestore, ArrowRight, Bug, CheckCircle2, Code2, Flag, Lock, MessageSquare, MessageSquareReply, Trash2, UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DELETABLE_TIMELINE_TYPES, ROLE_LABELS, type TimelineType } from "@/lib/bugReports/constants";
+import { DELETABLE_TIMELINE_TYPES, NOTE_CLEARABLE_TIMELINE_TYPES, ROLE_LABELS, type TimelineType } from "@/lib/bugReports/constants";
 import { formatDateTime, timeAgo } from "@/lib/bugReports/client";
 import type { TimelineEntryDTO } from "@/lib/bugReports/types";
 import { PriorityBadge, StatusBadge } from "./TicketBadges";
@@ -57,7 +57,10 @@ export function TicketTimeline({
               ? "EduNivo Support"
               : entry.actorName || ROLE_LABELS[entry.actorRole];
         const hasBubble = Boolean(entry.message) && entry.type !== "created";
-        const canDelete = viewer === "admin" && !!onDeleteEntry && DELETABLE_TIMELINE_TYPES.includes(entry.type);
+        const canDelete =
+          viewer === "admin" &&
+          !!onDeleteEntry &&
+          (DELETABLE_TIMELINE_TYPES.includes(entry.type) || (NOTE_CLEARABLE_TIMELINE_TYPES.includes(entry.type) && hasBubble));
         const deleting = deletingEntryId === entry._id;
 
         return (
