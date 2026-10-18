@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Parent } from "@/models/Parent";
 import { Student } from "@/models/Student";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 const ALLOWED_FIELDS = [
   "name", "motherName", "motherPhone", "phone", "alternatePhone", "address", "occupation", "motherOccupation", "relation", "isActive",
 ] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "parents", "edit");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
@@ -26,7 +22,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (body[key] !== undefined) updates[key] = body[key];
     }
 
-    await connectDB();
     const parent = await Parent.findOneAndUpdate({ _id: id, school: auth.schoolId }, updates, {
       returnDocument: "after",
     })
@@ -44,12 +39,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "parents", "delete");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
 
     const parent = await Parent.findOne({ _id: id, school: auth.schoolId });
     if (!parent) return NextResponse.json({ success: false, message: "Parent not found." }, { status: 404 });

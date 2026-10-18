@@ -80,6 +80,19 @@ export default function ParentsPage() {
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ParentRow | null>(null);
 
+  const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffPerms, setStaffPerms] = useState<{ edit: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.parents || { edit: false, delete: false }))
+      .catch(() => setStaffPerms({ edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -332,28 +345,34 @@ export default function ParentsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
-                <Button variant="ghost" size="icon-sm" onClick={() => openEdit(p)} aria-label="Edit">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => toggleActive(p)}
-                  disabled={busyId === p._id}
-                  aria-label={p.isActive ? "Deactivate" : "Activate"}
-                >
-                  <Power className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setPendingDelete(p)}
-                  disabled={busyId === p._id}
-                  aria-label="Delete"
-                  className="hover:text-red-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {(isAdmin || staffPerms?.edit) && (
+                  <>
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(p)} aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => toggleActive(p)}
+                      disabled={busyId === p._id}
+                      aria-label={p.isActive ? "Deactivate" : "Activate"}
+                    >
+                      <Power className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                {(isAdmin || staffPerms?.delete) && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setPendingDelete(p)}
+                    disabled={busyId === p._id}
+                    aria-label="Delete"
+                    className="hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}

@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Parent } from "@/models/Parent";
 import { escapeRegex } from "@/lib/helpers";
 import "@/models/Student";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 // GET /api/parents — school-scoped parent list. There's no dedicated
 // "create parent" flow (parents are created as a side effect of student
 // admission), so this route is list/manage only.
 export async function GET(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "parents", "open");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
 
