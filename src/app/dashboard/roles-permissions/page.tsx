@@ -218,28 +218,43 @@ export default function RolesPermissionsPage() {
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <p className="text-sm font-semibold text-foreground">{section.label}</p>
                         <div className="flex items-center gap-3 flex-wrap">
-                          {section.actions.map((action) => (
-                            <label key={action} className="flex items-center gap-1.5 text-xs font-medium text-foreground cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={perm[action]}
-                                onChange={() => toggleAction(section.key, action)}
-                                className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
-                              />
-                              {ACTION_LABELS[action]}
-                            </label>
-                          ))}
+                          {section.actions.map((action) => {
+                            const locked = action !== "open" && !perm.open;
+                            return (
+                              <label
+                                key={action}
+                                className={`flex items-center gap-1.5 text-xs font-medium select-none ${
+                                  locked ? "text-muted-foreground/50 cursor-not-allowed" : "text-foreground cursor-pointer"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={perm[action]}
+                                  disabled={locked}
+                                  onChange={() => toggleAction(section.key, action)}
+                                  className="h-3.5 w-3.5 rounded border-border accent-primary disabled:cursor-not-allowed"
+                                />
+                                {ACTION_LABELS[action]}
+                              </label>
+                            );
+                          })}
                         </div>
                       </div>
-                      {section.extras && perm.open && (
+                      {section.extras && (
                         <div className="mt-2.5 pt-2.5 border-t border-border/70 flex items-center gap-3 flex-wrap">
                           {section.extras.map((extra) => (
-                            <label key={extra.key} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                            <label
+                              key={extra.key}
+                              className={`flex items-center gap-1.5 text-xs select-none ${
+                                perm.open ? "text-muted-foreground cursor-pointer" : "text-muted-foreground/50 cursor-not-allowed"
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={perm.extras[extra.key] === true}
+                                disabled={!perm.open}
                                 onChange={() => toggleExtra(section.key, extra.key)}
-                                className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                                className="h-3.5 w-3.5 rounded border-border accent-primary disabled:cursor-not-allowed"
                               />
                               {extra.label}
                             </label>
