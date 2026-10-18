@@ -5,6 +5,7 @@ import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { Class } from "@/models/Class";
+import "@/models/Role";
 import { generateToken } from "@/lib/helpers";
 import { logLogin } from "@/lib/loginLog";
 import { checkAuthRateLimit } from "@/lib/rateLimit";

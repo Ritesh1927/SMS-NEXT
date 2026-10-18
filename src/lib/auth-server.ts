@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { verifyToken, type TokenPayload } from "@/lib/helpers";
 import { Teacher } from "@/models/Teacher";
+// Side-effect import: registers the Role model so .populate("staffRole")
+// below resolves even when this route is bundled in isolation (Next.js
+// serverless bundles are per-route -- an import type alone is erased and
+// registers nothing at runtime, however many other routes import the real
+// Role model elsewhere).
+import "@/models/Role";
 import type { ISectionPermission } from "@/models/Role";
 import type { SectionAction } from "@/lib/roles";
 

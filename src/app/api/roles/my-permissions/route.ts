@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
+import "@/models/Role";
 import type { IRole, ISectionPermission } from "@/models/Role";
 import { buildEmptySections, openSectionKeys } from "@/lib/roles";
 
