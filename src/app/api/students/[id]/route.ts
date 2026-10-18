@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, requireStaffSectionAccess } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { resequenceRollNumbers } from "@/lib/rollNumber";
 import { isClassTeacherOfSection } from "@/lib/teacherClasses";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 // rollNumber is deliberately not in this list — it's auto-assigned from
 // alphabetical order within a class+section, not something the admin sets.
@@ -40,8 +34,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 
     if (auth.role === "teacher") {
-      const isClassTeacher = await isClassTeacherOfSection(auth.id, auth.schoolId, student.class, student.section);
-      if (!isClassTeacher) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
+      // Non-teaching staff with the Role system's "view" grant for Students
+      // bypass the class-teacher check below; everyone else (incl. a
+      // non-teaching staff member without that grant) falls through to it,
+      // which correctly also rejects them -- they're never a class teacher.
+      const staffGate = await requireStaffSectionAccess(req, "students", "view");
+      if ("error" in staffGate) {
+        const isClassTeacher = await isClassTeacherOfSection(auth.id, auth.schoolId, student.class, student.section);
+        if (!isClassTeacher) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
+      }
     }
 
     return NextResponse.json({ success: true, data: student });
@@ -56,8 +57,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 const PARENT_SYNC_FIELDS = ["parentName", "motherName", "motherPhone", "parentPhone", "parentEmail", "fatherOccupation", "motherOccupation"] as const;
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "students", "edit");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
@@ -103,8 +106,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     for (const key of PARENT_SYNC_FIELDS) {
       if (body[key] !== undefined) parentBody[key] = body[key];
     }
-
-    await connectDB();
 
     if (updates.admissionNo) {
       const dup = await Student.findOne({ admissionNo: updates.admissionNo, school: auth.schoolId, _id: { $ne: id } });
@@ -168,12 +169,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "students", "delete");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
 
     const student = await Student.findOne({ _id: id, school: auth.schoolId });
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });

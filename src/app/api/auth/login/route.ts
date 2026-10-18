@@ -40,6 +40,8 @@ interface ResolvedAccount {
   email?: string;
   teacherId?: string;
   permissions?: unknown;
+  staffType?: string;
+  staffRole?: { id: string; name: string } | null;
   subjects?: string[];
   classes?: string[];
   classTeacherOf?: string[];
@@ -155,10 +157,9 @@ export async function POST(req: Request) {
     if (!role || role === "teacher") {
       const filter: Record<string, unknown> = { email: identifier.toLowerCase() };
       if (schoolId) filter.school = schoolId;
-      const teachers = await Teacher.find(filter).populate<{ school: { _id: unknown; schoolName: string } }>(
-        "school",
-        "schoolName",
-      );
+      const teachers = await Teacher.find(filter)
+        .populate<{ school: { _id: unknown; schoolName: string } }>("school", "schoolName")
+        .populate<{ staffRole: { _id: unknown; name: string } | null }>("staffRole", "name");
       for (const t of teachers) {
         if (!(await t.comparePassword(password))) continue;
         if (!t.isActive) {
@@ -175,6 +176,8 @@ export async function POST(req: Request) {
           email: t.email,
           teacherId: t.teacherId,
           permissions: t.permissions,
+          staffType: t.staffType,
+          staffRole: t.staffRole ? { id: String(t.staffRole._id), name: t.staffRole.name } : null,
           subjects: t.subjects,
           classes: t.classes,
           classTeacherOf: classTeacherOfDocs.map((c) => `${c.name}-${c.section}`),
@@ -223,7 +226,15 @@ export async function POST(req: Request) {
           school: r.schoolId,
           schoolName: r.schoolName,
           ...(r.role === "teacher"
-            ? { teacherId: r.teacherId, permissions: r.permissions, subjects: r.subjects, classes: r.classes, classTeacherOf: r.classTeacherOf }
+            ? {
+                teacherId: r.teacherId,
+                permissions: r.permissions,
+                staffType: r.staffType,
+                staffRole: r.staffRole,
+                subjects: r.subjects,
+                classes: r.classes,
+                classTeacherOf: r.classTeacherOf,
+              }
             : {}),
           ...(r.role === "parent" ? { children: r.children } : {}),
         },

@@ -36,6 +36,16 @@ interface SubjectsResponse {
   data: SubjectOption[];
 }
 
+interface RoleOption {
+  _id: string;
+  name: string;
+}
+
+interface RolesResponse {
+  success: boolean;
+  data: RoleOption[];
+}
+
 interface TeacherDetail {
   name: string;
   email: string;
@@ -45,6 +55,7 @@ interface TeacherDetail {
   designation: string;
   staffType: string;
   department: string;
+  staffRole: RoleOption | null;
   subjects: string[];
   primarySubject: string;
   secondarySubject: string;
@@ -82,7 +93,7 @@ interface ApiMessageResponse {
 
 const EMPTY_FORM = {
   name: "", email: "", phone: "", qualification: "", experience: "", designation: "Teacher",
-  staffType: "teaching", department: "",
+  staffType: "teaching", department: "", staffRoleId: "",
   subjects: "",
   primarySubject: "", secondarySubject: "",
   gender: "male", dateOfBirth: "", address: "", bloodGroup: "",
@@ -104,6 +115,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [classLoading, setClassLoading] = useState(true);
   const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
@@ -122,6 +134,9 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
     apiGet<SubjectsResponse>("/subjects", token)
       .then((res) => setSubjectOptions(res.data))
       .catch(() => toast.error("Could not load subjects."));
+    apiGet<RolesResponse>("/roles", token)
+      .then((res) => setRoleOptions(res.data))
+      .catch(() => toast.error("Could not load roles."));
   }, []);
 
   useEffect(() => {
@@ -135,7 +150,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           name: t.name || "", email: t.email || "", phone: t.phone || "",
           qualification: t.qualification || "", experience: t.experience || "",
           designation: t.designation || "Teacher",
-          staffType: t.staffType || "teaching", department: t.department || "",
+          staffType: t.staffType || "teaching", department: t.department || "", staffRoleId: t.staffRole?._id || "",
           subjects: (t.subjects || []).join(", "),
           primarySubject: t.primarySubject || "",
           secondarySubject: t.secondarySubject || "",
@@ -245,6 +260,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         secondarySubject: form.staffType === "teaching" ? form.secondarySubject : "",
         salary: form.salary ? Number(form.salary) : 0,
         classIds: form.staffType === "teaching" ? selectedClassIds : [],
+        staffRole: form.staffType === "non-teaching" ? form.staffRoleId || null : null,
       };
       if (isEdit && teacherId) {
         const res = await fetch(`/api/teachers/${teacherId}`, {
@@ -335,34 +351,27 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           {isEdit && <p className="text-xs text-muted-foreground mt-2">Staff type cannot be changed after creation.</p>}
           {form.staffType === "non-teaching" && (
             <div className="mt-4 space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Department</label>
+              <label className="text-sm font-medium text-foreground">Role</label>
               <Select
-                value={form.department}
+                value={form.staffRoleId}
                 onValueChange={(v) => {
-                  const dept = v || "";
-                  update("department", dept);
-                  const deptJobMap: Record<string, string> = {
-                    Administration: "Administrator",
-                    Accounts: "Accountant",
-                    Library: "Librarian",
-                    Lab: "Lab Assistant",
-                    Office: "Office Staff",
-                    Transport: "Transport Incharge",
-                    Canteen: "Canteen Staff",
-                    Security: "Security Guard",
-                    Other: "Staff",
-                  };
-                  update("designation", deptJobMap[dept] || "");
+                  const roleId = v || "";
+                  update("staffRoleId", roleId);
+                  const roleName = roleOptions.find((r) => r._id === roleId)?.name;
+                  if (roleName) update("designation", roleName);
                 }}
-                disabled={isEdit}
               >
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select department" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder={roleOptions.length ? "Select role" : "No roles yet -- create one in Roles & Permissions"} /></SelectTrigger>
                 <SelectContent>
-                  {["Administration", "Accounts", "Library", "Lab", "Office", "Transport", "Canteen", "Security", "Other"].map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  {roleOptions.map((r) => (
+                    <SelectItem key={r._id} value={r._id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Controls what this staff member can access. Manage roles from{" "}
+                <a href="/dashboard/roles-permissions" className="text-primary hover:underline" target="_blank" rel="noreferrer">Roles & Permissions</a>.
+              </p>
             </div>
           )}
         </Section>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
@@ -9,18 +9,13 @@ import { withAttendancePercent } from "@/lib/studentAttendance";
 import { resequenceRollNumbers } from "@/lib/rollNumber";
 import { getUserLimitStatus, userLimitMessage } from "@/lib/userLimit";
 
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
-
 export async function GET(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "students", "open");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
     const studentClass = searchParams.get("class");
@@ -56,8 +51,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "students", "create");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const body = await req.json();
@@ -103,8 +100,6 @@ export async function POST(req: Request) {
     if (emergencyPhone && !/^\d{10}$/.test(emergencyPhone)) {
       return NextResponse.json({ success: false, message: "Emergency phone must be exactly 10 digits." }, { status: 400 });
     }
-
-    await connectDB();
 
     const limit = await getUserLimitStatus(auth.schoolId);
     if (limit.capped && limit.remaining < 1) {

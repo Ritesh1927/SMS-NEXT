@@ -26,7 +26,40 @@ interface NavItem {
   badge?: "unread";
   pageKey?: string;
   featureKey?: string;
+  /** Role-system key (src/lib/roles.ts ROLE_SECTIONS) -- non-teaching staff nav only. */
+  roleSectionKey?: string;
 }
+
+// Full candidate nav for non-teaching staff, independent of NAV_BY_ROLE.teacher
+// (which omits Staff/Parents/Fees/Subject & Class entirely -- a classroom
+// teacher never needs them, but a non-teaching role like Accountant or Front
+// Office plausibly does). Filtered down to each staff member's role's "open"
+// sections at render time; Roles & Permissions / User Master / Login
+// Activity / Settings are deliberately absent -- no role can ever reach them.
+const STAFF_NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, section: "Overview", featureKey: "dashboard" },
+
+  { href: "/dashboard/students", label: "Students", icon: Users, section: "People", roleSectionKey: "students", featureKey: "students" },
+  { href: "/dashboard/teachers", label: "Staff", icon: GraduationCap, section: "People", roleSectionKey: "staff", featureKey: "teachers" },
+  { href: "/dashboard/parents", label: "Parents", icon: UserRound, section: "People", roleSectionKey: "parents" },
+  { href: "/dashboard/classes", label: "Classes", icon: School, section: "People", roleSectionKey: "classes", featureKey: "classes" },
+
+  { href: "/dashboard/subjects", label: "Subject & Class", icon: Link2, section: "Academics", roleSectionKey: "subjectClass" },
+  { href: "/dashboard/attendance", label: "Attendance", icon: CalendarCheck, section: "Academics", roleSectionKey: "attendance", featureKey: "attendance" },
+  { href: "/dashboard/exams", label: "Exams", icon: ClipboardList, section: "Academics", roleSectionKey: "exams", featureKey: "exams" },
+  { href: "/dashboard/homework", label: "Homework", icon: BookOpen, section: "Academics", roleSectionKey: "homework", featureKey: "homework" },
+  { href: "/dashboard/timetable", label: "Timetable", icon: CalendarClock, section: "Academics", roleSectionKey: "timetable", featureKey: "timetable" },
+  { href: "/dashboard/study-materials", label: "Study Materials", icon: Library, section: "Academics", roleSectionKey: "studyMaterials", featureKey: "materials" },
+
+  { href: "/dashboard/fees", label: "Fees", icon: IndianRupee, section: "Finance", roleSectionKey: "fees", featureKey: "fees" },
+
+  { href: "/dashboard/notices", label: "Notices", icon: Megaphone, section: "Communication", roleSectionKey: "notices", featureKey: "notices" },
+  { href: "/dashboard/chat", label: "Communication", icon: MessageSquare, section: "Communication", badge: "unread", roleSectionKey: "communication", featureKey: "chat" },
+
+  { href: "/dashboard/reports", label: "Reports", icon: BarChart3, section: "Insights", roleSectionKey: "reports", featureKey: "reports" },
+  { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, section: "Insights", roleSectionKey: "leaderboard" },
+  { href: "/dashboard/ai", label: "AI Assistant", icon: Brain, section: "Insights", roleSectionKey: "aiAssistant", featureKey: "ai" },
+];
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   schooladmin: [
@@ -135,19 +168,37 @@ interface LicenseResponse {
   data: { features: string[] } | null;
 }
 
+interface MyRolePermissionsResponse {
+  success: boolean;
+  data: { openSections: string[]; sections: Record<string, unknown> };
+}
+
 export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; unreadCount: number; onLogout: () => void }) {
   const pathname = usePathname();
+  const isNonTeachingStaff = user.role === "teacher" && user.staffType === "non-teaching";
   const [allowedPages, setAllowedPages] = useState<string[] | null>(null);
   const [allowedFeatures, setAllowedFeatures] = useState<string[] | null>(null);
+  const [openSections, setOpenSections] = useState<string[] | null>(null);
 
   useEffect(() => {
-    if (user.role !== "teacher") return;
+    // Non-teaching staff use the Role system (fetched below) instead --
+    // this is the legacy teaching-staff Permission/pageKey path only.
+    if (user.role !== "teacher" || isNonTeachingStaff) return;
     const token = getToken();
     if (!token) return;
     apiGet<PermissionResponse>(`/permissions/${user.id}`, token)
       .then((res) => setAllowedPages(res.data.pages || []))
       .catch(() => setAllowedPages([]));
-  }, [user.role, user.id]);
+  }, [user.role, user.id, isNonTeachingStaff]);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<MyRolePermissionsResponse>("/roles/my-permissions", token)
+      .then((res) => setOpenSections(res.data.openSections || []))
+      .catch(() => setOpenSections([]));
+  }, [isNonTeachingStaff]);
 
   useEffect(() => {
     if (user.role !== "schooladmin" && user.role !== "teacher" && user.role !== "parent") return;
@@ -161,13 +212,21 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
   // Empty/not-yet-loaded pages or features list means "allow everything" —
   // matches the original app's backward-compatible default (teachers with
   // no Roles & Permissions assignment yet; schools with no plan features
-  // configured, i.e. trial/free mode).
-  const navItems = (NAV_BY_ROLE[user.role] || []).filter((item) => {
-    if (item.pageKey && allowedPages && allowedPages.length > 0 && !allowedPages.includes(item.pageKey)) return false;
+  // configured, i.e. trial/free mode). Non-teaching staff are the one
+  // exception: empty genuinely means nothing but Overview, since a staff
+  // member with no role (or no role yet loaded) should default to no
+  // access, not full access.
+  const navItems = (isNonTeachingStaff ? STAFF_NAV_ITEMS : NAV_BY_ROLE[user.role] || []).filter((item) => {
+    if (isNonTeachingStaff) {
+      if (item.roleSectionKey && !(openSections || []).includes(item.roleSectionKey)) return false;
+    } else if (item.pageKey && allowedPages && allowedPages.length > 0 && !allowedPages.includes(item.pageKey)) {
+      return false;
+    }
     if (item.featureKey && allowedFeatures && allowedFeatures.length > 0 && !allowedFeatures.includes(item.featureKey)) return false;
     return true;
   });
   const sections = groupBySection(navItems);
+  const roleLabel = isNonTeachingStaff ? user.staffRole?.name || "Staff" : ROLE_LABEL[user.role];
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border/70 rounded-br-[20px]">
@@ -177,7 +236,7 @@ export function AppSidebar({ user, unreadCount, onLogout }: { user: AuthUser; un
         </div>
         <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
           <span className="text-sm font-bold text-foreground tracking-tight truncate">{user.schoolName || "EduNivo"}</span>
-          <span className="text-[11px] text-muted-foreground truncate">{ROLE_LABEL[user.role]}</span>
+          <span className="text-[11px] text-muted-foreground truncate">{roleLabel}</span>
         </div>
       </div>
 

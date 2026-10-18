@@ -1,238 +1,269 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Shield, ChevronRight, Loader2, Save, Layout } from "lucide-react";
+import { Shield, Plus, Loader2, Save, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageLoader } from "@/components/PageLoader";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
-import { PERMISSION_GROUPS, PAGE_GROUPS } from "@/lib/permissions";
 import { PageHeader } from "@/components/PageHeader";
+import { ROLE_SECTIONS, buildEmptySections, type SectionAction } from "@/lib/roles";
+import type { ISectionPermission } from "@/models/Role";
 
-interface TeacherItem {
+const ACTION_LABELS: Record<SectionAction, string> = { open: "Open", view: "View", create: "Create", edit: "Edit", delete: "Delete" };
+
+interface RoleItem {
   _id: string;
   name: string;
-  email: string;
-  teacherId: string;
-}
-
-interface PermissionEntry {
-  teacher: TeacherItem;
-  permissions: string[];
-  pages: string[];
+  description: string;
+  sections: Record<string, ISectionPermission>;
+  staffCount: number;
 }
 
 interface ListResponse {
   success: boolean;
-  data: PermissionEntry[];
+  data: RoleItem[];
 }
 
-interface DetailResponse {
-  success: boolean;
-  data: { permissions: string[]; pages: string[] };
-}
+const NEW_ROLE = "__new__";
 
 export default function RolesPermissionsPage() {
-  const [teachers, setTeachers] = useState<TeacherItem[]>([]);
-  const [selected, setSelected] = useState<TeacherItem | null>(null);
-  const [perms, setPerms] = useState<string[]>([]);
-  const [pages, setPages] = useState<string[]>([]);
+  const [roles, setRoles] = useState<RoleItem[] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [sections, setSections] = useState<Record<string, ISectionPermission>>(buildEmptySections());
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingPerms, setLoadingPerms] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(() => {
     const token = getToken();
     if (!token) return;
-    setLoading(true);
-    apiGet<ListResponse>("/permissions", token)
-      .then((res) => setTeachers(res.data.map((d) => d.teacher)))
-      .catch(() => toast.error("Failed to load teachers."))
-      .finally(() => setLoading(false));
+    apiGet<ListResponse>("/roles", token)
+      .then((res) => setRoles(res.data))
+      .catch(() => toast.error("Failed to load roles."));
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: initial data load on mount.
     load();
   }, [load]);
 
-  const selectTeacher = async (t: TeacherItem) => {
-    setSelected(t);
-    setLoadingPerms(true);
-    const token = getToken();
-    if (!token) return;
-    try {
-      const res = await apiGet<DetailResponse>(`/permissions/${t._id}`, token);
-      setPerms(res.data.permissions || []);
-      setPages(res.data.pages || []);
-    } catch {
-      setPerms([]);
-      setPages([]);
-    } finally {
-      setLoadingPerms(false);
-    }
+  const selected = roles?.find((r) => r._id === selectedId) || null;
+
+  const selectRole = (r: RoleItem) => {
+    setSelectedId(r._id);
+    setName(r.name);
+    setDescription(r.description);
+    setSections({ ...buildEmptySections(), ...r.sections });
   };
 
-  const togglePerm = (key: string) => {
-    setPerms((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const startNew = () => {
+    setSelectedId(NEW_ROLE);
+    setName("");
+    setDescription("");
+    setSections(buildEmptySections());
   };
 
-  const togglePage = (key: string) => {
-    setPages((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const toggleAction = (sectionKey: string, action: SectionAction) => {
+    setSections((prev) => {
+      const current = prev[sectionKey];
+      const next = { ...current, [action]: !current[action] };
+      // Can't hold a deeper action without "open" -- and turning "open"
+      // off takes every deeper action (and extra) with it.
+      if (action !== "open" && next[action]) next.open = true;
+      if (action === "open" && !next.open) {
+        next.view = false;
+        next.create = false;
+        next.edit = false;
+        next.delete = false;
+        next.extras = Object.fromEntries(Object.keys(next.extras).map((k) => [k, false]));
+      }
+      return { ...prev, [sectionKey]: next };
+    });
+  };
+
+  const toggleExtra = (sectionKey: string, extraKey: string) => {
+    setSections((prev) => {
+      const current = prev[sectionKey];
+      return { ...prev, [sectionKey]: { ...current, extras: { ...current.extras, [extraKey]: !current.extras[extraKey] } } };
+    });
   };
 
   const save = async () => {
-    if (!selected) return;
     const token = getToken();
-    if (!token) return;
+    if (!token || !name.trim()) {
+      if (!name.trim()) toast.error("Role name is required.");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await fetch(`/api/permissions/${selected._id}`, {
-        method: "POST",
+      const isNew = selectedId === NEW_ROLE;
+      const res = await fetch(isNew ? "/api/roles" : `/api/roles/${selectedId}`, {
+        method: isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ permissions: perms, pages }),
+        body: JSON.stringify({ name: name.trim(), description, sections }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to save.");
-      toast.success(`Permissions saved for ${selected.name}`);
+      toast.success(isNew ? "Role created." : "Role updated.");
+      setSelectedId(json.data._id);
+      load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save permissions.");
+      toast.error(err instanceof Error ? err.message : "Failed to save role.");
     } finally {
       setSaving(false);
     }
   };
 
+  const remove = async () => {
+    if (!selected) return;
+    const token = getToken();
+    if (!token) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/roles/${selected._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to delete.");
+      toast.success("Role deleted.");
+      setSelectedId(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete role.");
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader icon={Shield} title="Roles & Permissions" subtitle="Assign page access and permissions to teachers" accent="slate" />
+      <PageHeader icon={Shield} title="Roles & Permissions" subtitle="Create roles for non-teaching staff and control what each one can access" accent="slate" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Teacher list */}
+        {/* Role list */}
         <div className="rounded-2xl border border-border bg-card">
-          <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold text-foreground">Teachers</h2>
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">Roles</h2>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={startNew}>
+              <Plus className="h-3.5 w-3.5" /> New Role
+            </Button>
           </div>
-          {loading ? (
-            <PageLoader compact label="Loading teachers..." />
-          ) : teachers.length === 0 ? (
-            <EmptyStateCompact message="No teachers found." />
+          {!roles ? (
+            <PageLoader compact label="Loading roles..." />
+          ) : roles.length === 0 ? (
+            <EmptyStateCompact message="No roles yet. Create one to get started." />
           ) : (
             <div className="divide-y divide-border">
-              {teachers.map((t) => (
+              {roles.map((r) => (
                 <button
-                  key={t._id}
-                  onClick={() => selectTeacher(t)}
+                  key={r._id}
+                  onClick={() => selectRole(r)}
                   className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left ${
-                    selected?._id === t._id ? "bg-muted border-l-[3px] border-l-primary" : ""
+                    selectedId === r._id ? "bg-muted border-l-[3px] border-l-primary" : ""
                   }`}
                 >
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {t.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{t.teacherId}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{r.name}</p>
+                    {r.description && <p className="text-xs text-muted-foreground truncate">{r.description}</p>}
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+                  <Badge variant="secondary" className="text-xs gap-1 shrink-0">
+                    <Users className="h-3 w-3" /> {r.staffCount}
+                  </Badge>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Permissions panel */}
+        {/* Role editor */}
         <div className="lg:col-span-2">
-          {!selected ? (
+          {!selectedId ? (
             <div className="rounded-2xl border border-border bg-card h-full flex items-center justify-center min-h-[300px]">
-              <EmptyState icon={Shield} message="Select a teacher to manage permissions" />
+              <EmptyState icon={Shield} message="Select a role, or create a new one" />
             </div>
           ) : (
             <div className="rounded-2xl border border-border bg-card">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground">{selected.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">{selected.email}</p>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex-1 min-w-[200px] space-y-2">
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Role name, e.g. Accountant" className="font-semibold" />
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" rows={1} className="text-xs resize-none" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {perms.length} perms · {pages.length} pages
-                  </Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedId !== NEW_ROLE && (
+                    <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setConfirmDelete(true)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  )}
                   <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent border-0 text-white" onClick={save} disabled={saving}>
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Save
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
                   </Button>
                 </div>
               </div>
-              <div className="p-4">
-                {loadingPerms ? (
-                  <PageLoader compact label="Loading permissions..." />
-                ) : (
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Layout className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Page Access</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-3">Control which pages appear in the teacher&apos;s sidebar navigation. Leave everything off to allow all pages.</p>
-                      <div className="space-y-4">
-                        {PAGE_GROUPS.map((group) => (
-                          <div key={group.label}>
-                            <p className="text-xs font-semibold text-foreground mb-2">{group.label}</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {group.keys.map(({ key, label }) => (
-                                <PermissionRow key={key} label={label} checked={pages.includes(key)} onToggle={() => togglePage(key)} />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
 
-                    <div className="border-t border-border pt-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Shield className="h-4 w-4 text-primary" />
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data Permissions</p>
+              <div className="p-4 space-y-2">
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Open</strong> shows the section in the sidebar with its basic list view. View/Create/Edit/Delete each unlock one more capability within it.
+                </p>
+                {ROLE_SECTIONS.map((section) => {
+                  const perm = sections[section.key];
+                  return (
+                    <div key={section.key} className="rounded-xl border border-border px-3.5 py-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{section.label}</p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {section.actions.map((action) => (
+                            <label key={action} className="flex items-center gap-1.5 text-xs font-medium text-foreground cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={perm[action]}
+                                onChange={() => toggleAction(section.key, action)}
+                                className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                              />
+                              {ACTION_LABELS[action]}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-3">Control what actions the teacher can perform on each page.</p>
-                      <div className="space-y-4">
-                        {PERMISSION_GROUPS.map((group) => (
-                          <div key={group.label}>
-                            <p className="text-xs font-semibold text-foreground mb-2">{group.label}</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {group.keys.map(({ key, label }) => (
-                                <PermissionRow key={key} label={label} checked={perms.includes(key)} onToggle={() => togglePerm(key)} />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {section.extras && perm.open && (
+                        <div className="mt-2.5 pt-2.5 border-t border-border/70 flex items-center gap-3 flex-wrap">
+                          {section.extras.map((extra) => (
+                            <label key={extra.key} className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={perm.extras[extra.key] === true}
+                                onChange={() => toggleExtra(section.key, extra.key)}
+                                className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+                              />
+                              {extra.label}
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
 
-function PermissionRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
-  return (
-    <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-colors ${checked ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        className="h-5 w-9 shrink-0 appearance-none rounded-full bg-border checked:bg-primary transition-colors relative cursor-pointer before:absolute before:h-4 before:w-4 before:rounded-full before:bg-card before:top-0.5 before:left-0.5 before:transition-transform checked:before:translate-x-4"
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete the "${selected?.name}" role?`}
+        description="This can't be undone. Blocked automatically if any staff member still holds this role."
+        confirmLabel="Delete role"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={remove}
       />
     </div>
   );

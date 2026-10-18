@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
+import { Role } from "@/models/Role";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -27,7 +28,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     await connectDB();
     const teacher = await Teacher.findOne({ _id: id, school: auth.schoolId })
       .select("-password")
-      .populate("assignedClasses", "name section");
+      .populate("assignedClasses", "name section")
+      .populate("staffRole", "name");
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, data: teacher });
@@ -77,6 +79,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     await connectDB();
 
+    // staffRole: validated against this school (not just passed through)
+    // so a teacher can never end up pointing at another school's Role doc.
+    // Empty string/null clears it; omitting the field leaves it untouched.
+    if (body.staffRole !== undefined) {
+      if (!body.staffRole) {
+        updates.staffRole = null;
+      } else {
+        const role = await Role.findOne({ _id: body.staffRole, school: auth.schoolId });
+        if (!role) return NextResponse.json({ success: false, message: "That role doesn't exist." }, { status: 400 });
+        updates.staffRole = role._id;
+      }
+    }
+
     // Same classIds -> assignedClasses/classes resolution as create. An
     // explicit empty array clears assignments; omitting classIds entirely
     // leaves assignedClasses/classes untouched.
@@ -95,7 +110,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       returnDocument: "after",
     })
       .select("-password")
-      .populate("assignedClasses", "name section");
+      .populate("assignedClasses", "name section")
+      .populate("staffRole", "name");
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, message: "Teacher updated.", data: teacher });

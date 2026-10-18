@@ -15,6 +15,9 @@ export interface AuthUser {
   school?: string;
   teacherId?: string;
   permissions?: unknown;
+  staffType?: string;
+  /** Non-teaching staff only -- their assigned Roles & Permissions role, if any. */
+  staffRole?: { id: string; name: string } | null;
   subjects?: string[];
   classes?: string[];
   classTeacherOf?: string[];

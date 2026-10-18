@@ -36,6 +36,7 @@ interface TeacherRow {
   subjects?: string[];
   primarySubject?: string;
   department?: string;
+  staffRole?: { _id: string; name: string } | null;
   classes?: string[];
   assignedClasses?: ClassOption[];
   classTeacherOf?: { name: string; section: string } | null;
@@ -80,8 +81,11 @@ const DEPARTMENT_ROLES: Record<string, string> = {
   other: "Support Staff",
 };
 
-function staffRole(t: Pick<TeacherRow, "staffType" | "department">): string {
+function staffRole(t: Pick<TeacherRow, "staffType" | "department" | "staffRole">): string {
   if (t.staffType === "teaching") return "Teacher";
+  if (t.staffRole?.name) return t.staffRole.name;
+  // Legacy fallback for staff created before the Role system -- never
+  // assigned a staffRole, just a free-text department string.
   const dept = (t.department || "").trim().toLowerCase();
   return DEPARTMENT_ROLES[dept] || "Staff";
 }

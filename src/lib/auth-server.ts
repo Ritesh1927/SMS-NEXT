@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyToken, type TokenPayload } from "@/lib/helpers";
 import { Teacher } from "@/models/Teacher";
+import type { ISectionPermission } from "@/models/Role";
+import type { SectionAction } from "@/lib/roles";
 
 // Reads the "Authorization: Bearer <token>" header on an API route request
 // and returns the decoded payload, or null if missing/invalid — callers
@@ -51,5 +53,36 @@ export async function requireFeeManager(req: Request): Promise<FeeManagerResult>
       };
     }
   }
+  return { auth };
+}
+
+type StaffSectionResult = { auth: TokenPayload } | { error: NextResponse };
+
+/**
+ * Gate for the new Role-based permission system -- non-teaching staff only.
+ * Teaching staff keep using their existing `Teacher.permissions` booleans
+ * (requireFeeManager above, and the inline checks in notices/homework/exams
+ * routes) completely untouched; this helper never grants or denies based on
+ * those. schooladmin is always allowed. Caller must have already called
+ * connectDB().
+ */
+export async function requireStaffSectionAccess(
+  req: Request,
+  sectionKey: string,
+  action: SectionAction | { extra: string },
+): Promise<StaffSectionResult> {
+  const auth = getAuthUser(req);
+  const denied = () =>
+    NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+  if (!auth) return { error: NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 }) };
+  if (auth.role === "schooladmin") return { auth };
+  if (auth.role !== "teacher") return { error: denied() };
+
+  const teacher = await Teacher.findById(auth.id).select("staffType staffRole").populate<{ staffRole: { sections: Record<string, ISectionPermission> } | null }>("staffRole");
+  if (!teacher || teacher.staffType !== "non-teaching" || !teacher.staffRole) return { error: denied() };
+
+  const section = teacher.staffRole.sections?.[sectionKey];
+  const allowed = typeof action === "string" ? section?.[action] === true : section?.extras?.[action.extra] === true;
+  if (!allowed) return { error: denied() };
   return { auth };
 }

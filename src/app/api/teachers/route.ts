@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
+import { Role } from "@/models/Role";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
 import { sendCredentialsMail } from "@/lib/mail";
 import { getUserLimitStatus, userLimitMessage } from "@/lib/userLimit";
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
     const teachers = await Teacher.find(query)
       .select("-password")
       .populate("assignedClasses", "name section")
+      .populate("staffRole", "name")
       .sort({ createdAt: -1 });
 
     // assignedClasses is which classes a teacher teaches (subjects); being
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     const {
       name, email, phone, subjects, primarySubject, secondarySubject, classes, classIds, qualification, experience, designation,
       gender, dateOfBirth, address, bloodGroup, joiningDate, salary, employmentType,
-      staffType, department,
+      staffType, department, staffRole,
       emergencyContact, emergencyPhone, emergencyRelation, aadhaarNumber, panNumber,
       bankName, accountNumber, ifscCode, specialization, previousExperience,
     } = body;
@@ -118,12 +120,22 @@ export async function POST(req: Request) {
       classLabels = clsDocs.map((c) => `${c.name}-${c.section}`);
     }
 
+    // staffRole only applies to non-teaching staff, and is validated against
+    // this school rather than trusted as-is.
+    let resolvedStaffRole: string | null = null;
+    if (!isTeaching && staffRole) {
+      const roleDoc = await Role.findOne({ _id: staffRole, school: auth.schoolId });
+      if (!roleDoc) return NextResponse.json({ success: false, message: "That role doesn't exist." }, { status: 400 });
+      resolvedStaffRole = String(roleDoc._id);
+    }
+
     const teacher = await Teacher.create({
       name,
       email,
       phone: phone || "",
       staffType: isTeaching ? "teaching" : "non-teaching",
       department: department || "",
+      staffRole: resolvedStaffRole,
       subjects: isTeaching ? subjects || [] : [],
       primarySubject: isTeaching ? primarySubject || "" : "",
       secondarySubject: isTeaching ? secondarySubject || "" : "",

@@ -69,11 +69,19 @@ export default function StudentsPage() {
   const [pendingDelete, setPendingDelete] = useState<StudentRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
 
-  // Teachers get a read-only view scoped to their own classes — matches
-  // SMS-BACKEND, where the student create/update/delete routes are
+  // Classroom teachers get a read-only view scoped to their own classes —
+  // matches SMS-BACKEND, where the student create/update/delete routes are
   // schooladmin-only at the router level (no teacher-facing path exists at
   // all, regardless of their canEditStudent/canDeleteStudent flags).
-  const isTeacher = user?.role === "teacher";
+  // Non-teaching staff are a third bucket: same JWT role ("teacher") as a
+  // classroom teacher, but they hit the real /students roster (server-side
+  // permission-gated by their Role), not the my-students endpoint, and their
+  // button visibility follows their role's Students view/create/edit/delete
+  // grants instead of class-teachership.
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
+  const isAdmin = user?.role === "schooladmin";
+  const [staffPerms, setStaffPerms] = useState<{ view: boolean; create: boolean; edit: boolean; delete: boolean } | null>(null);
 
   const load = () => {
     const token = getToken();
@@ -85,6 +93,15 @@ export default function StudentsPage() {
       .then((res) => setClasses(res.data))
       .catch(() => {});
   };
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.students || { view: false, create: false, edit: false, delete: false }))
+      .catch(() => setStaffPerms({ view: false, create: false, edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
 
   useEffect(() => {
     load();
@@ -192,7 +209,7 @@ export default function StudentsPage() {
         subtitle={isTeacher ? "Students in your classes." : "Manage student admissions and records."}
         accent="blue"
         actions={
-          !isTeacher && (
+          isAdmin ? (
             <>
               <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
                 <Upload className="h-4 w-4" /> Bulk Upload
@@ -201,6 +218,13 @@ export default function StudentsPage() {
                 <Plus className="h-4 w-4" /> Add Student
               </Button>
             </>
+          ) : (
+            isNonTeachingStaff &&
+            staffPerms?.create && (
+              <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Student
+              </Button>
+            )
           )
         }
         className="mb-6"
@@ -354,7 +378,7 @@ export default function StudentsPage() {
                     <Eye className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {!isTeacher && (
+                {isAdmin && (
                   <>
                     <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">
                       <Eye className="h-3.5 w-3.5" />
@@ -383,6 +407,33 @@ export default function StudentsPage() {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                  </>
+                )}
+                {isNonTeachingStaff && (
+                  <>
+                    {staffPerms?.view && (
+                      <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {staffPerms?.edit && (
+                      <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit" title="Edit this student's details">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {staffPerms?.delete && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setPendingDelete(s)}
+                        disabled={busyId === s._id}
+                        aria-label="Delete"
+                        title="Delete this student permanently"
+                        className="hover:text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
