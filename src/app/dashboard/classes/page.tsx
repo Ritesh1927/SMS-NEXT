@@ -77,7 +77,19 @@ export default function ClassesPage() {
   const [search, setSearch] = useState("");
   const [noTeacherFilter, setNoTeacherFilter] = useState(false);
 
-  const isTeacher = user?.role === "teacher";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
+  const isAdmin = user?.role === "schooladmin";
+  const [staffPerms, setStaffPerms] = useState<{ create: boolean; edit: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.classes || { create: false, edit: false, delete: false }))
+      .catch(() => setStaffPerms({ create: false, edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
 
   // Teachers already serving as class teacher of ANOTHER class (the class
   // being edited is excluded so its own teacher stays selectable) — kept as
@@ -97,8 +109,9 @@ export default function ClassesPage() {
     apiGet<ClassesResponse>("/classes", token)
       .then((res) => setClasses(res.data))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
-    // Only schooladmin can assign a class teacher, so only schooladmin
-    // needs the teacher-picker list this powers.
+    // Only admin/non-teaching staff can assign a class teacher, so a
+    // genuine classroom teacher doesn't need the teacher-picker list this
+    // powers.
     if (!isTeacher) {
       apiGet<TeachersResponse>("/teachers", token)
         .then((res) => setTeachers(res.data))
@@ -202,7 +215,7 @@ export default function ClassesPage() {
         subtitle={isTeacher ? "Your assigned classes." : "Manage class sections and assign class teachers."}
         accent="blue"
         actions={
-          !isTeacher && (
+          isAdmin ? (
             <>
               <Link href="/dashboard/subjects" className={buttonVariants({ variant: "outline", className: "gap-1.5" })}>
                 <BookOpen className="h-4 w-4" /> Subject &amp; Class Assignment
@@ -211,6 +224,13 @@ export default function ClassesPage() {
                 <Plus className="h-4 w-4" /> Add Class
               </Button>
             </>
+          ) : (
+            isNonTeachingStaff &&
+            staffPerms?.create && (
+              <Button onClick={openAdd} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Class
+              </Button>
+            )
           )
         }
         className="mb-6"
@@ -294,21 +314,25 @@ export default function ClassesPage() {
                       )}
                     </div>
                   </div>
-                  {!isTeacher && (
+                  {(isAdmin || staffPerms?.edit || staffPerms?.delete) && (
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDelete(c)}
-                        disabled={busyId === c._id}
-                        aria-label="Delete"
-                        className="hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {(isAdmin || staffPerms?.edit) && (
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {(isAdmin || staffPerms?.delete) && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleDelete(c)}
+                          disabled={busyId === c._id}
+                          aria-label="Delete"
+                          className="hover:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

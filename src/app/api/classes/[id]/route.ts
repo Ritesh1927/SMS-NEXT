@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import "@/models/Subject";
 import "@/models/Teacher";
 
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
-
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "classes", "edit");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
     const { name, section, classTeacher, room } = await req.json();
-
-    await connectDB();
 
     if (room && room.trim()) {
       const dupRoom = await Class.findOne({ school: auth.schoolId, room: room.trim(), _id: { $ne: id } });
@@ -54,12 +48,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "classes", "delete");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
     const cls = await Class.findOneAndDelete({ _id: id, school: auth.schoolId });
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 

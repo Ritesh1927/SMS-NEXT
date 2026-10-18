@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Homework } from "@/models/Homework";
 import "@/models/Teacher";
 import "@/models/Admin";
@@ -16,6 +16,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     await connectDB();
+
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.homework?.view) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const hw = await Homework.findOne({ _id: id, school: auth.schoolId })
       .populate("assignedBy", "name teacherId")
       .populate("submissions.student", "name studentId class section");
@@ -42,8 +48,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     await connectDB();
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.homework?.edit) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
+    // A non-teaching staffer with "edit" can touch any homework, same as
+    // admin -- the author-only restriction below is specific to a genuine
+    // teacher acting on their own postings.
     const query: Record<string, unknown> = { _id: id, school: auth.schoolId };
-    if (auth.role === "teacher") query.assignedBy = auth.id;
+    if (auth.role === "teacher" && !staffSections) query.assignedBy = auth.id;
 
     const existing = await Homework.findOne(query);
     if (!existing) return NextResponse.json({ success: false, message: "Homework not found or access denied." }, { status: 404 });
@@ -105,8 +119,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const { id } = await params;
     await connectDB();
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.homework?.delete) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const query: Record<string, unknown> = { _id: id, school: auth.schoolId };
-    if (auth.role === "teacher") query.assignedBy = auth.id;
+    if (auth.role === "teacher" && !staffSections) query.assignedBy = auth.id;
 
     const hw = await Homework.findOneAndDelete(query);
     if (!hw) return NextResponse.json({ success: false, message: "Homework not found or access denied." }, { status: 404 });

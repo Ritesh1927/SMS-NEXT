@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Homework } from "@/models/Homework";
 import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
@@ -21,8 +21,13 @@ export async function GET(req: Request) {
     const section = searchParams.get("section");
     const subject = searchParams.get("subject");
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.homework?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const query: Record<string, unknown> = { school: auth.schoolId, isActive: true };
-    if (auth.role === "teacher") {
+    if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
       if (accessible.length === 0) return NextResponse.json({ success: true, data: [] });
       query.$or = accessible.map((c) => ({ class: c.name, section: c.section }));
@@ -117,19 +122,26 @@ export async function POST(req: Request) {
     }
 
     if (auth.role === "teacher") {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You can only assign homework to your classes." }, { status: 403 });
-      }
-
-      // Being the class's actual class teacher is enough on its own — the
-      // canAssignHomework grant is only needed for a subject-only teacher
-      // (access via assignedClasses, not Class.classTeacher).
-      const isClassTeacher = await isClassTeacherOf(auth.id, auth.schoolId, cls);
-      if (!isClassTeacher) {
-        const teacher = await Teacher.findById(auth.id).select("permissions");
-        if (!teacher?.permissions?.canAssignHomework) {
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.homework?.create) {
           return NextResponse.json({ success: false, message: "You don't have permission to assign homework." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
+        if (!allowed) {
+          return NextResponse.json({ success: false, message: "You can only assign homework to your classes." }, { status: 403 });
+        }
+
+        // Being the class's actual class teacher is enough on its own — the
+        // canAssignHomework grant is only needed for a subject-only teacher
+        // (access via assignedClasses, not Class.classTeacher).
+        const isClassTeacher = await isClassTeacherOf(auth.id, auth.schoolId, cls);
+        if (!isClassTeacher) {
+          const teacher = await Teacher.findById(auth.id).select("permissions");
+          if (!teacher?.permissions?.canAssignHomework) {
+            return NextResponse.json({ success: false, message: "You don't have permission to assign homework." }, { status: 403 });
+          }
         }
       }
     }

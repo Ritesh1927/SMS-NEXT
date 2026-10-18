@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { StudyMaterial } from "@/models/StudyMaterial";
 import { deleteAsset } from "@/lib/cloudinary";
 
@@ -14,8 +14,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     await connectDB();
     const { id } = await params;
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.studyMaterials?.delete) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const query: Record<string, unknown> = { _id: id, school: auth.schoolId };
-    if (auth.role === "teacher") query.uploadedBy = auth.id;
+    if (auth.role === "teacher" && !staffSections) query.uploadedBy = auth.id;
 
     const material = await StudyMaterial.findOne(query);
     if (!material) {

@@ -62,6 +62,31 @@ export async function requireFeeManager(req: Request): Promise<FeeManagerResult>
   return { auth };
 }
 
+/**
+ * Null for anyone who isn't a non-teaching staff member (schooladmin,
+ * teaching staff, parent, student, or a non-teaching staffer with no role
+ * assigned yet resolves to `{}` -- still non-null, since they ARE
+ * non-teaching staff, just with nothing granted). Lets a route distinguish
+ * "genuine teaching staff, apply the existing class/subject-ownership
+ * scoping" from "non-teaching staff, apply the Role grant instead" without
+ * duplicating the Teacher+staffRole lookup in every GET route that needs
+ * both branches (requireStaffSectionAccess alone only answers yes/no for
+ * one action -- it can't tell a caller WHY a teaching-staff JWT was
+ * rejected, so it can't drive this 3-way branch on its own). Caller must
+ * have already called connectDB().
+ */
+export async function getNonTeachingStaffSections(auth: TokenPayload | null): Promise<Record<string, ISectionPermission> | null> {
+  if (!auth || auth.role !== "teacher") return null;
+  const teacher = await Teacher.findById(auth.id).select("staffType staffRole").populate<{ staffRole: { sections: Record<string, ISectionPermission> } | null }>("staffRole");
+  if (!teacher || teacher.staffType !== "non-teaching") return null;
+  return teacher.staffRole?.sections || {};
+}
+
+function sectionAllows(sections: Record<string, ISectionPermission> | null, sectionKey: string, action: SectionAction | { extra: string }): boolean {
+  const section = sections?.[sectionKey];
+  return typeof action === "string" ? section?.[action] === true : section?.extras?.[action.extra] === true;
+}
+
 type StaffSectionResult = { auth: TokenPayload } | { error: NextResponse };
 
 /**
@@ -84,11 +109,43 @@ export async function requireStaffSectionAccess(
   if (auth.role === "schooladmin") return { auth };
   if (auth.role !== "teacher") return { error: denied() };
 
-  const teacher = await Teacher.findById(auth.id).select("staffType staffRole").populate<{ staffRole: { sections: Record<string, ISectionPermission> } | null }>("staffRole");
-  if (!teacher || teacher.staffType !== "non-teaching" || !teacher.staffRole) return { error: denied() };
-
-  const section = teacher.staffRole.sections?.[sectionKey];
-  const allowed = typeof action === "string" ? section?.[action] === true : section?.extras?.[action.extra] === true;
-  if (!allowed) return { error: denied() };
+  const sections = await getNonTeachingStaffSections(auth);
+  if (!sections) return { error: denied() };
+  if (!sectionAllows(sections, sectionKey, action)) return { error: denied() };
   return { auth };
+}
+
+type FeeAccessResult = { auth: TokenPayload; isAdmin: boolean } | { error: NextResponse };
+
+/**
+ * Fee routes have THREE legitimate actors, not two: schooladmin, teaching
+ * staff via the existing blanket `permissions.canManageFees` (requireFeeManager
+ * above -- untouched), and non-teaching staff via the new Role system's
+ * `fees` section. `action` names which grant to check for a non-teaching
+ * staffer; teaching staff's `canManageFees` is still an all-or-nothing
+ * blanket (that system never had finer actions), so it passes regardless of
+ * which `action` is requested, same as it always has. Caller must have
+ * already called connectDB().
+ */
+export async function requireFeeAccess(req: Request, action: SectionAction | { extra: string }): Promise<FeeAccessResult> {
+  const auth = getAuthUser(req);
+  if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
+    return { error: NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 }) };
+  }
+  if (auth.role === "schooladmin") return { auth, isAdmin: true };
+
+  const sections = await getNonTeachingStaffSections(auth);
+  if (sections) {
+    if (!sectionAllows(sections, "fees", action)) {
+      return { error: NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 }) };
+    }
+    return { auth, isAdmin: false };
+  }
+
+  // Not non-teaching staff -- a genuine teacher, so the old blanket flag applies.
+  const teacher = await Teacher.findById(auth.id).select("permissions");
+  if (!teacher?.permissions?.canManageFees) {
+    return { error: NextResponse.json({ success: false, message: "You don't have permission to manage fees." }, { status: 403 }) };
+  }
+  return { auth, isAdmin: false };
 }

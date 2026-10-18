@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireStaffSectionAccess } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
@@ -8,13 +8,8 @@ import { isStreamStandard } from "@/lib/streamStandards";
 import "@/models/Subject";
 import "@/models/Teacher";
 
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
-
-// Admin sees every class; a teacher sees only their own (classTeacher or
+// Admin and a non-teaching staffer with the "classes" section open see every
+// class; a genuine teacher sees only their own (classTeacher or
 // assignedClasses) — the same class pickers Homework and Study Materials use
 // to restrict what a teacher can assign/upload to.
 export async function GET(req: Request) {
@@ -26,8 +21,13 @@ export async function GET(req: Request) {
   try {
     await connectDB();
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.classes?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const classQuery: Record<string, unknown> = { school: auth.schoolId };
-    if (auth.role === "teacher") {
+    if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
       classQuery.$or = accessible.length > 0 ? accessible.map((c) => ({ name: c.name, section: c.section })) : [{ _id: null }];
     }
@@ -60,8 +60,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "classes", "create");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { name, section, classTeacher, room } = await req.json();
@@ -69,7 +71,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Class name and section required." }, { status: 400 });
     }
 
-    await connectDB();
     const existing = await Class.findOne({ school: auth.schoolId, name, section: String(section).toUpperCase() });
     if (existing) {
       return NextResponse.json({ success: false, message: "Class already exists." }, { status: 400 });

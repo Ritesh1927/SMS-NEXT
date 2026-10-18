@@ -66,8 +66,24 @@ const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString("en-IN", { da
 
 export default function StudyMaterialsPage() {
   const { user } = useAuth();
-  const isUploader = user?.role === "schooladmin" || user?.role === "teacher";
+  const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
   const isParent = user?.role === "parent";
+  const [staffPerms, setStaffPerms] = useState<{ create: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { create: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.studyMaterials || { create: false, delete: false }))
+      .catch(() => setStaffPerms({ create: false, delete: false }));
+  }, [isNonTeachingStaff]);
+
+  // Non-teaching staff can only upload (create) if their role grants it;
+  // a genuine teacher is unrestricted here (server-side teacherHasAccessToClass
+  // is the real gate for them, matching every other content-creation page).
+  const isUploader = isAdmin || (user?.role === "teacher" && !isNonTeachingStaff) || !!staffPerms?.create;
 
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -336,7 +352,7 @@ export default function StudyMaterialsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((mat) => {
             const Icon = TYPE_ICON[mat.type] || FileText;
-            const canDelete = isUploader && (user?.role === "schooladmin" || mat.uploadedBy?._id === user?.id);
+            const canDelete = isAdmin || mat.uploadedBy?._id === user?.id || (isNonTeachingStaff && !!staffPerms?.delete);
             return (
               <Card key={mat._id}>
                 <CardContent className="p-5">

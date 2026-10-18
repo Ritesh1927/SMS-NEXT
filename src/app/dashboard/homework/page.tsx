@@ -103,6 +103,19 @@ export default function HomeworkPage() {
   // Snapshot once on mount rather than calling Date.now() during render (impure).
   const [now] = useState(() => Date.now());
 
+  const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffPerms, setStaffPerms] = useState<{ create: boolean; edit: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.homework || { create: false, edit: false, delete: false }))
+      .catch(() => setStaffPerms({ create: false, edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -206,9 +219,11 @@ export default function HomeworkPage() {
         subtitle={`${(homework || []).length} assignment${(homework || []).length === 1 ? "" : "s"} total.`}
         accent="violet"
         actions={
-          <Button onClick={() => router.push("/dashboard/homework/new")} className="gap-1.5">
-            <Plus className="h-4 w-4" /> New Assignment
-          </Button>
+          (isAdmin || !isNonTeachingStaff || staffPerms?.create) && (
+            <Button onClick={() => router.push("/dashboard/homework/new")} className="gap-1.5">
+              <Plus className="h-4 w-4" /> New Assignment
+            </Button>
+          )
         }
         className="mb-6"
       />
@@ -360,21 +375,23 @@ export default function HomeworkPage() {
                 <Button variant="ghost" size="icon-sm" onClick={() => openGrading(hw)} aria-label="Submissions" title="View submissions">
                   <ClipboardCheck className="h-3.5 w-3.5" />
                 </Button>
-                {(user?.role === "schooladmin" || hw.assignedBy?._id === user?.id) && (
+                {(isAdmin || hw.assignedBy?._id === user?.id || (isNonTeachingStaff && staffPerms?.edit)) && (
                   <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/homework/${hw._id}/edit`)} aria-label="Edit">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleDelete(hw)}
-                  disabled={busyId === hw._id}
-                  aria-label="Delete"
-                  className="hover:text-red-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {(isAdmin || hw.assignedBy?._id === user?.id || (isNonTeachingStaff && staffPerms?.delete)) && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDelete(hw)}
+                    disabled={busyId === hw._id}
+                    aria-label="Delete"
+                    className="hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
             );

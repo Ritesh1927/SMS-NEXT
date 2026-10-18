@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { StudyMaterial, type MaterialType } from "@/models/StudyMaterial";
 import { Teacher } from "@/models/Teacher";
 import { Admin } from "@/models/Admin";
@@ -27,8 +27,13 @@ export async function GET(req: Request) {
     const section = searchParams.get("section");
     const subject = searchParams.get("subject");
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.studyMaterials?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const query: Record<string, unknown> = { school: auth.schoolId };
-    if (auth.role === "teacher") {
+    if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
       if (accessible.length === 0) return NextResponse.json({ success: true, data: [] });
       query.$or = accessible.flatMap((c) => [
@@ -79,9 +84,16 @@ export async function POST(req: Request) {
 
     let uploaderName = "";
     if (auth.role === "teacher") {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You can only upload materials for your classes." }, { status: 403 });
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.studyMaterials?.create) {
+          return NextResponse.json({ success: false, message: "You don't have permission to upload materials." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
+        if (!allowed) {
+          return NextResponse.json({ success: false, message: "You can only upload materials for your classes." }, { status: 403 });
+        }
       }
       const teacher = await Teacher.findById(auth.id).select("name");
       uploaderName = teacher?.name || "";
