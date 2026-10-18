@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
 import { Role } from "@/models/Role";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 const ALLOWED_FIELDS = [
   "name", "phone", "subjects", "primarySubject", "secondarySubject", "classes", "qualification", "experience", "designation", "isActive",
@@ -20,12 +14,13 @@ const ALLOWED_FIELDS = [
 ] as const;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "staff", "view");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
     const teacher = await Teacher.findOne({ _id: id, school: auth.schoolId })
       .select("-password")
       .populate("assignedClasses", "name section")
@@ -42,8 +37,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "staff", "edit");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
@@ -76,8 +73,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) updates[key] = body[key];
     }
-
-    await connectDB();
 
     // staffRole: validated against this school (not just passed through)
     // so a teacher can never end up pointing at another school's Role doc.
@@ -124,12 +119,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "staff", "delete");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
     const teacher = await Teacher.findOneAndDelete({ _id: id, school: auth.schoolId });
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 

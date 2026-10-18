@@ -105,6 +105,19 @@ export default function TeachersPage() {
   const [pendingDelete, setPendingDelete] = useState<TeacherRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
 
+  const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffPerms, setStaffPerms] = useState<{ view: boolean; create: boolean; edit: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.staff || { view: false, create: false, edit: false, delete: false }))
+      .catch(() => setStaffPerms({ view: false, create: false, edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
+
   const load = () => {
     const token = getToken();
     if (!token) return;
@@ -198,14 +211,23 @@ export default function TeachersPage() {
         subtitle={`${counts.total} staff member${counts.total === 1 ? "" : "s"} (${counts.teaching} teaching, ${counts.nonTeaching} non-teaching).`}
         accent="blue"
         actions={
-          <>
-            <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
-              <Upload className="h-4 w-4" /> Bulk Upload
-            </Button>
-            <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add Staff
-            </Button>
-          </>
+          isAdmin ? (
+            <>
+              <Button variant="outline" onClick={() => setBulkOpen(true)} className="gap-1.5">
+                <Upload className="h-4 w-4" /> Bulk Upload
+              </Button>
+              <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Staff
+              </Button>
+            </>
+          ) : (
+            isNonTeachingStaff &&
+            staffPerms?.create && (
+              <Button onClick={() => router.push("/dashboard/teachers/new")} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add Staff
+              </Button>
+            )
+          )
         }
         className="mb-6"
       />
@@ -370,33 +392,41 @@ export default function TeachersPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
-                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}`)} aria-label="View" title="View this staff member's full details">
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit" title="Edit this staff member's details">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => toggleActive(t)}
-                  disabled={busyId === t._id}
-                  aria-label={t.isActive ? "Deactivate" : "Activate"}
-                  title={t.isActive ? "Deactivate this staff member's account" : "Reactivate this staff member's account"}
-                >
-                  <Power className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setPendingDelete(t)}
-                  disabled={busyId === t._id}
-                  aria-label="Delete"
-                  title="Delete this staff member permanently"
-                  className="hover:text-red-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {(isAdmin || staffPerms?.view) && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}`)} aria-label="View" title="View this staff member's full details">
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {(isAdmin || staffPerms?.edit) && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/teachers/${t._id}/edit`)} aria-label="Edit" title="Edit this staff member's details">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {(isAdmin || staffPerms?.edit) && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => toggleActive(t)}
+                    disabled={busyId === t._id}
+                    aria-label={t.isActive ? "Deactivate" : "Activate"}
+                    title={t.isActive ? "Deactivate this staff member's account" : "Reactivate this staff member's account"}
+                  >
+                    <Power className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {(isAdmin || staffPerms?.delete) && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setPendingDelete(t)}
+                    disabled={busyId === t._id}
+                    aria-label="Delete"
+                    title="Delete this staff member permanently"
+                    className="hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}

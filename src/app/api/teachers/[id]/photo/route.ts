@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Teacher } from "@/models/Teacher";
 import { uploadProfilePhoto, deleteAsset } from "@/lib/cloudinary";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  // Used from both the New and Edit staff forms -- either grant covers it.
+  const editGate = await requireStaffSectionAccess(req, "staff", "edit");
+  const gate = "auth" in editGate ? editGate : await requireStaffSectionAccess(req, "staff", "create");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { id } = await params;
-    await connectDB();
 
     const teacher = await Teacher.findOne({ _id: id, school: auth.schoolId });
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
