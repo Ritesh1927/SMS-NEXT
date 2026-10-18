@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireStaffSectionAccess } from "@/lib/auth-server";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { recomputePeriodNumbers, findOverlappingPeriod } from "@/lib/periods";
 
@@ -16,6 +16,11 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.timetable?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const standard = searchParams.get("standard");
 
@@ -35,16 +40,16 @@ export async function GET(req: Request) {
 }
 
 // POST /api/periods — period *structure* (count/duration/break/start time)
-// is admin-only. A class teacher can edit their own class's day-wise
-// subject/teacher assignments (see /api/timetable), but not this.
+// is admin-only, or a non-teaching staffer explicitly granted the
+// "managePeriods" extra. A class teacher can edit their own class's
+// day-wise subject/teacher assignments (see /api/timetable), but not this.
 export async function POST(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "timetable", { extra: "managePeriods" });
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const { label, startTime, endTime, isBreak, standard } = await req.json();
     const isBreakBool = !!isBreak;
     // A non-break period's label is always auto-derived from its

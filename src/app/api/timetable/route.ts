@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { TimetableEntry, WEEKDAYS, type Weekday } from "@/models/TimetableEntry";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { Class } from "@/models/Class";
@@ -43,9 +43,16 @@ export async function POST(req: Request) {
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 
     if (auth.role === "teacher") {
-      const allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.timetable?.edit) {
+          return NextResponse.json({ success: false, message: "You don't have permission to edit the timetable." }, { status: 403 });
+        }
+      } else {
+        const allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
+        if (!allowed) {
+          return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+        }
       }
     }
 

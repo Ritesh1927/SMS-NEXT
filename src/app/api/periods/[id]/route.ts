@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { recomputePeriodNumbers, findOverlappingPeriod } from "@/lib/periods";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "timetable", { extra: "managePeriods" });
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const { id } = await params;
     const { label, startTime, endTime, isBreak, order } = await req.json();
 
@@ -55,13 +54,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "timetable", { extra: "managePeriods" });
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const { id } = await params;
     const period = await SchoolPeriod.findOne({ _id: id, school: auth.schoolId });
     if (!period) return NextResponse.json({ success: false, message: "Period not found." }, { status: 404 });

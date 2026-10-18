@@ -170,8 +170,24 @@ function currentPeriodFrom(periods: SchoolPeriod[]): number | null {
 export default function TimetablePage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "schooladmin";
-  const isTeacher = user?.role === "teacher";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
   const isParent = user?.role === "parent";
+  const [staffPerms, setStaffPerms] = useState<{
+    view: boolean; create: boolean; edit: boolean; delete: boolean; extras: { managePeriods: boolean };
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; extras: { managePeriods: boolean } }> } }>(
+      "/roles/my-permissions",
+      token,
+    )
+      .then((res) => setStaffPerms(res.data.sections.timetable || { view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } }))
+      .catch(() => setStaffPerms({ view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } }));
+  }, [isNonTeachingStaff]);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   const [periods, setPeriods] = useState<SchoolPeriod[]>([]);
@@ -252,9 +268,11 @@ export default function TimetablePage() {
   // class, or a teacher's own class while in "My Class" view. Empty for a
   // teacher in "My Schedule" view and for parent/student (they use
   // children/selectedChildId instead).
-  const activeClassId = isAdmin ? selectedClassId : isTeacher && teacherView === "class" ? teacherSelectedClassId : "";
+  const activeClassId =
+    isAdmin || isNonTeachingStaff ? selectedClassId : isTeacher && teacherView === "class" ? teacherSelectedClassId : "";
   const activeClass = classes.find((c) => c._id === activeClassId) || null;
-  const canEditGrid = isAdmin || (isTeacher && teacherView === "class" && !!activeClassId);
+  const canEditGrid =
+    isAdmin || (isNonTeachingStaff && !!staffPerms?.edit && !!activeClassId) || (isTeacher && teacherView === "class" && !!activeClassId);
 
   // Only teachers actually relevant to the active class (already scoped
   // server-side by /api/timetable/class/[id]) can be scheduled into its
@@ -303,25 +321,28 @@ export default function TimetablePage() {
     loadPeriods(effectiveStandard);
   }, [effectiveStandard]);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: refetch whenever the Manage Periods standard selector changes.
-    loadManagePeriods(manageStandard);
-  }, [isAdmin, manageStandard]);
+  const canManagePeriods = isAdmin || (isNonTeachingStaff && !!staffPerms?.extras.managePeriods);
 
   useEffect(() => {
-    // Admin needs the full class list to pick one; a teacher needs it too,
-    // to work out which class(es) they're the class teacher of for "My Class".
-    if (!isAdmin && !isTeacher) return;
+    if (!canManagePeriods) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: refetch whenever the Manage Periods standard selector changes.
+    loadManagePeriods(manageStandard);
+  }, [canManagePeriods, manageStandard]);
+
+  useEffect(() => {
+    // Admin and a non-teaching staffer with Timetable access both need the
+    // full class list to pick one; a genuine teacher needs it too, to work
+    // out which class(es) they're the class teacher of for "My Class".
+    if (!isAdmin && !isTeacher && !isNonTeachingStaff) return;
     const token = getToken();
     if (!token) return;
     apiGet<{ success: boolean; data: ClassOption[] }>("/classes", token)
       .then((res) => {
         setClasses(res.data);
-        if (isAdmin && res.data.length > 0) setSelectedClassId(res.data[0]._id);
+        if ((isAdmin || isNonTeachingStaff) && res.data.length > 0) setSelectedClassId(res.data[0]._id);
       })
       .catch(() => {});
-  }, [isAdmin, isTeacher]);
+  }, [isAdmin, isTeacher, isNonTeachingStaff]);
 
   useEffect(() => {
     if (isTeacher && !teacherSelectedClassId && myOwnClasses.length > 0) {
@@ -592,7 +613,7 @@ export default function TimetablePage() {
         icon={Clock}
         title="Timetable"
         subtitle={
-          isAdmin
+          isAdmin || isNonTeachingStaff
             ? "View and manage class schedules"
             : isTeacher
               ? teacherView === "class"
@@ -603,7 +624,7 @@ export default function TimetablePage() {
         accent="violet"
       />
       <div className="flex items-center gap-2 flex-wrap">
-        {isAdmin && (
+        {(isAdmin || isNonTeachingStaff) && (
           <Select
             items={classes.map((c) => ({ value: c._id, label: `${c.name}${c.section ? `-${c.section}` : ""}` }))}
             value={selectedClassId}
@@ -738,10 +759,10 @@ export default function TimetablePage() {
               ) : periods.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
-                    {isAdmin ? 'No periods configured. Use the "Manage Periods" tab to add periods.' : "No periods configured yet."}
+                    {isAdmin || canManagePeriods ? 'No periods configured. Use the "Manage Periods" tab to add periods.' : "No periods configured yet."}
                   </td>
                 </tr>
-              ) : (isAdmin && !selectedClassId) || (isParent && !selectedChildId) || (isTeacher && teacherView === "class" && !teacherSelectedClassId) ? (
+              ) : ((isAdmin || isNonTeachingStaff) && !selectedClassId) || (isParent && !selectedChildId) || (isTeacher && teacherView === "class" && !teacherSelectedClassId) ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
                     {isParent ? "No child linked to your account yet." : "Select a class to view its timetable."}
@@ -1088,7 +1109,7 @@ export default function TimetablePage() {
 
   return (
     <div className="space-y-6">
-      {isAdmin ? (
+      {isAdmin || canManagePeriods ? (
         <Tabs defaultValue="timetable" className="space-y-6">
           <TabsList>
             <TabsTrigger value="timetable" className="gap-1.5">
@@ -1113,7 +1134,7 @@ export default function TimetablePage() {
         </>
       )}
 
-      {(isAdmin || myOwnClasses.length > 0) && (
+      {(isAdmin || myOwnClasses.length > 0 || (isNonTeachingStaff && !!staffPerms?.edit)) && (
         <Dialog open={!!editCell} onOpenChange={(open) => !open && setEditCell(null)}>
           <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
             <DialogHeader>

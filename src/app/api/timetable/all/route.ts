@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { TimetableEntry } from "@/models/TimetableEntry";
 import "@/models/Class";
 import "@/models/Teacher";
 
-// GET /api/timetable/all — every entry for the school, admin-only. Used by
-// the admin UI to figure out which teachers are already busy during a given
-// day+period before assigning them elsewhere.
+// GET /api/timetable/all — every entry for the school, admin-only (or a
+// non-teaching staffer with Timetable "view"). Used by the admin UI to
+// figure out which teachers are already busy during a given day+period
+// before assigning them elsewhere.
 export async function GET(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "timetable", "view");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
-    await connectDB();
     const entries = await TimetableEntry.find({ school: auth.schoolId })
       .populate("teacherId", "name")
       .populate("classId", "name section")

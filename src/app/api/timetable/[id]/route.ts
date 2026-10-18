@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { TimetableEntry } from "@/models/TimetableEntry";
 import { Class } from "@/models/Class";
 import { isClassTeacherOfSection } from "@/lib/teacherClasses";
@@ -18,9 +18,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!entry) return NextResponse.json({ success: false, message: "Entry not found." }, { status: 404 });
 
     if (auth.role === "teacher") {
-      const cls = await Class.findOne({ _id: entry.classId, school: auth.schoolId }).select("name section").lean();
-      const allowed = !!cls && (await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section));
-      if (!allowed) return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.timetable?.delete) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const cls = await Class.findOne({ _id: entry.classId, school: auth.schoolId }).select("name section").lean();
+        const allowed = !!cls && (await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section));
+        if (!allowed) return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+      }
     }
 
     await entry.deleteOne();
