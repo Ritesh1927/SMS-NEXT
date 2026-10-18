@@ -72,13 +72,30 @@ export default function AttendancePage() {
   // editable controls for a school that isn't actually allowed to edit.
   const [allowAttendanceEdit, setAllowAttendanceEdit] = useState(false);
 
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffPerms, setStaffPerms] = useState<{ view: boolean; create: boolean; extras: { editPastAttendance: boolean } } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; extras: { editPastAttendance: boolean } }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.attendance || { view: false, create: false, extras: { editPastAttendance: false } }))
+      .catch(() => setStaffPerms({ view: false, create: false, extras: { editPastAttendance: false } }));
+  }, [isNonTeachingStaff]);
+
   useEffect(() => {
     const token = getToken();
     if (!token || !user) return;
-    if (user.role === "schooladmin") {
+    if (user.role === "schooladmin" || isNonTeachingStaff) {
+      // A non-teaching staffer with Attendance access sees every class, same
+      // as admin -- they're not anyone's classTeacher, so the teacher
+      // branch's ownership filter below would always leave them with none.
       apiGet<ClassesResponse>("/classes", token)
         .then((res) => setClassOptions(res.data.map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` }))))
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
+    }
+    if (user.role === "schooladmin") {
       // Only the admin role can ever edit a saved date (teachers are always
       // locked below), and whether THIS admin can depends on a superadmin
       // toggle this page previously had no idea about -- it let every click
@@ -86,7 +103,7 @@ export default function AttendancePage() {
       apiGet<{ success: boolean; data: { settings: { allowAttendanceEdit: boolean } } }>("/school/profile", token)
         .then((res) => setAllowAttendanceEdit(!!res.data.settings.allowAttendanceEdit))
         .catch(() => {});
-    } else if (user.role === "teacher") {
+    } else if (user.role === "teacher" && !isNonTeachingStaff) {
       // /api/attendance/class/[classId] only allows the class's actual
       // classTeacher, not every class a teacher is merely assigned to
       // teach a subject in -- so the picker here must be scoped the same
@@ -99,7 +116,7 @@ export default function AttendancePage() {
         )
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
     }
-  }, [user]);
+  }, [user, isNonTeachingStaff]);
 
   const loadRoster = useCallback(() => {
     const token = getToken();
@@ -177,8 +194,10 @@ export default function AttendancePage() {
   // only revise an already-saved day if the superadmin has allowAttendanceEdit
   // switched on for this school -- otherwise they're locked out too, same as
   // a teacher, instead of the page letting every click through and only
-  // discovering the rejection when Save is clicked.
-  const locked = alreadyMarked && (user.role === "teacher" || !allowAttendanceEdit);
+  // discovering the rejection when Save is clicked. A non-teaching staffer's
+  // "editPastAttendance" grant is authoritative on its own, independent of
+  // that school-wide admin setting.
+  const locked = alreadyMarked && (isNonTeachingStaff ? !staffPerms?.extras.editPastAttendance : user.role === "teacher" || !allowAttendanceEdit);
 
   return (
     <div>
@@ -210,7 +229,7 @@ export default function AttendancePage() {
                   </div>
                 ) : classOptions.length === 0 ? (
                   <p className="text-sm text-muted-foreground h-10 flex items-center">
-                    {user.role === "teacher" ? "No classes assigned to you yet." : "No classes created yet."}
+                    {user.role === "teacher" && !isNonTeachingStaff ? "No classes assigned to you yet." : "No classes created yet."}
                   </p>
                 ) : (
                   <Select value={classId} onValueChange={(v) => setClassId(v || "")}>
@@ -572,7 +591,7 @@ interface LookupStudentsResponse {
 
 function StudentLookup() {
   const { user } = useAuth();
-  const isTeacher = user?.role === "teacher";
+  const isTeacher = user?.role === "teacher" && user?.staffType !== "non-teaching";
   const [students, setStudents] = useState<LookupStudentRow[] | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("");

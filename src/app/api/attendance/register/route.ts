@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { AttendanceRecord } from "@/models/AttendanceRecord";
@@ -37,10 +37,17 @@ export async function GET(req: Request) {
     // than the classTeacher-only check /attendance/class uses — a subject
     // teacher picking their assigned class shouldn't get a 403.
     if (auth.role === "teacher") {
-      const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-      const allowed = accessible.some((c) => c.name === cls.name && (c.section || "") === (cls.section || ""));
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You do not have access to this class." }, { status: 403 });
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.attendance?.view) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
+        const allowed = accessible.some((c) => c.name === cls.name && (c.section || "") === (cls.section || ""));
+        if (!allowed) {
+          return NextResponse.json({ success: false, message: "You do not have access to this class." }, { status: 403 });
+        }
       }
     }
 

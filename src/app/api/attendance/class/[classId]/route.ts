@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { AttendanceRecord } from "@/models/AttendanceRecord";
@@ -23,11 +23,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ classId:
     const cls = await Class.findOne({ _id: classId, school: auth.schoolId });
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 
-    if (auth.role === "teacher" && String(cls.classTeacher) !== auth.id) {
-      return NextResponse.json(
-        { success: false, message: "Only the class teacher can view this class's attendance." },
-        { status: 403 },
-      );
+    if (auth.role === "teacher") {
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.attendance?.view) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else if (String(cls.classTeacher) !== auth.id) {
+        return NextResponse.json(
+          { success: false, message: "Only the class teacher can view this class's attendance." },
+          { status: 403 },
+        );
+      }
     }
 
     // rollNumber is a plain "1", "2", "3"... string, so sorting by it

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { AttendanceRecord, type IAttendanceRecord } from "@/models/AttendanceRecord";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
@@ -32,13 +32,21 @@ export async function POST(req: Request) {
     const cls = await Class.findOne({ _id: classId, school: auth.schoolId });
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 
-    // Attendance can only be marked by the school admin or that class's own
-    // class teacher — matches SMS-BACKEND's isClassTeacher restriction.
-    if (auth.role === "teacher" && String(cls.classTeacher) !== auth.id) {
-      return NextResponse.json(
-        { success: false, message: "Only the class teacher can mark attendance." },
-        { status: 403 },
-      );
+    const staffSections = await getNonTeachingStaffSections(auth);
+    // Attendance can only be marked by the school admin, that class's own
+    // class teacher, or a non-teaching staffer with "create" on Attendance
+    // — matches SMS-BACKEND's isClassTeacher restriction for the teacher case.
+    if (auth.role === "teacher") {
+      if (staffSections) {
+        if (!staffSections.attendance?.create) {
+          return NextResponse.json({ success: false, message: "You don't have permission to mark attendance." }, { status: 403 });
+        }
+      } else if (String(cls.classTeacher) !== auth.id) {
+        return NextResponse.json(
+          { success: false, message: "Only the class teacher can mark attendance." },
+          { status: 403 },
+        );
+      }
     }
 
     const normalizedDate = new Date(date);
@@ -59,20 +67,28 @@ export async function POST(req: Request) {
       );
     }
 
-    // Editing an already-saved date is blocked for teachers outright, and
-    // for admins unless the superadmin has flipped their allowAttendanceEdit
-    // setting on — matches SMS-BACKEND's per-class edit gate.
+    // Editing an already-saved date is blocked for a genuine teacher
+    // outright, and for admins unless the superadmin has flipped their
+    // allowAttendanceEdit setting on — matches SMS-BACKEND's per-class edit
+    // gate. A non-teaching staffer's "editPastAttendance" grant is
+    // authoritative on its own (it's a per-role decision the admin made
+    // explicitly), independent of that school-wide admin setting.
     const existingForDate = await AttendanceRecord.exists({ school: auth.schoolId, classId, date: normalizedDate });
     if (existingForDate) {
-      if (auth.role === "teacher") {
+      if (staffSections) {
+        if (!staffSections.attendance?.extras?.editPastAttendance) {
+          return NextResponse.json({ success: false, message: "You don't have permission to edit saved attendance." }, { status: 403 });
+        }
+      } else if (auth.role === "teacher") {
         return NextResponse.json({ success: false, message: "Cannot edit saved attendance." }, { status: 403 });
-      }
-      const adminDoc = await Admin.findById(auth.schoolId).select("settings.allowAttendanceEdit").lean();
-      if (!adminDoc?.settings?.allowAttendanceEdit) {
-        return NextResponse.json(
-          { success: false, message: "Cannot edit saved attendance. Contact support to enable editing." },
-          { status: 403 },
-        );
+      } else {
+        const adminDoc = await Admin.findById(auth.schoolId).select("settings.allowAttendanceEdit").lean();
+        if (!adminDoc?.settings?.allowAttendanceEdit) {
+          return NextResponse.json(
+            { success: false, message: "Cannot edit saved attendance. Contact support to enable editing." },
+            { status: 403 },
+          );
+        }
       }
     }
 
