@@ -288,7 +288,7 @@ export default function RolesPermissionsPage() {
                         perm.open && "shadow-[0_0_0_1.5px_rgba(79,70,229,0.25)] bg-primary/[0.025]",
                       )}
                     >
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="grid grid-cols-[9.5rem_1fr] items-center gap-x-3 gap-y-2.5 sm:grid-cols-[10.5rem_1fr]">
                         <div className="flex items-center gap-2.5">
                           <span
                             className={cn(
@@ -312,21 +312,26 @@ export default function RolesPermissionsPage() {
                             />
                           ))}
                         </div>
+
+                        {section.extras && (
+                          <>
+                            <div className="col-span-2 border-t border-dashed border-border" />
+                            <div />
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {section.extras.map((extra) => (
+                                <PermissionChip
+                                  key={extra.key}
+                                  label={extra.label}
+                                  checked={perm.extras[extra.key] === true}
+                                  locked={!editable || !perm.open}
+                                  variant="extra"
+                                  onToggle={() => toggleExtra(section.key, extra.key)}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
-                      {section.extras && (
-                        <div className="mt-3 pt-3 border-t border-dashed border-border flex items-center gap-2 flex-wrap">
-                          {section.extras.map((extra) => (
-                            <PermissionChip
-                              key={extra.key}
-                              label={extra.label}
-                              checked={perm.extras[extra.key] === true}
-                              locked={!editable || !perm.open}
-                              variant="extra"
-                              onToggle={() => toggleExtra(section.key, extra.key)}
-                            />
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
