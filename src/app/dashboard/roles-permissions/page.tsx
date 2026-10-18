@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Shield, Plus, Loader2, Save, Trash2, Users } from "lucide-react";
+import {
+  Shield, Plus, Loader2, Save, Trash2, Users, Pencil, X, Check, Zap,
+  GraduationCap, UserRound, School, Link2, CalendarCheck, ClipboardList, BookOpen,
+  CalendarClock, Library, IndianRupee, Megaphone, MessageSquare, BarChart3, Trophy, Brain,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -15,8 +20,30 @@ import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { ROLE_SECTIONS, buildEmptySections, type SectionAction } from "@/lib/roles";
 import type { ISectionPermission } from "@/models/Role";
+import { cn } from "@/lib/utils";
 
 const ACTION_LABELS: Record<SectionAction, string> = { open: "Open", view: "View", create: "Create", edit: "Edit", delete: "Delete" };
+
+// Mirrors the icon each section uses in the real sidebar (AppSidebar.tsx),
+// so a role's checklist visually matches what the staff member will see.
+const SECTION_ICONS: Record<string, LucideIcon> = {
+  students: Users,
+  staff: GraduationCap,
+  parents: UserRound,
+  classes: School,
+  subjectClass: Link2,
+  attendance: CalendarCheck,
+  exams: ClipboardList,
+  homework: BookOpen,
+  timetable: CalendarClock,
+  studyMaterials: Library,
+  fees: IndianRupee,
+  notices: Megaphone,
+  communication: MessageSquare,
+  reports: BarChart3,
+  leaderboard: Trophy,
+  aiAssistant: Brain,
+};
 
 interface RoleItem {
   _id: string;
@@ -42,6 +69,11 @@ export default function RolesPermissionsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // A registered (already-saved) role opens read-only -- editing it requires
+  // an explicit click on Edit, so an admin can't change a role's access by
+  // accident while just looking at it. A brand-new, not-yet-saved role is
+  // always editable (there's nothing to protect yet), and saving re-locks it.
+  const [editable, setEditable] = useState(false);
 
   const load = useCallback(() => {
     const token = getToken();
@@ -62,6 +94,7 @@ export default function RolesPermissionsPage() {
     setName(r.name);
     setDescription(r.description);
     setSections({ ...buildEmptySections(), ...r.sections });
+    setEditable(false);
   };
 
   const startNew = () => {
@@ -69,6 +102,11 @@ export default function RolesPermissionsPage() {
     setName("");
     setDescription("");
     setSections(buildEmptySections());
+    setEditable(true);
+  };
+
+  const cancelEdit = () => {
+    if (selected) selectRole(selected);
   };
 
   const toggleAction = (sectionKey: string, action: SectionAction) => {
@@ -114,6 +152,7 @@ export default function RolesPermissionsPage() {
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to save.");
       toast.success(isNew ? "Role created." : "Role updated.");
       setSelectedId(json.data._id);
+      setEditable(false);
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save role.");
@@ -192,72 +231,99 @@ export default function RolesPermissionsPage() {
             <div className="rounded-2xl border border-border bg-card">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex-1 min-w-[200px] space-y-2">
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Role name, e.g. Accountant" className="font-semibold" />
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" rows={1} className="text-xs resize-none" />
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Role name, e.g. Accountant"
+                    className="font-semibold disabled:opacity-100 disabled:cursor-default"
+                    disabled={!editable}
+                  />
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Optional description"
+                    rows={1}
+                    className="text-xs resize-none disabled:opacity-100 disabled:cursor-default"
+                    disabled={!editable}
+                  />
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {selectedId !== NEW_ROLE && (
-                    <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setConfirmDelete(true)}>
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </Button>
+                  {!editable ? (
+                    <>
+                      <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setConfirmDelete(true)}>
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </Button>
+                      <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent border-0 text-white" onClick={() => setEditable(true)}>
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {selectedId !== NEW_ROLE && (
+                        <Button size="sm" variant="outline" className="gap-1.5" onClick={cancelEdit} disabled={saving}>
+                          <X className="h-3.5 w-3.5" /> Cancel
+                        </Button>
+                      )}
+                      <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent border-0 text-white" onClick={save} disabled={saving}>
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
+                      </Button>
+                    </>
                   )}
-                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-primary to-accent border-0 text-white" onClick={save} disabled={saving}>
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save
-                  </Button>
                 </div>
               </div>
 
-              <div className="p-4 space-y-2">
-                <p className="text-xs text-muted-foreground mb-2">
-                  <strong>Open</strong> shows the section in the sidebar with its basic list view. View/Create/Edit/Delete each unlock one more capability within it.
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground mb-1">
+                  <strong className="text-foreground">Open</strong> shows the section in the sidebar with its basic list view. View/Create/Edit/Delete each unlock one more capability within it.
+                  {!editable && selectedId !== NEW_ROLE && <span> Click Edit above to change anything.</span>}
                 </p>
                 {ROLE_SECTIONS.map((section) => {
                   const perm = sections[section.key];
+                  const Icon = SECTION_ICONS[section.key] || Shield;
                   return (
-                    <div key={section.key} className="rounded-xl border border-border px-3.5 py-3">
+                    <div
+                      key={section.key}
+                      className={cn(
+                        "rounded-[14px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-4 py-3.5 transition-colors",
+                        perm.open && "shadow-[0_0_0_1.5px_rgba(79,70,229,0.25)] bg-primary/[0.025]",
+                      )}
+                    >
                       <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <p className="text-sm font-semibold text-foreground">{section.label}</p>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {section.actions.map((action) => {
-                            const locked = action !== "open" && !perm.open;
-                            return (
-                              <label
-                                key={action}
-                                className={`flex items-center gap-1.5 text-xs font-medium select-none ${
-                                  locked ? "text-muted-foreground/50 cursor-not-allowed" : "text-foreground cursor-pointer"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={perm[action]}
-                                  disabled={locked}
-                                  onChange={() => toggleAction(section.key, action)}
-                                  className="h-3.5 w-3.5 rounded border-border accent-primary disabled:cursor-not-allowed"
-                                />
-                                {ACTION_LABELS[action]}
-                              </label>
-                            );
-                          })}
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                              perm.open ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/60",
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <p className="text-sm font-semibold text-foreground">{section.label}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {section.actions.map((action) => (
+                            <PermissionChip
+                              key={action}
+                              label={ACTION_LABELS[action]}
+                              checked={perm[action]}
+                              locked={!editable || (action !== "open" && !perm.open)}
+                              variant="action"
+                              onToggle={() => toggleAction(section.key, action)}
+                            />
+                          ))}
                         </div>
                       </div>
                       {section.extras && (
-                        <div className="mt-2.5 pt-2.5 border-t border-border/70 flex items-center gap-3 flex-wrap">
+                        <div className="mt-3 pt-3 border-t border-dashed border-border flex items-center gap-2 flex-wrap">
                           {section.extras.map((extra) => (
-                            <label
+                            <PermissionChip
                               key={extra.key}
-                              className={`flex items-center gap-1.5 text-xs select-none ${
-                                perm.open ? "text-muted-foreground cursor-pointer" : "text-muted-foreground/50 cursor-not-allowed"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={perm.extras[extra.key] === true}
-                                disabled={!perm.open}
-                                onChange={() => toggleExtra(section.key, extra.key)}
-                                className="h-3.5 w-3.5 rounded border-border accent-primary disabled:cursor-not-allowed"
-                              />
-                              {extra.label}
-                            </label>
+                              label={extra.label}
+                              checked={perm.extras[extra.key] === true}
+                              locked={!editable || !perm.open}
+                              variant="extra"
+                              onToggle={() => toggleExtra(section.key, extra.key)}
+                            />
                           ))}
                         </div>
                       )}
@@ -281,5 +347,38 @@ export default function RolesPermissionsPage() {
         onConfirm={remove}
       />
     </div>
+  );
+}
+
+function PermissionChip({
+  label,
+  checked,
+  locked,
+  variant,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  locked: boolean;
+  variant: "action" | "extra";
+  onToggle: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "relative inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors select-none",
+        locked
+          ? "cursor-not-allowed border-transparent bg-muted/60 text-muted-foreground/40"
+          : checked
+            ? variant === "extra"
+              ? "cursor-pointer border-amber-500 bg-amber-500 text-white shadow-sm"
+              : "cursor-pointer border-primary bg-primary text-white shadow-sm"
+            : "cursor-pointer border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+      )}
+    >
+      <input type="checkbox" className="sr-only" checked={checked} disabled={locked} onChange={onToggle} />
+      {checked ? <Check className="h-3 w-3" /> : variant === "extra" ? <Zap className="h-3 w-3 opacity-50" /> : null}
+      {label}
+    </label>
   );
 }
