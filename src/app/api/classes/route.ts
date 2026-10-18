@@ -8,10 +8,21 @@ import { isStreamStandard } from "@/lib/streamStandards";
 import "@/models/Subject";
 import "@/models/Teacher";
 
-// Admin and a non-teaching staffer with the "classes" section open see every
-// class; a genuine teacher sees only their own (classTeacher or
-// assignedClasses) — the same class pickers Homework and Study Materials use
-// to restrict what a teacher can assign/upload to.
+// Admin and a non-teaching staffer see every class; a genuine teacher sees
+// only their own (classTeacher or assignedClasses) — the same class pickers
+// Homework and Study Materials use to restrict what a teacher can
+// assign/upload to.
+//
+// The class list itself (name/section/room/student count, no student PII)
+// is low-sensitivity reference data used as a picker by most sections, not
+// just "Classes" — Attendance, Homework, Study Materials, Timetable, Fees
+// and Reports all fetch it to populate a class filter. Gating the list
+// behind the "classes" section's own open grant would mean a role built for
+// one of those other sections (e.g. an Accountant with Fees access) can't
+// use its own class filter unless separately granted Classes too — so any
+// non-teaching staffer with at least one section open can list classes;
+// only creating/editing/deleting a class stays gated behind "classes"
+// specifically (see POST below).
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
@@ -22,7 +33,7 @@ export async function GET(req: Request) {
     await connectDB();
 
     const staffSections = await getNonTeachingStaffSections(auth);
-    if (staffSections && !staffSections.classes?.open) {
+    if (staffSections && !Object.values(staffSections).some((s) => s.open)) {
       return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
     }
 
