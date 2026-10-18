@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Result } from "@/models/Result";
 import { Teacher } from "@/models/Teacher";
 import { Exam } from "@/models/Exam";
@@ -33,36 +33,47 @@ export async function PATCH(req: Request) {
     }
 
     if (auth.role === "teacher") {
-      const distinctSubjects = new Set(
-        [...uniqueExams.values()].map((e) => `${e.class}::${e.section}::${e.subject.toLowerCase()}`),
-      );
-
-      if (distinctSubjects.size > 1) {
-        // Spans every subject of an exam at once -- reserved for the class
-        // teacher (or admin) regardless of canEnterMarks/subject-teacher
-        // status, so one subject teacher can't publish everyone else's
-        // still-in-progress marks along with their own.
-        const distinctClasses = new Set([...uniqueExams.values()].map((e) => e.class));
-        for (const className of distinctClasses) {
-          if (!(await isClassTeacherOf(auth.id, auth.schoolId, className))) {
-            return NextResponse.json(
-              { success: false, message: "Only the class teacher or an admin can publish or unpublish results across every subject of an exam." },
-              { status: 403 },
-            );
-          }
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        // A granted "publishResults" extra covers both the single-subject
+        // and cross-subject bulk cases below -- the admin explicitly
+        // decided this role can publish, not that it should additionally
+        // have to pass as a subject or class teacher too.
+        if (!staffSections.exams?.extras?.publishResults) {
+          return NextResponse.json({ success: false, message: "You don't have permission to publish results." }, { status: 403 });
         }
       } else {
-        // A single subject -- the same canEnterMarks-or-subject-teacher
-        // check POST /api/exams/[id]/marks uses.
-        const teacher = await Teacher.findById(auth.id).select("permissions");
-        if (!teacher?.permissions?.canEnterMarks) {
-          for (const e of uniqueExams.values()) {
-            const allowed = await isSubjectTeacherOf(auth.id, auth.schoolId, e.class, e.section, e.subject);
-            if (!allowed) {
+        const distinctSubjects = new Set(
+          [...uniqueExams.values()].map((e) => `${e.class}::${e.section}::${e.subject.toLowerCase()}`),
+        );
+
+        if (distinctSubjects.size > 1) {
+          // Spans every subject of an exam at once -- reserved for the class
+          // teacher (or admin) regardless of canEnterMarks/subject-teacher
+          // status, so one subject teacher can't publish everyone else's
+          // still-in-progress marks along with their own.
+          const distinctClasses = new Set([...uniqueExams.values()].map((e) => e.class));
+          for (const className of distinctClasses) {
+            if (!(await isClassTeacherOf(auth.id, auth.schoolId, className))) {
               return NextResponse.json(
-                { success: false, message: "You don't have permission to publish results for this subject/class." },
+                { success: false, message: "Only the class teacher or an admin can publish or unpublish results across every subject of an exam." },
                 { status: 403 },
               );
+            }
+          }
+        } else {
+          // A single subject -- the same canEnterMarks-or-subject-teacher
+          // check POST /api/exams/[id]/marks uses.
+          const teacher = await Teacher.findById(auth.id).select("permissions");
+          if (!teacher?.permissions?.canEnterMarks) {
+            for (const e of uniqueExams.values()) {
+              const allowed = await isSubjectTeacherOf(auth.id, auth.schoolId, e.class, e.section, e.subject);
+              if (!allowed) {
+                return NextResponse.json(
+                  { success: false, message: "You don't have permission to publish results for this subject/class." },
+                  { status: 403 },
+                );
+              }
             }
           }
         }

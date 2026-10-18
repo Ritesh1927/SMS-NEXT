@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
@@ -28,6 +28,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     await connectDB();
+
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.exams?.view) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
 
     const term = await ScheduledExam.findOne({ _id: id, school: auth.schoolId }).populate("createdBy", "name teacherId");
     if (!term) return NextResponse.json({ success: false, message: "Exam term not found." }, { status: 404 });
@@ -74,16 +79,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (auth.role === "teacher") {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
-      if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
-      if (cls && !(await teacherHasAccessToClass(auth.id, auth.schoolId, cls))) {
-        return NextResponse.json({ success: false, message: "You can only assign exams to your classes." }, { status: 403 });
-      }
-      if (!editWindowOpen(existing.startDate)) {
-        return NextResponse.json(
-          { success: false, message: "Cannot edit exam within 2 hours of start time. Please submit a change request instead." },
-          { status: 403 },
-        );
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.exams?.edit) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
+        if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
+        if (cls && !(await teacherHasAccessToClass(auth.id, auth.schoolId, cls))) {
+          return NextResponse.json({ success: false, message: "You can only assign exams to your classes." }, { status: 403 });
+        }
+        if (!editWindowOpen(existing.startDate)) {
+          return NextResponse.json(
+            { success: false, message: "Cannot edit exam within 2 hours of start time. Please submit a change request instead." },
+            { status: 403 },
+          );
+        }
       }
     }
 
@@ -180,13 +192,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!existing) return NextResponse.json({ success: false, message: "Exam term not found." }, { status: 404 });
 
     if (auth.role === "teacher") {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
-      if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
-      if (!editWindowOpen(existing.startDate)) {
-        return NextResponse.json(
-          { success: false, message: "Cannot delete exam within 2 hours of start time. Please submit a change request instead." },
-          { status: 403 },
-        );
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.exams?.delete) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
+        if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
+        if (!editWindowOpen(existing.startDate)) {
+          return NextResponse.json(
+            { success: false, message: "Cannot delete exam within 2 hours of start time. Please submit a change request instead." },
+            { status: 403 },
+          );
+        }
       }
     }
 

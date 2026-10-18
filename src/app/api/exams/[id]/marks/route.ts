@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { Student } from "@/models/Student";
@@ -25,13 +25,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!exam) return NextResponse.json({ success: false, message: "Exam not found." }, { status: 404 });
 
     if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      const isSubjectTeacher = await isSubjectTeacherOf(auth.id, auth.schoolId, exam.class, exam.section, exam.subject);
-      if (!teacher?.permissions?.canEnterMarks && !isSubjectTeacher) {
-        return NextResponse.json(
-          { success: false, message: "You don't have permission to enter marks for this subject/class." },
-          { status: 403 },
-        );
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.exams?.extras?.enterMarks) {
+          return NextResponse.json({ success: false, message: "You don't have permission to enter marks." }, { status: 403 });
+        }
+      } else {
+        const teacher = await Teacher.findById(auth.id).select("permissions");
+        const isSubjectTeacher = await isSubjectTeacherOf(auth.id, auth.schoolId, exam.class, exam.section, exam.subject);
+        if (!teacher?.permissions?.canEnterMarks && !isSubjectTeacher) {
+          return NextResponse.json(
+            { success: false, message: "You don't have permission to enter marks for this subject/class." },
+            { status: 403 },
+          );
+        }
       }
     }
 

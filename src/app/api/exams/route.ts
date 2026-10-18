@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import { Admin } from "@/models/Admin";
@@ -17,6 +17,11 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.exams?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const cls = searchParams.get("class");
     const subject = searchParams.get("subject");
@@ -78,24 +83,31 @@ export async function POST(req: Request) {
     }
 
     if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      if (!teacher?.permissions?.canCreateExam) {
-        // No blanket grant -- fall back to per-subject Timetable access, the
-        // same auto-grant isSubjectTeacherOf already gives for marks entry
-        // (see /api/exams/[id]/marks). Every subject in this request must
-        // pass, not just one, since a single Test submission can cover
-        // several subjects at once. Scoped to standalone Tests only -- a
-        // multi-subject Exam term (/api/scheduled-exams) still requires the
-        // blanket grant, unchanged.
-        const uniqueSubjects = [...new Set(subjectList.map((s) => s.name))];
-        const checks = await Promise.all(
-          uniqueSubjects.map((name) => isSubjectTeacherOf(auth.id, auth.schoolId, cls, section || "", name)),
-        );
-        if (!checks.every(Boolean)) {
-          return NextResponse.json(
-            { success: false, message: "You can only create tests for a class and subject you teach." },
-            { status: 403 },
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.exams?.create) {
+          return NextResponse.json({ success: false, message: "You don't have permission to create tests." }, { status: 403 });
+        }
+      } else {
+        const teacher = await Teacher.findById(auth.id).select("permissions");
+        if (!teacher?.permissions?.canCreateExam) {
+          // No blanket grant -- fall back to per-subject Timetable access, the
+          // same auto-grant isSubjectTeacherOf already gives for marks entry
+          // (see /api/exams/[id]/marks). Every subject in this request must
+          // pass, not just one, since a single Test submission can cover
+          // several subjects at once. Scoped to standalone Tests only -- a
+          // multi-subject Exam term (/api/scheduled-exams) still requires the
+          // blanket grant, unchanged.
+          const uniqueSubjects = [...new Set(subjectList.map((s) => s.name))];
+          const checks = await Promise.all(
+            uniqueSubjects.map((name) => isSubjectTeacherOf(auth.id, auth.schoolId, cls, section || "", name)),
           );
+          if (!checks.every(Boolean)) {
+            return NextResponse.json(
+              { success: false, message: "You can only create tests for a class and subject you teach." },
+              { status: 403 },
+            );
+          }
         }
       }
     }

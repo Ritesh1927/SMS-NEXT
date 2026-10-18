@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { Student } from "@/models/Student";
@@ -17,6 +17,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     await connectDB();
+
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.exams?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
 
     const exam = await Exam.findOne({ _id: id, school: auth.schoolId });
     if (!exam) return NextResponse.json({ success: false, message: "Exam not found." }, { status: 404 });

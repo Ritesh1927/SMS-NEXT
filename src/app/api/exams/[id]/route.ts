@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { Admin } from "@/models/Admin";
@@ -49,16 +49,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (auth.role === "teacher") {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
-      if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
-      if (body.class && !(await teacherHasAccessToClass(auth.id, auth.schoolId, body.class))) {
-        return NextResponse.json({ success: false, message: "You can only assign exams to your classes." }, { status: 403 });
-      }
-      if (!editWindowOpen(existing.date)) {
-        return NextResponse.json(
-          { success: false, message: "Cannot edit exam within 2 hours of start time. Please submit a change request instead." },
-          { status: 403 },
-        );
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        // Treated like admin once granted "edit" -- no class-ownership or
+        // 2-hour-window restriction, same as schooladmin is never subject
+        // to either below.
+        if (!staffSections.exams?.edit) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, existing.class);
+        if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
+        if (body.class && !(await teacherHasAccessToClass(auth.id, auth.schoolId, body.class))) {
+          return NextResponse.json({ success: false, message: "You can only assign exams to your classes." }, { status: 403 });
+        }
+        if (!editWindowOpen(existing.date)) {
+          return NextResponse.json(
+            { success: false, message: "Cannot edit exam within 2 hours of start time. Please submit a change request instead." },
+            { status: 403 },
+          );
+        }
       }
     }
 
@@ -95,13 +105,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!exam) return NextResponse.json({ success: false, message: "Exam not found." }, { status: 404 });
 
     if (auth.role === "teacher" && !exam.scheduledExamId) {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, exam.class);
-      if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
-      if (!editWindowOpen(exam.date)) {
-        return NextResponse.json(
-          { success: false, message: "Cannot delete exam within 2 hours of start time. Please submit a change request instead." },
-          { status: 403 },
-        );
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections) {
+        if (!staffSections.exams?.delete) {
+          return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+        }
+      } else {
+        const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, exam.class);
+        if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
+        if (!editWindowOpen(exam.date)) {
+          return NextResponse.json(
+            { success: false, message: "Cannot delete exam within 2 hours of start time. Please submit a change request instead." },
+            { status: 403 },
+          );
+        }
       }
     }
 

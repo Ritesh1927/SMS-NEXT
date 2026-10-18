@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
@@ -41,8 +41,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const cls = searchParams.get("class");
 
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.exams?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const query: Record<string, unknown> = { school: auth.schoolId };
-    if (auth.role === "teacher") {
+    if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
       if (accessible.length === 0) return NextResponse.json({ success: true, data: [] });
       query.$or = accessible.map((c) => ({ class: c.name, section: c.section }));
@@ -72,10 +77,17 @@ export async function POST(req: Request) {
   try {
     await connectDB();
 
+    const staffSectionsForCreate = await getNonTeachingStaffSections(auth);
     if (auth.role === "teacher") {
-      const teacher = await Teacher.findById(auth.id).select("permissions");
-      if (!teacher?.permissions?.canCreateExam) {
-        return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
+      if (staffSectionsForCreate) {
+        if (!staffSectionsForCreate.exams?.create) {
+          return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
+        }
+      } else {
+        const teacher = await Teacher.findById(auth.id).select("permissions");
+        if (!teacher?.permissions?.canCreateExam) {
+          return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
+        }
       }
     }
 
@@ -107,7 +119,7 @@ export async function POST(req: Request) {
       if (rejection) return NextResponse.json({ success: false, message: `${s.subject}: ${rejection}` }, { status: 400 });
     }
 
-    if (auth.role === "teacher") {
+    if (auth.role === "teacher" && !staffSectionsForCreate) {
       const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
       if (!allowed) {
         return NextResponse.json({ success: false, message: "You can only create exams for your classes." }, { status: 403 });

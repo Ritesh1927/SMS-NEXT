@@ -288,12 +288,41 @@ function gradeColor(grade: string) {
 export function AdminTeacherExams() {
   const { user } = useAuth();
   const isAdmin = user?.role === "schooladmin";
+  // Non-teaching staff are a third actor alongside admin/teaching-staff: no
+  // subject-teacher fallback applies to them (they're never anyone's subject
+  // teacher), just their role's Exams grant -- create/edit/delete treated
+  // like admin once granted (matches the server's admin-like bypass), and
+  // enterMarks/publishResults extras substituting for the teaching-staff
+  // canEnterMarks/canCreateExam blanket flags below.
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffExamPerms, setStaffExamPerms] = useState<{
+    create: boolean; edit: boolean; delete: boolean; extras: { enterMarks: boolean; publishResults: boolean };
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { create: boolean; edit: boolean; delete: boolean; extras: { enterMarks: boolean; publishResults: boolean } }> } }>(
+      "/roles/my-permissions",
+      token,
+    )
+      .then((res) => setStaffExamPerms(res.data.sections.exams || { create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } }))
+      .catch(() => setStaffExamPerms({ create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } }));
+  }, [isNonTeachingStaff]);
+
+  // A non-teaching staffer with "edit"/"delete" is treated like admin for
+  // the locked-edit-window UI below -- matches the server, which never
+  // subjects them to the 2-hour window or class-ownership checks either.
+  const staffActsLikeAdmin = isNonTeachingStaff && !!(staffExamPerms?.edit || staffExamPerms?.delete);
+
   // Teachers can enter/publish marks either via the blanket canEnterMarks
   // grant (Roles & Permissions → Exams) or, without needing that grant at
   // all, for any subject/class they actually teach per the Timetable —
   // matches the same two-path check /api/exams/[id]/marks and
   // /api/results/publish do server-side. Admins always have it.
-  const hasBlanketMarksPermission = isAdmin || Boolean((user?.permissions as { canEnterMarks?: boolean } | undefined)?.canEnterMarks);
+  const hasBlanketMarksPermission =
+    isAdmin || Boolean((user?.permissions as { canEnterMarks?: boolean } | undefined)?.canEnterMarks) || !!staffExamPerms?.extras.enterMarks;
   const [subjectTeacherOf, setSubjectTeacherOf] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -325,7 +354,8 @@ export function AdminTeacherExams() {
   // what POST /api/exams enforces server-side. Scoped to standalone Tests
   // only, not multi-subject Exam terms, which still require the blanket
   // grant -- same split the backend makes.
-  const hasBlanketExamCreatePermission = isAdmin || Boolean((user?.permissions as { canCreateExam?: boolean } | undefined)?.canCreateExam);
+  const hasBlanketExamCreatePermission =
+    isAdmin || Boolean((user?.permissions as { canCreateExam?: boolean } | undefined)?.canCreateExam) || !!staffExamPerms?.create;
   const canCreateTestFor = (className?: string, section?: string, subject?: string) =>
     hasBlanketExamCreatePermission || (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject)));
 
@@ -1103,6 +1133,7 @@ export function AdminTeacherExams() {
   // subject via currentCanEnterMarks above.
   const canPublishAllSubjects =
     isAdmin ||
+    !!staffExamPerms?.extras.publishResults ||
     (!!activeTermSubject?.class &&
       classes.some(
         (c) =>
@@ -1263,7 +1294,7 @@ export function AdminTeacherExams() {
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(exam.status, exam.date).className}`}>
                         {displayExamStatus(exam.status, exam.date).label}
                       </span>
-                      {locked && !isAdmin ? (
+                      {locked && !isAdmin && !staffActsLikeAdmin ? (
                         <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Request change" title="This test starts within 2 hours, so changes need admin approval — request one">
                           <FileEdit className="h-3.5 w-3.5" />
                         </Button>
@@ -1351,7 +1382,7 @@ export function AdminTeacherExams() {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(termEffectiveStatus(term, exams), term.endDate).className}`}>
                           {displayExamStatus(termEffectiveStatus(term, exams), term.endDate).label}
                         </span>
-                        {locked && !isAdmin ? (
+                        {locked && !isAdmin && !staffActsLikeAdmin ? (
                           <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change" title="This exam starts within 2 hours, so changes need admin approval — request one">
                             <FileEdit className="h-3.5 w-3.5" />
                           </Button>
