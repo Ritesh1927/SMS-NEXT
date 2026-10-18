@@ -162,15 +162,37 @@ const TABS: { id: Tab; label: string; icon: typeof BarChart3 }[] = [
 export default function ReportsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffReportsPerms, setStaffReportsPerms] = useState<{ view: boolean; extras: { exportData: boolean } } | null>(null);
+  const [staffFeesView, setStaffFeesView] = useState(false);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; extras?: { exportData?: boolean } }> } }>("/roles/my-permissions", token)
+      .then((res) => {
+        setStaffReportsPerms(res.data.sections.reports ? { view: res.data.sections.reports.view, extras: { exportData: !!res.data.sections.reports.extras?.exportData } } : { view: false, extras: { exportData: false } });
+        setStaffFeesView(!!res.data.sections.fees?.view);
+      })
+      .catch(() => {
+        setStaffReportsPerms({ view: false, extras: { exportData: false } });
+        setStaffFeesView(false);
+      });
+  }, [isNonTeachingStaff]);
+
   const [tab, setTab] = useState<Tab>("overview");
-  // Overview + Finance are admin-only — teachers see Attendance / Exam
-  // Results only. The state still defaults to "overview", so every render,
-  // effect and pill highlight must go through activeTab (which remaps a
-  // hidden selection to "attendance" for non-admins).
-  const visibleTabs: { id: Tab; label: string; icon: typeof BarChart3 }[] = isAdmin
-    ? TABS
-    : TABS.filter((t) => t.id !== "overview" && t.id !== "finance");
-  const activeTab: Tab = !isAdmin && (tab === "overview" || tab === "finance") ? "attendance" : tab;
+  // Overview is always admin-only (it's driven by the broader school-stats
+  // dashboard endpoint, not anything in Reports' own scope). Finance opens
+  // to a non-teaching staffer who also has the Fees section's "view" grant,
+  // since it's driven by the same fee-analytics endpoint the Fees page uses.
+  // The state still defaults to "overview", so every render, effect and pill
+  // highlight must go through activeTab (which remaps a hidden selection).
+  const canSeeFinance = isAdmin || (isNonTeachingStaff && staffFeesView);
+  const visibleTabs: { id: Tab; label: string; icon: typeof BarChart3 }[] = TABS.filter(
+    (t) => (t.id !== "overview" || isAdmin) && (t.id !== "finance" || canSeeFinance),
+  );
+  const activeTab: Tab = (tab === "overview" && !isAdmin) || (tab === "finance" && !canSeeFinance) ? "attendance" : tab;
 
   const [classes, setClasses] = useState<ClassDoc[]>([]);
   const [stats, setStats] = useState<{
@@ -252,17 +274,19 @@ export default function ReportsPage() {
     const token = getToken();
     if (!token) return;
     const run = async () => {
-      // Session FY for fee analytics (Overview must match the Fees
+      // Session FY for fee analytics (Overview/Finance must match the Fees
       // dashboard's session-scoped, fee-month view — resolve the school's
-      // session start first). Admin-only: teachers never see Overview.
-      const branding = isAdmin
-        ? await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null)
-        : null;
+      // session start first). Needed by either tab, so admin or anyone who
+      // can see Finance.
+      const branding =
+        isAdmin || canSeeFinance
+          ? await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null)
+          : null;
       const feeFy = currentAcademicYear(branding?.data?.settings?.sessionStartMonth || "April");
       const [classesRes, statsRes, analyticsRes, attYearlyRes] = await Promise.allSettled([
         apiGet<{ success: boolean; data: ClassDoc[] }>("/classes", token),
         isAdmin ? apiGet<{ success: boolean; data: { stats: { totalStudents: number; totalTeachers: number; newStudentsThisMonth?: number; newTeachersThisMonth?: number } } }>("/dashboard/schooladmin", token) : Promise.resolve(null),
-        isAdmin
+        canSeeFinance
           ? apiGet<{
               success: boolean;
               data: { month: string; collected: number; pending: number }[];
@@ -298,7 +322,7 @@ export default function ReportsPage() {
     run()
       .catch(() => {})
       .finally(() => setLoadingInit(false));
-  }, [isAdmin]);
+  }, [isAdmin, canSeeFinance]);
 
   const loadAttendance = () => {
     const token = getToken();
@@ -478,6 +502,12 @@ export default function ReportsPage() {
 
   if (user && user.role !== "schooladmin" && user.role !== "teacher") {
     return <p className="text-sm text-muted-foreground">Reports are not available for your role.</p>;
+  }
+  if (isNonTeachingStaff) {
+    if (staffReportsPerms === null) return <PageLoader label="Loading..." />;
+    if (!staffReportsPerms.view) {
+      return <p className="text-sm text-muted-foreground">Reports are not available for your role.</p>;
+    }
   }
 
   return (
