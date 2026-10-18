@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireFeeAccess } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { Student } from "@/models/Student";
@@ -38,6 +38,11 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.fees?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const cls = searchParams.get("class");
@@ -87,7 +92,7 @@ export async function GET(req: Request) {
 // one-off charge, mirroring SMS-BACKEND's collectFee.
 export async function POST(req: Request) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "collectPayment" });
   if ("error" in result) return result.error;
   const { auth } = result;
 

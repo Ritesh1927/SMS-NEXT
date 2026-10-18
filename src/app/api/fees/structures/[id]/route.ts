@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { requireFeeManager } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { FeeStructure, findDuplicateFeeStructures } from "@/models/FeeStructure";
 import { FeePayment } from "@/models/FeePayment";
 
@@ -8,7 +8,7 @@ const ALLOWED_FIELDS = ["title", "amount", "dueDate", "frequency", "description"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
   if ("error" in result) return result.error;
   const { auth } = result;
 
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
   if ("error" in result) return result.error;
   const { auth } = result;
 

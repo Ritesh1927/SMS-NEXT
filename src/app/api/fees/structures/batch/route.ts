@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { requireFeeManager } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { FeeStructure, findDuplicateFeeStructures, type FeeFrequency } from "@/models/FeeStructure";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
@@ -19,7 +19,7 @@ interface FeeHeadInput {
 // class, mirroring SMS-BACKEND's batchCreateFeeStructures.
 export async function POST(req: Request) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
   if ("error" in result) return result.error;
   const { auth } = result;
 

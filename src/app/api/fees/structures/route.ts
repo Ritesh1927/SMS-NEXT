@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireFeeAccess } from "@/lib/auth-server";
 import { FeeStructure, findDuplicateFeeStructures } from "@/models/FeeStructure";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
@@ -13,6 +13,11 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.fees?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const cls = searchParams.get("class");
 
@@ -31,7 +36,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
   if ("error" in result) return result.error;
   const { auth } = result;
 

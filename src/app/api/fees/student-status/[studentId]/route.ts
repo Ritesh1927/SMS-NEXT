@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { FeePayment, type IFeePayment } from "@/models/FeePayment";
 import { Concession, type IConcession } from "@/models/Concession";
@@ -29,6 +29,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
   try {
     const { studentId } = await params;
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.fees?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
 
     if (auth.role === "parent") {
       const parentDoc = await Parent.findById(auth.id);

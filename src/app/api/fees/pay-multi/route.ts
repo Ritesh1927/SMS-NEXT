@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, requireFeeManager } from "@/lib/auth-server";
+import { getAuthUser, requireFeeAccess } from "@/lib/auth-server";
 import { FeeStructure } from "@/models/FeeStructure";
 import { FeePayment, type PaymentMode } from "@/models/FeePayment";
 import { Concession, type IConcession } from "@/models/Concession";
@@ -38,8 +38,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "studentId and items array required." }, { status: 400 });
   }
 
-  // Admin/teacher use requireFeeManager (permission-gated); a parent may
-  // only pay for their own linked child, always via "online".
+  // Admin/teacher/non-teaching-staff use requireFeeAccess (permission-gated);
+  // a parent may only pay for their own linked child, always via "online".
   if (auth.role === "parent") {
     if (paymentMode !== "online") {
       return NextResponse.json({ success: false, message: "Parents may only pay online." }, { status: 403 });
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "This student is not linked to your account." }, { status: 403 });
     }
   } else {
-    const result = await requireFeeManager(req);
+    const result = await requireFeeAccess(req, { extra: "collectPayment" });
     if ("error" in result) return result.error;
   }
 

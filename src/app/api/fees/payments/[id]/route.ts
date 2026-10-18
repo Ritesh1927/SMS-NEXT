@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { requireFeeManager } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
 import "@/models/FeeStructure";
@@ -13,7 +13,7 @@ async function genReceipt() {
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, { extra: "collectPayment" });
   if ("error" in result) return result.error;
   const { auth } = result;
 
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const result = await requireFeeManager(req);
+  const result = await requireFeeAccess(req, "delete");
   if ("error" in result) return result.error;
   const { auth } = result;
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { Admin } from "@/models/Admin";
 import { Parent } from "@/models/Parent";
@@ -15,6 +15,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ paymentI
   try {
     const { paymentId } = await params;
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.fees?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
 
     const payment = await FeePayment.findById(paymentId)
       .populate("student", "name studentId class section rollNumber")

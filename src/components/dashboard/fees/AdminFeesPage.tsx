@@ -205,7 +205,25 @@ const PRIO_TILES = [
 export default function AdminFeesPage() {
   const { user } = useAuth();
   const permissions = user?.permissions as { canManageFees?: boolean } | undefined;
-  const canManage = user?.role !== "teacher" || !!permissions?.canManageFees;
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffFeesPerms, setStaffFeesPerms] = useState<{ extras: { collectPayment: boolean; manageFeeStructure: boolean } } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { extras: { collectPayment: boolean; manageFeeStructure: boolean } }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffFeesPerms(res.data.sections.fees || { extras: { collectPayment: false, manageFeeStructure: false } }))
+      .catch(() => setStaffFeesPerms({ extras: { collectPayment: false, manageFeeStructure: false } }));
+  }, [isNonTeachingStaff]);
+
+  // Non-teaching staff don't have a single blanket flag the way the old
+  // teaching-staff canManageFees does -- either grant (collect or manage
+  // structure) is enough to reach the manage-capable tabs/buttons here; the
+  // specific action is still the real gate server-side either way.
+  const canManage =
+    (user?.role !== "teacher" || !!permissions?.canManageFees) ||
+    (isNonTeachingStaff && !!(staffFeesPerms?.extras.collectPayment || staffFeesPerms?.extras.manageFeeStructure));
   const TABS = ALL_TABS.filter((t) => !t.permission || canManage);
 
   const [tab, setTab] = useState("dashboard");

@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { Concession } from "@/models/Concession";
 import "@/models/Student";
 import "@/models/FeeStructure";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 const populateConcession = (q: ReturnType<typeof Concession.find>) =>
   q.populate("student", "name studentId class section rollNumber").populate("feeStructure", "title class amount");
 
 export async function GET(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
+  if ("error" in result) return result.error;
+  const { auth } = result;
 
   try {
-    await connectDB();
     const data = await populateConcession(Concession.find({ school: auth.schoolId }).sort({ createdAt: -1 }));
     return NextResponse.json({ success: true, data });
   } catch (err) {
@@ -31,8 +26,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
+  if ("error" in result) return result.error;
+  const { auth } = result;
 
   try {
     const { student, feeStructure, type, value, isPct, description, duration, validUntil } = await req.json();
@@ -46,7 +43,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Percent discount cannot exceed 100." }, { status: 400 });
     }
 
-    await connectDB();
     const con = await Concession.create({
       school: auth.schoolId,
       student,

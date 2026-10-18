@@ -1,7 +1,7 @@
 import type { QueryFilter } from "mongoose";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
@@ -57,13 +57,12 @@ const monthKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).p
 // the school-configured projection on unpaid overdue dues) instead of
 // being folded into the totals.
 export async function GET(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const result = await requireFeeAccess(req, "view");
+  if ("error" in result) return result.error;
+  const { auth } = result;
 
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
     const month = searchParams.get("month") || "";
     const classId = searchParams.get("classId") || "";

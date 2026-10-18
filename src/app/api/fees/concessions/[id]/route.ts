@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireFeeAccess } from "@/lib/auth-server";
 import { Concession } from "@/models/Concession";
 import "@/models/Student";
 import "@/models/FeeStructure";
 
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
-
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const result = await requireFeeAccess(req, { extra: "manageFeeStructure" });
+  if ("error" in result) return result.error;
+  const { auth } = result;
 
   try {
     const { id } = await params;
@@ -35,7 +31,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (duration !== undefined) update.duration = duration;
     if (validUntil !== undefined) update.validUntil = duration === "until-date" ? validUntil : null;
 
-    await connectDB();
     const con = await Concession.findOneAndUpdate({ _id: id, school: auth.schoolId }, update, { new: true })
       .populate("student", "name studentId class section rollNumber")
       .populate("feeStructure", "title class amount");
@@ -51,12 +46,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const result = await requireFeeAccess(req, "delete");
+  if ("error" in result) return result.error;
+  const { auth } = result;
 
   try {
     const { id } = await params;
-    await connectDB();
     const con = await Concession.findOneAndDelete({ _id: id, school: auth.schoolId });
     if (!con) return NextResponse.json({ success: false, message: "Concession not found." }, { status: 404 });
 
