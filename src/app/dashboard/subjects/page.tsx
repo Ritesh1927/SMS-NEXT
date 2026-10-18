@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookOpen, School, LayoutGrid, Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, Copy, Users, Link2, Loader2, Upload } from "lucide-react";
-import { getToken } from "@/contexts/AuthContext";
+import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,20 @@ function autoCode(name: string): string {
 }
 
 export default function SubjectsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "schooladmin";
+  const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const [staffPerms, setStaffPerms] = useState<{ open: boolean; create: boolean; edit: boolean; delete: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!isNonTeachingStaff) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { sections: Record<string, { open: boolean; create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
+      .then((res) => setStaffPerms(res.data.sections.subjectClass || { open: false, create: false, edit: false, delete: false }))
+      .catch(() => setStaffPerms({ open: false, create: false, edit: false, delete: false }));
+  }, [isNonTeachingStaff]);
+
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [classAssignments, setClassAssignments] = useState<ClassWithSubjects[]>([]);
@@ -369,12 +383,16 @@ export default function SubjectsPage() {
               <p className="text-sm text-muted-foreground">{subjectsLoading ? "Loading…" : `${subjects.length} subject(s)`}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)} disabled={subjectsLoading}>
-                <Upload className="h-4 w-4" /> Bulk Upload
-              </Button>
-              <Button onClick={openCreateSubject} className="gap-2" disabled={subjectsLoading}>
-                <Plus className="h-4 w-4" /> Add Subject
-              </Button>
+              {isAdmin && (
+                <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)} disabled={subjectsLoading}>
+                  <Upload className="h-4 w-4" /> Bulk Upload
+                </Button>
+              )}
+              {(isAdmin || staffPerms?.create) && (
+                <Button onClick={openCreateSubject} className="gap-2" disabled={subjectsLoading}>
+                  <Plus className="h-4 w-4" /> Add Subject
+                </Button>
+              )}
             </div>
           </div>
 
@@ -413,12 +431,16 @@ export default function SubjectsPage() {
                       <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-xs truncate">{s.description || "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon-sm" onClick={() => openEditSubject(s)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" className="text-red-600 hover:text-red-600" onClick={() => setDeleteSubjectId(s._id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {(isAdmin || staffPerms?.edit) && (
+                            <Button variant="ghost" size="icon-sm" onClick={() => openEditSubject(s)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {(isAdmin || staffPerms?.delete) && (
+                            <Button variant="ghost" size="icon-sm" className="text-red-600 hover:text-red-600" onClick={() => setDeleteSubjectId(s._id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

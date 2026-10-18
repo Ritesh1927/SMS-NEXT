@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 
 // Mirrors assign/route.ts: removes a subject from every section of a
 // standard at once, since subjects are assigned per-standard. An optional
 // `section` scopes the removal to that one section instead (stream standards).
 export async function DELETE(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "subjectClass", "delete");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { standard, subjectId, section } = await req.json();
@@ -18,7 +18,6 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, message: "standard and subjectId are required." }, { status: 400 });
     }
 
-    await connectDB();
     const query: Record<string, unknown> = { school: auth.schoolId, name: standard };
     if (section) query.section = section;
 

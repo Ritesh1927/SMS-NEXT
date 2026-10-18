@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireStaffSectionAccess } from "@/lib/auth-server";
 import { Subject } from "@/models/Subject";
-
-function requireSchoolAdmin(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") return null;
-  return auth;
-}
 
 // Auto-generates a code from the subject name, first-letter-of-each-word
 // for multi-word names (max 4 chars) or the first 4 letters for a single
@@ -34,6 +28,10 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    const staffSections = await getNonTeachingStaffSections(auth);
+    if (staffSections && !staffSections.subjectClass?.open) {
+      return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
+    }
     const subjects = await Subject.find({ school: auth.schoolId }).sort({ createdAt: -1 });
     return NextResponse.json({ success: true, data: subjects });
   } catch (err) {
@@ -45,8 +43,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = requireSchoolAdmin(req);
-  if (!auth) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "subjectClass", "create");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { name, description } = await req.json();
@@ -54,8 +54,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Subject name is required." }, { status: 400 });
     }
     const trimmedName = String(name).trim();
-
-    await connectDB();
 
     // Case-insensitive: "Economics" and "economics" are the same subject --
     // only the auto-generated code was ever deduplicated, which let the two

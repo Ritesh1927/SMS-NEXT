@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { requireStaffSectionAccess } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 
 // Assigns subjects to every section of a standard at once -- subjects live
@@ -11,10 +11,10 @@ import { Class } from "@/models/Class";
 // for stream standards -- 11/12 -- where sections have genuinely different
 // subjects; the frontend decides when to send it).
 export async function POST(req: Request) {
-  const auth = getAuthUser(req);
-  if (!auth || auth.role !== "schooladmin") {
-    return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
-  }
+  await connectDB();
+  const gate = await requireStaffSectionAccess(req, "subjectClass", "edit");
+  if ("error" in gate) return gate.error;
+  const { auth } = gate;
 
   try {
     const { standard, subjectIds, section } = await req.json();
@@ -22,7 +22,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "standard and subjectIds[] are required." }, { status: 400 });
     }
 
-    await connectDB();
     const query: Record<string, unknown> = { school: auth.schoolId, name: standard };
     if (section) query.section = section;
 
