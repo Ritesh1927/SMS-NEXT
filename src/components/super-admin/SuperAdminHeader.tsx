@@ -37,7 +37,7 @@ interface RecentTicket {
 const iconButton =
   "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-muted aria-expanded:text-foreground";
 
-/** Floating top bar: breadcrumbs, global search, quick actions, notifications, theme, profile. */
+/** Full-width top bar: breadcrumbs, global search, quick actions, notifications, theme, profile. */
 export function SuperAdminHeader({
   unreadTickets, theme, onToggleTheme, onOpenMenu, onOpenSearch, adminName, adminEmail, onLogout,
 }: HeaderProps) {
@@ -63,8 +63,9 @@ export function SuperAdminHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5">
-      <div className="flex h-14 items-center gap-2 rounded-2xl bg-card/80 px-2 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-18px_rgba(37,30,140,0.25)] ring-1 ring-border/70 backdrop-blur-xl sm:px-3 dark:bg-card/70 dark:ring-white/10">
+    <header className="sticky top-0 z-30 w-full border-b border-border/70 bg-card/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-xl dark:bg-card/70">
+      {/* h-16 lines the bottom border up with the sidebar's brand row. */}
+      <div className="flex h-16 items-center gap-2 px-3 sm:px-5 lg:px-7">
         <button type="button" onClick={onOpenMenu} aria-label="Open navigation" className={cn(iconButton, "lg:hidden")}>
           <Menu className="h-5 w-5" />
         </button>

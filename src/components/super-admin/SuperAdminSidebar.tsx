@@ -84,7 +84,7 @@ export function SuperAdminSidebar({
               )}
               <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
                 <div className="space-y-0.5 overflow-hidden">
-                  {group.items.map((item) => (
+                  {group.items.filter((item) => !item.hidden).map((item) => (
                     <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} unreadTickets={unreadTickets} onNavigate={onNavigate} />
                   ))}
                 </div>

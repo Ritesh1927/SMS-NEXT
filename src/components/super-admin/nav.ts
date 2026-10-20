@@ -16,6 +16,8 @@ export interface SaNavItem {
   /** Extra paths that belong to this item (e.g. ticket detail pages). */
   matches?: RegExp;
   badge?: "ticketsUnread";
+  /** Not shown in the sidebar (still used by breadcrumbs and the command palette). */
+  hidden?: boolean;
 }
 
 export interface SaNavGroup {
@@ -50,23 +52,20 @@ export const SA_NAV_GROUPS: SaNavGroup[] = [
     items: [
       {
         href: "/super-admin/tickets",
-        label: "Bug Reports & Tickets",
-        icon: LifeBuoy,
-        description: "Reports from every school and role",
+        label: "Report Bugs",
+        icon: Bug,
+        description: "Bug reports and tickets from every school and role",
         exact: true,
-        matches: /^\/super-admin\/tickets\/[a-f\d]{24}$/i,
+        // The one sidebar tab for the whole bug area: ticket details, the
+        // Solved Archive, Ticket Settings and the Report a Bug form all light it up.
+        matches: /^\/super-admin\/(tickets\/([a-f\d]{24}|archive|settings)|report-bug)$/i,
         badge: "ticketsUnread",
       },
-      { href: "/super-admin/tickets/archive", label: "Solved Archive", icon: Archive, description: "Past fixes, searchable" },
-      { href: "/super-admin/report-bug", label: "Report a Bug", icon: Bug, description: "File a ticket as System Administrator" },
-    ],
-  },
-  {
-    id: "system",
-    label: "System",
-    icon: Settings2,
-    items: [
-      { href: "/super-admin/tickets/settings", label: "Ticket Settings", icon: Settings2, description: "Retention and upload limits" },
+      // Reached from the in-page tabs, the "New" menu and the profile menu,
+      // not the sidebar. Listed for breadcrumbs and the command palette.
+      { href: "/super-admin/tickets/archive", label: "Solved Archive", icon: Archive, description: "Past fixes, searchable", hidden: true },
+      { href: "/super-admin/tickets/settings", label: "Ticket Settings", icon: Settings2, description: "Retention and upload limits", hidden: true },
+      { href: "/super-admin/report-bug", label: "Report a Bug", icon: Bug, description: "File a ticket as System Administrator", hidden: true },
     ],
   },
 ];
@@ -83,7 +82,7 @@ export interface Crumb {
   href?: string;
 }
 
-/** "Super Admin › Support Center › Bug Reports & Tickets › Ticket details" */
+/** "Super Admin › Support Center › Report Bugs › Details" */
 export function breadcrumbsFor(pathname: string): Crumb[] {
   const crumbs: Crumb[] = [{ label: "Super Admin", href: SA_HOME.href }];
   if (pathname === SA_HOME.href) return [...crumbs, { label: SA_HOME.label }];
