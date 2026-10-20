@@ -24,10 +24,17 @@ export async function GET(req: Request) {
 
   try {
     await connectDB();
+    // .lean() matters here, not just as an optimization: teacherPowers is a
+    // real sub-schema (unlike `sections`, which is Schema.Types.Mixed and
+    // already a plain object once populated), and spreading a hydrated
+    // Mongoose subdocument instance below does NOT reliably flatten to its
+    // live field values -- .lean() returns plain objects for the populated
+    // paths too, sidestepping that entirely.
     const teacher = await Teacher.findById(auth.id)
       .select("staffType staffRole powerRole")
       .populate<{ staffRole: IRole | null }>("staffRole")
-      .populate<{ powerRole: IRole | null }>("powerRole");
+      .populate<{ powerRole: IRole | null }>("powerRole")
+      .lean();
     const sections: Record<string, ISectionPermission> =
       teacher?.staffType === "non-teaching" && teacher.staffRole ? { ...buildEmptySections(), ...teacher.staffRole.sections } : buildEmptySections();
     const openSections = teacher?.staffType === "non-teaching" ? openSectionKeys(sections) : [];
