@@ -12,7 +12,7 @@ import {
 // this page goes live.
 
 export const BRAND = {
-  name: "EduSync",
+  name: "EduNivo",
   tagline: "School ERP",
   email: "hello@edusync.in",
   phone: "+91 98765 43210",
@@ -25,7 +25,7 @@ export const NAV_LINKS = [
   { href: "#home", label: "Home" },
   { href: "#features", label: "Features" },
   { href: "#modules", label: "Modules" },
-  { href: "#why", label: "Why EduSync" },
+  { href: "#why", label: "Why EduNivo" },
   { href: "#pricing", label: "Pricing" },
   { href: "#testimonials", label: "Testimonials" },
   { href: "#contact", label: "Contact" },
@@ -82,7 +82,7 @@ export const SHOWCASE_POINTS = [
 ];
 
 export const STEPS: { title: string; text: string; icon: LucideIcon }[] = [
-  { title: "Book Demo", text: "Tell us about your school and see EduSync live.", icon: CalendarCheck },
+  { title: "Book Demo", text: "Tell us about your school and see EduNivo live.", icon: CalendarCheck },
   { title: "System Setup", text: "We configure classes, fees and roles, and import your data.", icon: Settings2 },
   { title: "Training & Onboarding", text: "Hands-on training for admins, teachers and staff.", icon: UserCheck },
   { title: "Go Live", text: "Launch with confidence, backed by dedicated support.", icon: Rocket },
@@ -96,7 +96,7 @@ export const APPS: { title: string; text: string; points: string[]; icon: Lucide
 
 /** SAMPLE CONTENT -- replace with real, approved testimonials. */
 export const TESTIMONIALS = [
-  { name: "Priya Sharma", role: "Principal", school: "Sunrise Public School, Pune", quote: "EduSync replaced four different tools for us. Fee collection, attendance and report cards now take a fraction of the time." },
+  { name: "Priya Sharma", role: "Principal", school: "Sunrise Public School, Pune", quote: "EduNivo replaced four different tools for us. Fee collection, attendance and report cards now take a fraction of the time." },
   { name: "Rahul Mehta", role: "Director", school: "Bright Future Academy, Ahmedabad", quote: "The onboarding team set everything up in a week. Our teachers were comfortable with it from day one." },
   { name: "Anjali Verma", role: "Administrator", school: "Greenfield International, Jaipur", quote: "Parents love the app. Fee reminders and attendance alerts have cut our phone calls dramatically." },
   { name: "Suresh Nair", role: "Principal", school: "St. Joseph's School, Kochi", quote: "The dashboards give me a live view of the whole school. I finally make decisions with real data." },
@@ -118,14 +118,14 @@ export const PARTNER_SCHOOLS = [
 export const FAQS = [
   { q: "Is data secure?", a: "Yes. All data is encrypted in transit and at rest, access is role-based (admins, teachers, parents and students each see only what they should), and backups run automatically on secure cloud infrastructure." },
   { q: "Can existing school data be imported?", a: "Absolutely. Our team imports students, staff, classes and fee data from your spreadsheets or previous software during setup, at no extra cost." },
-  { q: "Does it work on mobile?", a: "EduSync works in any browser on phones, tablets and computers, and can be installed as an app on Android and iPhone for one-tap access." },
+  { q: "Does it work on mobile?", a: "EduNivo works in any browser on phones, tablets and computers, and can be installed as an app on Android and iPhone for one-tap access." },
   { q: "Is training included?", a: "Yes. Every plan includes onboarding and hands-on training for administrators, teachers and office staff, plus recorded guides for new joiners." },
   { q: "What support is available?", a: "Our support team is available 24×7 by phone, email and chat, and every school gets a dedicated success manager during onboarding." },
-  { q: "Is it suitable for small and large schools?", a: "Yes. EduSync scales from a single school with a few hundred students to multi-campus groups with thousands, and you only pay for what you use." },
+  { q: "Is it suitable for small and large schools?", a: "Yes. EduNivo scales from a single school with a few hundred students to multi-campus groups with thousands, and you only pay for what you use." },
 ];
 
 export const FOOTER_COLUMNS = [
-  { title: "Company", links: [{ label: "About Us", href: "#why" }, { label: "Why EduSync", href: "#why" }, { label: "Testimonials", href: "#testimonials" }, { label: "Contact", href: "#contact" }] },
+  { title: "Company", links: [{ label: "About Us", href: "#why" }, { label: "Why EduNivo", href: "#why" }, { label: "Testimonials", href: "#testimonials" }, { label: "Contact", href: "#contact" }] },
   { title: "Modules", links: [{ label: "Admissions", href: "#modules" }, { label: "Attendance", href: "#modules" }, { label: "Fees & Payment", href: "#modules" }, { label: "Examination", href: "#modules" }, { label: "Parent App", href: "#apps" }] },
   { title: "Resources", links: [{ label: "Product Tour", href: "#features" }, { label: "How It Works", href: "#how" }, { label: "FAQs", href: "#faq" }, { label: "Mobile Apps", href: "#apps" }] },
   { title: "Support", links: [{ label: "Book a Demo", href: "#contact" }, { label: "Login", href: "/login" }, { label: "Help Center", href: "#faq" }] },

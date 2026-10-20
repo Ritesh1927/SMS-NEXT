@@ -13,7 +13,7 @@ export function HowItWorks() {
         <SectionHeading
           eyebrow="Get started in 4 simple steps"
           title={<>Live in Days, <GradientText>Not Months</GradientText></>}
-          description="Our team handles setup, data import and training, so your school starts using EduSync with confidence."
+          description="Our team handles setup, data import and training, so your school starts using EduNivo with confidence."
         />
         <ol className="relative mx-auto mt-14 grid max-w-md gap-10 sm:mt-16 lg:max-w-none lg:grid-cols-4 lg:gap-6">
           {/* Connector line (desktop) */}

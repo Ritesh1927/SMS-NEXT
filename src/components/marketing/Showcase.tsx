@@ -89,7 +89,7 @@ export function DashboardShowcase() {
                 <div className="hidden w-[22%] shrink-0 flex-col gap-0.5 bg-[#1E1B4B] p-2.5 sm:flex">
                   <div className="mb-2 flex items-center gap-1.5 px-1.5 py-1">
                     <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent"><GraduationCap className="h-3 w-3 text-white" /></span>
-                    <span className="text-[10px] font-bold text-white">EduSync</span>
+                    <span className="text-[10px] font-bold text-white">EduNivo</span>
                   </div>
                   {SIDEBAR.map((s, i) => (
                     <span key={s.label} className={cn("flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[8.5px] font-medium", i === 0 ? "bg-white/12 text-white" : "text-white/55")}>
