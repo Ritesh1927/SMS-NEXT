@@ -7,7 +7,7 @@ import { HowItWorks, MobileApps } from "./StepsAndApps";
 import { Faq, Testimonials, TrustedBy } from "./SocialProof";
 import { DemoCta, SiteFooter } from "./CtaAndFooter";
 
-/** EduSync public homepage. Section order follows the design brief. */
+/** EduNivo public homepage. Section order follows the design brief. */
 export function LandingPage() {
   return (
     <div className="ms-landing min-h-screen bg-[#F8F8FE] font-sans text-foreground antialiased selection:bg-primary/30">

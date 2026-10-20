@@ -8,7 +8,7 @@ import { CountUp, Reveal } from "./motion";
 /** Four statistic cards with animated counters (SAMPLE numbers -- see content.ts). */
 export function StatsBand() {
   return (
-    <section aria-label="EduSync in numbers" className="relative bg-white pb-6">
+    <section aria-label="EduNivo in numbers" className="relative bg-white pb-6">
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-5 lg:grid-cols-4 lg:gap-6 lg:px-8">
         {STATS.map((s, i) => (
           <Reveal key={s.label} delay={i * 90} className={cn(CARD, "group relative overflow-hidden p-4 transition-all duration-300 hover:-translate-y-1 min-[400px]:p-5 sm:p-6")}>
@@ -40,7 +40,7 @@ export function ModulesGrid() {
         <SectionHeading
           eyebrow="Complete ERP ecosystem"
           title={<>Everything Your School Needs in <GradientText>One Platform</GradientText></>}
-          description="From the first admission enquiry to the final report card, EduSync connects administrators, teachers, parents and students in one secure, easy-to-use system. Every module shares the same data, so nothing is entered twice."
+          description="From the first admission enquiry to the final report card, EduNivo connects administrators, teachers, parents and students in one secure, easy-to-use system. Every module shares the same data, so nothing is entered twice."
         />
         <ul className="mt-10 grid grid-cols-2 gap-3 sm:mt-14 sm:gap-4 lg:grid-cols-4 lg:gap-5">
           {MODULES.map((m, i) => (
@@ -69,7 +69,7 @@ export function ModulesGrid() {
   );
 }
 
-/** Why EduSync: six benefit cards on a soft blue band with curved edges. */
+/** Why EduNivo: six benefit cards on a soft blue band with curved edges. */
 export function WhyUs() {
   return (
     <section id="why" className="relative scroll-mt-20 bg-[linear-gradient(180deg,#EFEFFD,#F8F8FE)] py-24 sm:py-32">
@@ -79,7 +79,7 @@ export function WhyUs() {
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <SectionHeading
           eyebrow="Your school's growth partner"
-          title={<>Why Schools Choose <GradientText>EduSync</GradientText></>}
+          title={<>Why Schools Choose <GradientText>EduNivo</GradientText></>}
           description="Designed to make school management simpler, smarter and more efficient, for every person on campus."
         />
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

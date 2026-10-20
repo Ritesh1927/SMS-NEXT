@@ -63,7 +63,7 @@ export function Testimonials() {
             align="left"
             eyebrow="What our clients say"
             title={<>Loved by <GradientText>Principals & Teachers</GradientText></>}
-            description="Schools across India run their day on EduSync. Here's what they say."
+            description="Schools across India run their day on EduNivo. Here's what they say."
           />
           <div className="flex gap-2">
             <CarouselButton label="Previous testimonials" onClick={() => goTo(Math.max(0, index - 1))} disabled={index === 0}>
@@ -171,7 +171,7 @@ export function Faq() {
           align="left"
           eyebrow="FAQ"
           title={<>Questions? <GradientText>Answered.</GradientText></>}
-          description="Everything schools usually ask before switching to EduSync. Can't find yours? Our team is a call away."
+          description="Everything schools usually ask before switching to EduNivo. Can't find yours? Our team is a call away."
         />
         <Reveal>
           <ul className="space-y-3">
