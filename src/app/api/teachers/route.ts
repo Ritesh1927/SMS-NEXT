@@ -71,6 +71,9 @@ export async function POST(req: Request) {
     if (isTeaching && !primarySubject) {
       return NextResponse.json({ success: false, message: "Primary subject is required for teaching staff." }, { status: 400 });
     }
+    if (!isTeaching && !staffRole) {
+      return NextResponse.json({ success: false, message: "Role is required for non-teaching staff." }, { status: 400 });
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ success: false, message: "Invalid email format." }, { status: 400 });
     }

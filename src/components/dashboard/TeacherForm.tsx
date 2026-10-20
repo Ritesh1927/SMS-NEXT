@@ -230,6 +230,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
     if (!form.name.trim()) return toast.error("Name is required.");
     if (!form.email.trim()) return toast.error("Email is required.");
     if (form.staffType === "teaching" && !form.primarySubject) return toast.error("Primary subject is required.");
+    if (form.staffType === "non-teaching" && !form.staffRoleId) return toast.error("Role is required.");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) return toast.error("Invalid email format.");
@@ -359,7 +360,9 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           {isEdit && <p className="text-xs text-muted-foreground mt-2">Staff type cannot be changed after creation.</p>}
           {form.staffType === "non-teaching" && (
             <div className="mt-4 space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Role</label>
+              <label className="text-sm font-medium text-foreground">
+                Role<span className="text-destructive"> *</span>
+              </label>
               <Select
                 value={form.staffRoleId}
                 onValueChange={(v) => {
