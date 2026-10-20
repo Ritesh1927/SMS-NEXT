@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, UserRound, Briefcase, School, FileBadge, Landmark, Siren } from "lucide-react";
+import { ArrowLeft, Pencil, UserRound, Briefcase, School, FileBadge, Landmark, Siren, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
@@ -46,6 +46,8 @@ interface TeacherDetailData {
   specialization: string;
   previousExperience: string;
   assignedClasses?: { _id: string; name: string; section: string }[];
+  staffRole?: { _id: string; name: string } | null;
+  powerRole?: { _id: string; name: string } | null;
 }
 
 interface TeacherResponse {
@@ -103,6 +105,19 @@ export function TeacherDetail({ teacherId }: { teacherId: string }) {
             <h2 className="text-xl font-bold text-foreground">{teacher.name}</h2>
             <span className={statusPillClass(teacher.isActive ? "success" : "destructive")}>{teacher.isActive ? "Active" : "Inactive"}</span>
             <span className={statusPillClass(isTeaching ? "info" : "warning")}>{isTeaching ? "Teaching" : "Non-Teaching"}</span>
+            {!isTeaching && teacher.staffRole && (
+              <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-xs font-semibold">
+                {teacher.staffRole.name}
+              </span>
+            )}
+            {isTeaching && teacher.powerRole && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold"
+                title={`Extra powers granted via the "${teacher.powerRole.name}" role`}
+              >
+                <Zap className="h-3 w-3" /> {teacher.powerRole.name}
+              </span>
+            )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {teacher.teacherId} · {teacher.designation || (isTeaching ? "Teacher" : "Staff")}
@@ -124,6 +139,8 @@ export function TeacherDetail({ teacherId }: { teacherId: string }) {
         <DetailRow label="Staff Type" value={isTeaching ? "Teaching" : "Non-Teaching"} />
         <DetailRow label="Designation" value={teacher.designation} />
         {!isTeaching && <DetailRow label="Department" value={teacher.department} />}
+        {!isTeaching && <DetailRow label="Role" value={teacher.staffRole?.name} />}
+        {isTeaching && <DetailRow label="Power Role" value={teacher.powerRole?.name} />}
         <DetailRow label="Employment Type" value={teacher.employmentType} />
         <DetailRow label="Joining Date" value={fmtDate(teacher.joiningDate)} />
         <DetailRow label="Qualification" value={teacher.qualification} />

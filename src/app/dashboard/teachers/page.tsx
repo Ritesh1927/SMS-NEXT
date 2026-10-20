@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Power, Building2, GraduationCap, Briefcase, Users, Search, X, Upload, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Power, Building2, GraduationCap, Briefcase, Users, Search, X, Upload, Eye, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -37,6 +37,7 @@ interface TeacherRow {
   primarySubject?: string;
   department?: string;
   staffRole?: { _id: string; name: string } | null;
+  powerRole?: { _id: string; name: string } | null;
   classes?: string[];
   assignedClasses?: ClassOption[];
   classTeacherOf?: { name: string; section: string } | null;
@@ -352,7 +353,7 @@ export default function TeachersPage() {
                 </div>
               </div>
 
-              <div className="hidden sm:block w-28 shrink-0">
+              <div className="hidden sm:flex flex-col items-start gap-1 w-28 shrink-0">
                 <span
                   className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${
                     t.staffType === "teaching" ? "bg-info/10 text-blue-700" : "bg-amber-50 text-amber-700"
@@ -360,6 +361,14 @@ export default function TeachersPage() {
                 >
                   {staffRole(t)}
                 </span>
+                {t.staffType === "teaching" && t.powerRole && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700"
+                    title={`Extra powers granted via the "${t.powerRole.name}" role`}
+                  >
+                    <Zap className="h-3 w-3" /> {t.powerRole.name}
+                  </span>
+                )}
               </div>
               <div className="hidden sm:block w-48 shrink-0">
                 <p className="text-sm text-foreground/90 truncate" title={t.email}>{t.email}</p>
