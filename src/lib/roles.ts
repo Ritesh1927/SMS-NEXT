@@ -111,7 +111,7 @@ export function openSectionKeys(sections: Record<string, ISectionPermission> | n
 }
 
 // Teacher Power Roles -- a parallel, much smaller concept to ROLE_SECTIONS
-// above: a fixed set of 7 extra capabilities a genuine teacher doesn't have
+// above: a fixed set of 8 extra capabilities a genuine teacher doesn't have
 // by default, all gated by one shared stage scope (not per-power), additive
 // on top of their existing class-teacher/subject-teacher ownership and
 // built-in Teacher.permissions flags -- never replacing either.
@@ -124,6 +124,7 @@ export const TEACHER_POWERS: { key: TeacherPowerKey; label: string }[] = [
   { key: "examCreate", label: "Create tests & exam terms" },
   { key: "marksEnter", label: "Enter marks beyond own subject" },
   { key: "resultsPublish", label: "Publish results" },
+  { key: "studentsCreate", label: "Add new students" },
   { key: "studentsEdit", label: "Edit student details" },
 ];
 
@@ -136,6 +137,7 @@ export const EMPTY_TEACHER_POWERS: ITeacherPowers = {
   marksEnter: false,
   resultsPublish: false,
   studentsEdit: false,
+  studentsCreate: false,
 };
 
 export function buildEmptyTeacherPowers(): ITeacherPowers {

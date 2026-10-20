@@ -22,6 +22,7 @@ export interface ITeacherPowers {
   marksEnter: boolean;
   resultsPublish: boolean;
   studentsEdit: boolean;
+  studentsCreate: boolean;
 }
 
 export interface IRole extends Document {
@@ -46,6 +47,7 @@ const teacherPowersSchema = new Schema<ITeacherPowers>(
     marksEnter: { type: Boolean, default: false },
     resultsPublish: { type: Boolean, default: false },
     studentsEdit: { type: Boolean, default: false },
+    studentsCreate: { type: Boolean, default: false },
   },
   { _id: false },
 );

@@ -241,12 +241,11 @@ export default function StudentsPage() {
               </Button>
             </>
           ) : (
-            isNonTeachingStaff &&
-            staffPerms?.create && (
+            (isNonTeachingStaff && staffPerms?.create) || (isTeacher && teacherPowers?.studentsCreate) ? (
               <Button onClick={() => router.push("/dashboard/students/new")} className="gap-1.5">
                 <Plus className="h-4 w-4" /> Add Student
               </Button>
-            )
+            ) : null
           )
         }
         className="mb-6"

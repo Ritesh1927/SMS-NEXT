@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { requireStaffSectionAccess } from "@/lib/auth-server";
+import { requireStaffSectionAccess, getAuthUser, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
+import type { TokenPayload } from "@/lib/helpers";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { generatePassword, hashPassword, escapeRegex } from "@/lib/helpers";
@@ -52,12 +53,29 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   await connectDB();
+
+  // No genuine teacher path existed here at all before Teacher Power Roles
+  // -- the Role gate is tried first (schooladmin or non-teaching staff with
+  // "create"), and only on its failure does a teacher's Power Role get a
+  // chance, scoped to the submitted class.
   const gate = await requireStaffSectionAccess(req, "students", "create");
-  if ("error" in gate) return gate.error;
-  const { auth } = gate;
 
   try {
-    const body = await req.json();
+    let auth: TokenPayload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches req.json()'s own implicit any, destructured below same as before this restructuring.
+    let body: any;
+    if ("error" in gate) {
+      const teacherAuth = getAuthUser(req);
+      if (!teacherAuth || teacherAuth.role !== "teacher") return gate.error;
+      body = await req.json();
+      const powers = await getTeacherExtraPowers(teacherAuth);
+      if (!teacherPowerAllows(powers, "studentsCreate", String(body.studentClass || ""))) return gate.error;
+      auth = teacherAuth;
+    } else {
+      auth = gate.auth;
+      body = await req.json();
+    }
+
     const {
       name, phone, studentClass, section, dateOfBirth, gender, address, bloodGroup,
       parentName, motherName, motherPhone, parentEmail, parentPhone, parentRelation,

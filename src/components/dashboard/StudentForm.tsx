@@ -6,13 +6,14 @@ import {
   ArrowLeft, Loader2, Save, Camera, UserRound, GraduationCap, Users, CalendarClock, FileBadge, Siren, Tags, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getToken } from "@/contexts/AuthContext";
+import { useAuth, getToken } from "@/contexts/AuthContext";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PageLoader } from "@/components/PageLoader";
+import type { ITeacherPowers } from "@/models/Role";
 
 interface ClassOption {
   _id: string;
@@ -84,7 +85,9 @@ const todayISO = () => new Date().toISOString().split("T")[0];
 
 export function StudentForm({ studentId }: { studentId?: string }) {
   const router = useRouter();
+  const { user } = useAuth();
   const isEdit = !!studentId;
+  const isTeacher = user?.role === "teacher" && user?.staffType !== "non-teaching";
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -92,6 +95,7 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   const [classLoading, setClassLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers | null>(null);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -102,13 +106,27 @@ export function StudentForm({ studentId }: { studentId?: string }) {
   const [checkingParentEmail, setCheckingParentEmail] = useState(false);
 
   useEffect(() => {
+    if (!isTeacher) return;
     const token = getToken();
     if (!token) return;
-    apiGet<ClassesResponse>("/classes", token)
+    apiGet<{ success: boolean; data: { teacherPowers: ITeacherPowers } }>("/roles/my-permissions", token)
+      .then((res) => setTeacherPowers(res.data.teacherPowers))
+      .catch(() => setTeacherPowers(null));
+  }, [isTeacher]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    // A teacher's own class picker is normally limited to their accessible
+    // classes -- a granted Power Role broadens it to the stage(s) it covers,
+    // same power used by the create vs. edit flow this one form serves.
+    const power = isTeacher ? (isEdit ? "studentsEdit" : "studentsCreate") : null;
+    const url = power && teacherPowers?.[power] ? `/classes?power=${power}` : "/classes";
+    apiGet<ClassesResponse>(url, token)
       .then((res) => setClassOptions(res.data))
       .catch(() => toast.error("Could not load classes."))
       .finally(() => setClassLoading(false));
-  }, []);
+  }, [isTeacher, isEdit, teacherPowers]);
 
   useEffect(() => {
     if (!isEdit || !studentId) return;
