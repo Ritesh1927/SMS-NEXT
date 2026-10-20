@@ -391,6 +391,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
               <Select value={form.powerRoleId} onValueChange={(v) => update("powerRoleId", v || "")}>
                 <SelectTrigger className="w-full"><SelectValue placeholder={teachingRoleOptions.length ? "No extra powers" : "No power roles yet -- create one in Roles & Permissions"} /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">No extra powers</SelectItem>
                   {teachingRoleOptions.map((r) => (
                     <SelectItem key={r._id} value={r._id}>{r.name}</SelectItem>
                   ))}
