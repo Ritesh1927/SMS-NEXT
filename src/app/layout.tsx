@@ -7,6 +7,7 @@ import { PWAProvider } from "@/pwa/installContext";
 import { InstallModal } from "@/components/pwa/InstallModal";
 import { UpdateBanner } from "@/components/pwa/UpdateBanner";
 import { APP_NAME } from "@/pwa/config";
+import { HOME_REDIRECT_SCRIPT } from "@/components/marketing/homeRedirectScript";
 
 // Same two Google Fonts as the original SMS-FRONTEND (Plus Jakarta Sans for
 // headings, DM Sans for body text) so sms-next's typography matches it.
@@ -70,6 +71,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${dmSans.variable} ${plusJakartaSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
     >
+      <head>
+        {/* Homepage pre-paint redirect (no-op on every other path). Runs while
+            the HTML is parsed, before the landing page paints. */}
+        <script dangerouslySetInnerHTML={{ __html: HOME_REDIRECT_SCRIPT }} />
+      </head>
       {/* suppressHydrationWarning: some browser extensions (e.g. ColorZilla)
           inject attributes like cz-shortcut-listen onto <body> before React
           hydrates. That's a real DOM mismatch but not a bug in our markup --
