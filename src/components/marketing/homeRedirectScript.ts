@@ -6,9 +6,15 @@
 // which would flash the landing page. Kept in a plain module (not "use client")
 // so the server component receives the string. Mirrors HomeRedirect.tsx,
 // which covers client-side navigations.
+//
+// Deliberately does NOT redirect a lingering superadmin session straight to
+// /super-admin -- "/" is the public marketing URL, and auto-resuming an
+// internal admin console from a stale token (no re-auth) on a link anyone
+// could open is a bigger surprise than convenience. A superadmin returns via
+// their own bookmark/URL to /super-admin instead.
 export const HOME_REDIRECT_SCRIPT = `(function(){try{
 if(location.pathname!=="/")return;
 var s=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
-var t=localStorage.getItem('sms_next_user')?'/dashboard':localStorage.getItem('sms_next_superadmin_token')?'/super-admin':s?'/login':null;
+var t=localStorage.getItem('sms_next_user')?'/dashboard':s?'/login':null;
 if(t){document.documentElement.style.visibility='hidden';location.replace(t);}
 }catch(e){}})();`;
