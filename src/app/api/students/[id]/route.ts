@@ -44,7 +44,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         const isClassTeacher = await isClassTeacherOfSection(auth.id, auth.schoolId, student.class, student.section);
         if (!isClassTeacher) {
           const powers = await getTeacherExtraPowers(auth);
-          if (!teacherPowerAllows(powers, "studentsEdit", student.class)) {
+          if (!teacherPowerAllows(powers, "studentsEdit", student.class) && !teacherPowerAllows(powers, "studentsCreate", student.class)) {
             return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
           }
         }
@@ -191,13 +191,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
+  const { id } = await params;
+
+  // No genuine teacher path existed here before Teacher Power Roles either
+  // -- folded into the "studentsCreate" power rather than a separate
+  // delete-specific one, matching how a teacher who can register new
+  // admissions for their stage is trusted to also remove one they added in
+  // error, scoped the same way.
   const gate = await requireStaffSectionAccess(req, "students", "delete");
-  if ("error" in gate) return gate.error;
-  const { auth } = gate;
+  let auth: TokenPayload;
+  if ("error" in gate) {
+    const teacherAuth = getAuthUser(req);
+    if (!teacherAuth || teacherAuth.role !== "teacher") return gate.error;
+    const target = await Student.findOne({ _id: id, school: teacherAuth.schoolId }).select("class");
+    if (!target) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
+    const powers = await getTeacherExtraPowers(teacherAuth);
+    if (!teacherPowerAllows(powers, "studentsCreate", target.class)) return gate.error;
+    auth = teacherAuth;
+  } else {
+    auth = gate.auth;
+  }
 
   try {
-    const { id } = await params;
-
     const student = await Student.findOne({ _id: id, school: auth.schoolId });
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 

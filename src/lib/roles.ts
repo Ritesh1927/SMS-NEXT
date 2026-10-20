@@ -124,7 +124,7 @@ export const TEACHER_POWERS: { key: TeacherPowerKey; label: string }[] = [
   { key: "examCreate", label: "Create tests & exam terms" },
   { key: "marksEnter", label: "Enter marks beyond own subject" },
   { key: "resultsPublish", label: "Publish results" },
-  { key: "studentsCreate", label: "Add new students" },
+  { key: "studentsCreate", label: "Add & delete students" },
   { key: "studentsEdit", label: "Edit student details" },
 ];
 

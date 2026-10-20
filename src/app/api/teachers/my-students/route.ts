@@ -28,12 +28,13 @@ export async function GET(req: Request) {
     const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
     const orClauses: { name: string; section: string }[] = [...accessible];
 
-    // A Power Role's "studentsEdit" grant broadens this roster beyond
-    // ownership (class teacher / assignedClasses) to every class in the
-    // role's chosen stage scope -- this is also what makes the Edit button
-    // appear for those students on the Students page.
+    // A Power Role's "studentsEdit" or "studentsCreate" (which also covers
+    // delete) grant broadens this roster beyond ownership (class teacher /
+    // assignedClasses) to every class in the role's chosen stage scope --
+    // this is also what makes the Edit/Delete buttons appear for those
+    // students on the Students page.
     const powers = await getTeacherExtraPowers(auth);
-    if (powers?.studentsEdit === true && powers.scope.length > 0) {
+    if ((powers?.studentsEdit === true || powers?.studentsCreate === true) && powers.scope.length > 0) {
       const allClasses = await Class.find({ school: auth.schoolId }).select("name section").lean();
       for (const c of allClasses) {
         const stage = classifyStage(c.name);
