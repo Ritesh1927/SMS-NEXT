@@ -92,7 +92,13 @@ export default function StudentsPage() {
     apiGet<StudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
       .then((res) => setStudents([...res.data].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }))))
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load students."));
-    apiGet<ClassesResponse>("/classes", token)
+    // A teacher's class-filter dropdown is normally limited to their own
+    // accessible classes -- a granted studentsEdit/studentsCreate power
+    // broadens it to every class in the role's stage scope, same as the
+    // roster above already is server-side.
+    const classesPower = teacherPowers?.studentsEdit ? "studentsEdit" : teacherPowers?.studentsCreate ? "studentsCreate" : null;
+    const classesUrl = isTeacher && classesPower ? `/classes?power=${classesPower}` : "/classes";
+    apiGet<ClassesResponse>(classesUrl, token)
       .then((res) => setClasses(res.data))
       .catch(() => {});
   };
@@ -118,7 +124,7 @@ export default function StudentsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTeacher]);
+  }, [isTeacher, teacherPowers]);
 
   const toggleActive = async (s: StudentRow) => {
     const token = getToken();
