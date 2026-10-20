@@ -28,6 +28,7 @@ export async function GET(req: Request) {
       .select("-password")
       .populate("assignedClasses", "name section")
       .populate("staffRole", "name")
+      .populate("powerRole", "name")
       .sort({ createdAt: -1 });
 
     // assignedClasses is which classes a teacher teaches (subjects); being
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     const {
       name, email, phone, subjects, primarySubject, secondarySubject, classes, classIds, qualification, experience, designation,
       gender, dateOfBirth, address, bloodGroup, joiningDate, salary, employmentType,
-      staffType, department, staffRole,
+      staffType, department, staffRole, powerRole,
       emergencyContact, emergencyPhone, emergencyRelation, aadhaarNumber, panNumber,
       bankName, accountNumber, ifscCode, specialization, previousExperience,
     } = body;
@@ -115,13 +116,20 @@ export async function POST(req: Request) {
       classLabels = clsDocs.map((c) => `${c.name}-${c.section}`);
     }
 
-    // staffRole only applies to non-teaching staff, and is validated against
-    // this school rather than trusted as-is.
+    // staffRole only applies to non-teaching staff; powerRole only applies
+    // to teaching staff -- both validated against this school rather than
+    // trusted as-is.
     let resolvedStaffRole: string | null = null;
     if (!isTeaching && staffRole) {
       const roleDoc = await Role.findOne({ _id: staffRole, school: auth.schoolId });
       if (!roleDoc) return NextResponse.json({ success: false, message: "That role doesn't exist." }, { status: 400 });
       resolvedStaffRole = String(roleDoc._id);
+    }
+    let resolvedPowerRole: string | null = null;
+    if (isTeaching && powerRole) {
+      const roleDoc = await Role.findOne({ _id: powerRole, school: auth.schoolId, roleType: "teaching" });
+      if (!roleDoc) return NextResponse.json({ success: false, message: "That power role doesn't exist." }, { status: 400 });
+      resolvedPowerRole = String(roleDoc._id);
     }
 
     const teacher = await Teacher.create({
@@ -131,6 +139,7 @@ export async function POST(req: Request) {
       staffType: isTeaching ? "teaching" : "non-teaching",
       department: department || "",
       staffRole: resolvedStaffRole,
+      powerRole: resolvedPowerRole,
       subjects: isTeaching ? subjects || [] : [],
       primarySubject: isTeaching ? primarySubject || "" : "",
       secondarySubject: isTeaching ? secondarySubject || "" : "",

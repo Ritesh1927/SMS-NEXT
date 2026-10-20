@@ -1,4 +1,5 @@
-import type { ISectionPermission } from "@/models/Role";
+import type { ISectionPermission, ITeacherPowers } from "@/models/Role";
+import { STAGE_KEYS } from "@/lib/classStage";
 
 export type SectionAction = "open" | "view" | "create" | "edit" | "delete";
 export const SECTION_ACTIONS: SectionAction[] = ["open", "view", "create", "edit", "delete"];
@@ -107,4 +108,54 @@ export function sanitizeSections(input: unknown): Record<string, ISectionPermiss
 export function openSectionKeys(sections: Record<string, ISectionPermission> | null | undefined): string[] {
   if (!sections) return [];
   return ROLE_SECTIONS.filter((s) => sections[s.key]?.open === true).map((s) => s.key);
+}
+
+// Teacher Power Roles -- a parallel, much smaller concept to ROLE_SECTIONS
+// above: a fixed set of 7 extra capabilities a genuine teacher doesn't have
+// by default, all gated by one shared stage scope (not per-power), additive
+// on top of their existing class-teacher/subject-teacher ownership and
+// built-in Teacher.permissions flags -- never replacing either.
+export type TeacherPowerKey = Exclude<keyof ITeacherPowers, "scope">;
+
+export const TEACHER_POWERS: { key: TeacherPowerKey; label: string }[] = [
+  { key: "timetableEdit", label: "Edit timetable beyond own class" },
+  { key: "attendanceMark", label: "Mark attendance beyond own class" },
+  { key: "attendanceEditPast", label: "Edit past (already-saved) attendance" },
+  { key: "examCreate", label: "Create tests & exam terms" },
+  { key: "marksEnter", label: "Enter marks beyond own subject" },
+  { key: "resultsPublish", label: "Publish results" },
+  { key: "studentsEdit", label: "Edit student details" },
+];
+
+export const EMPTY_TEACHER_POWERS: ITeacherPowers = {
+  scope: [],
+  timetableEdit: false,
+  attendanceMark: false,
+  attendanceEditPast: false,
+  examCreate: false,
+  marksEnter: false,
+  resultsPublish: false,
+  studentsEdit: false,
+};
+
+export function buildEmptyTeacherPowers(): ITeacherPowers {
+  return { ...EMPTY_TEACHER_POWERS, scope: [] };
+}
+
+/**
+ * Strips/validates an arbitrary client-supplied `teacherPowers` object:
+ * scope is filtered down to known stage keys, and -- mirroring
+ * sanitizeSections' "a deeper action without open is meaningless" rule --
+ * every power boolean is forced false if scope ends up empty, since a power
+ * with nothing to apply to is meaningless.
+ */
+export function sanitizeTeacherPowers(input: unknown): ITeacherPowers {
+  const raw = (input && typeof input === "object" ? (input as Record<string, unknown>) : {}) as Record<string, unknown>;
+  const rawScope = Array.isArray(raw.scope) ? raw.scope : [];
+  const scope = rawScope.filter((s): s is string => typeof s === "string" && (STAGE_KEYS as readonly string[]).includes(s));
+  const out: ITeacherPowers = { ...buildEmptyTeacherPowers(), scope };
+  if (scope.length > 0) {
+    for (const power of TEACHER_POWERS) out[power.key] = raw[power.key] === true;
+  }
+  return out;
 }

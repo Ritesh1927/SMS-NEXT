@@ -7,8 +7,9 @@ import { Teacher } from "@/models/Teacher";
 // registers nothing at runtime, however many other routes import the real
 // Role model elsewhere).
 import "@/models/Role";
-import type { ISectionPermission } from "@/models/Role";
-import type { SectionAction } from "@/lib/roles";
+import type { ISectionPermission, ITeacherPowers } from "@/models/Role";
+import type { SectionAction, TeacherPowerKey } from "@/lib/roles";
+import { classifyStage } from "@/lib/classStage";
 
 // Reads the "Authorization: Bearer <token>" header on an API route request
 // and returns the decoded payload, or null if missing/invalid — callers
@@ -113,6 +114,51 @@ export async function requireStaffSectionAccess(
   if (!sections) return { error: denied() };
   if (!sectionAllows(sections, sectionKey, action)) return { error: denied() };
   return { auth };
+}
+
+type PrefetchedPowerTeacher = { staffType?: string; powerRole?: { roleType?: string; teacherPowers?: ITeacherPowers } | null } | null;
+
+/**
+ * Null for anyone who isn't genuine teaching staff with a "teaching" Power
+ * Role assigned (schooladmin, non-teaching staff, parent, student, or a
+ * teacher with no powerRole all resolve to null). Mirrors
+ * getNonTeachingStaffSections' shape, inverted on staffType -- this is the
+ * ADDITIVE extra-powers system for genuine teachers, never a replacement for
+ * their existing class/subject-teacher ownership or Teacher.permissions
+ * flags. Several routes already fetch the Teacher doc for `.permissions`;
+ * pass that doc (extended with `.select("+powerRole").populate("powerRole")`)
+ * as `prefetchedTeacher` to avoid a second query -- omit the argument
+ * entirely (not `null`) to let this function fetch it itself. Caller must
+ * have already called connectDB().
+ */
+export async function getTeacherExtraPowers(
+  auth: TokenPayload | null,
+  prefetchedTeacher?: PrefetchedPowerTeacher,
+): Promise<ITeacherPowers | null> {
+  if (!auth || auth.role !== "teacher") return null;
+  const teacher =
+    prefetchedTeacher !== undefined
+      ? prefetchedTeacher
+      : await Teacher.findById(auth.id)
+          .select("staffType powerRole")
+          .populate<{ powerRole: { roleType: string; teacherPowers: ITeacherPowers } | null }>("powerRole");
+  if (!teacher || teacher.staffType !== "teaching") return null;
+  if (!teacher.powerRole || teacher.powerRole.roleType !== "teaching") return null;
+  return teacher.powerRole.teacherPowers || null;
+}
+
+/**
+ * Whether a granted set of teacher extra powers covers one specific power
+ * for one specific class. An unmapped class name (classifyStage returns
+ * null) is NEVER in scope, even if every stage checkbox is ticked -- an
+ * admin must rename an unrecognized standard before a power can ever reach
+ * it, rather than it silently falling through as "covered."
+ */
+export function teacherPowerAllows(powers: ITeacherPowers | null, powerKey: TeacherPowerKey, className: string): boolean {
+  if (!powers || powers[powerKey] !== true) return false;
+  const stage = classifyStage(className);
+  if (!stage) return false;
+  return powers.scope.includes(stage);
 }
 
 type FeeAccessResult = { auth: TokenPayload; isAdmin: boolean } | { error: NextResponse };

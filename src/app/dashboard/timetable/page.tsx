@@ -14,6 +14,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
+import { classifyStage } from "@/lib/classStage";
+import type { ITeacherPowers } from "@/models/Role";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -176,18 +178,28 @@ export default function TimetablePage() {
   const [staffPerms, setStaffPerms] = useState<{
     view: boolean; create: boolean; edit: boolean; delete: boolean; extras: { managePeriods: boolean };
   } | null>(null);
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers | null>(null);
 
   useEffect(() => {
-    if (!isNonTeachingStaff) return;
+    if (!isNonTeachingStaff && !isTeacher) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; extras: { managePeriods: boolean } }> } }>(
-      "/roles/my-permissions",
-      token,
-    )
-      .then((res) => setStaffPerms(res.data.sections.timetable || { view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } }))
-      .catch(() => setStaffPerms({ view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } }));
-  }, [isNonTeachingStaff]);
+    apiGet<{
+      success: boolean;
+      data: {
+        sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; extras: { managePeriods: boolean } }>;
+        teacherPowers: ITeacherPowers;
+      };
+    }>("/roles/my-permissions", token)
+      .then((res) => {
+        if (isNonTeachingStaff) setStaffPerms(res.data.sections.timetable || { view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } });
+        if (isTeacher) setTeacherPowers(res.data.teacherPowers);
+      })
+      .catch(() => {
+        setStaffPerms({ view: false, create: false, edit: false, delete: false, extras: { managePeriods: false } });
+        setTeacherPowers(null);
+      });
+  }, [isNonTeachingStaff, isTeacher]);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   const [periods, setPeriods] = useState<SchoolPeriod[]>([]);
@@ -257,12 +269,19 @@ export default function TimetablePage() {
 
   const uniqueSubjects = useMemo(() => [...new Set(entries.map((e) => e.subject))].sort(), [entries]);
 
-  // Classes this teacher is the class teacher of -- gates and populates the
-  // My Schedule / My Class toggle.
+  // Classes this teacher can edit the grid for -- their own class-teacher
+  // class(es), plus any class a granted Power Role's "timetableEdit" extends
+  // to (fetched with ?power=timetableEdit below, so it's already in
+  // `classes`). Gates and populates the My Schedule / My Class toggle.
   const myOwnClasses = useMemo(() => {
     if (!isTeacher || !user) return [];
-    return classes.filter((c) => c.classTeacher?._id === user.id);
-  }, [isTeacher, user, classes]);
+    return classes.filter((c) => {
+      if (c.classTeacher?._id === user.id) return true;
+      if (!teacherPowers?.timetableEdit) return false;
+      const stage = classifyStage(c.name);
+      return !!stage && teacherPowers.scope.includes(stage);
+    });
+  }, [isTeacher, user, classes, teacherPowers]);
 
   // The one class whose grid is currently shown/editable: admin's picked
   // class, or a teacher's own class while in "My Class" view. Empty for a
@@ -336,13 +355,14 @@ export default function TimetablePage() {
     if (!isAdmin && !isTeacher && !isNonTeachingStaff) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: ClassOption[] }>("/classes", token)
+    const url = isTeacher && teacherPowers?.timetableEdit ? "/classes?power=timetableEdit" : "/classes";
+    apiGet<{ success: boolean; data: ClassOption[] }>(url, token)
       .then((res) => {
         setClasses(res.data);
         if ((isAdmin || isNonTeachingStaff) && res.data.length > 0) setSelectedClassId(res.data[0]._id);
       })
       .catch(() => {});
-  }, [isAdmin, isTeacher, isNonTeachingStaff]);
+  }, [isAdmin, isTeacher, isNonTeachingStaff, teacherPowers]);
 
   useEffect(() => {
     if (isTeacher && !teacherSelectedClassId && myOwnClasses.length > 0) {

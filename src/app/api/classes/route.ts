@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections, requireStaffSectionAccess } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, requireStaffSectionAccess, getTeacherExtraPowers } from "@/lib/auth-server";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 import { isStreamStandard } from "@/lib/streamStandards";
+import { classifyStage } from "@/lib/classStage";
+import { TEACHER_POWERS, type TeacherPowerKey } from "@/lib/roles";
 import "@/models/Subject";
 import "@/models/Teacher";
+import "@/models/Role";
 
 // Admin and a non-teaching staffer see every class; a genuine teacher sees
 // only their own (classTeacher or assignedClasses) — the same class pickers
@@ -40,7 +43,28 @@ export async function GET(req: Request) {
     const classQuery: Record<string, unknown> = { school: auth.schoolId };
     if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-      classQuery.$or = accessible.length > 0 ? accessible.map((c) => ({ name: c.name, section: c.section })) : [{ _id: null }];
+      const orClauses: Record<string, unknown>[] = accessible.map((c) => ({ name: c.name, section: c.section }));
+
+      // Optional ?power=<key> -- lets a page's class picker (Timetable,
+      // Attendance, Exams) additionally surface classes a Teacher Power Role
+      // grants beyond ownership, scoped to the role's chosen stages. Omitted
+      // (or the power isn't actually granted): behavior is byte-for-byte the
+      // same as before this param existed.
+      const { searchParams } = new URL(req.url);
+      const powerParam = searchParams.get("power");
+      const isKnownPower = (k: string | null): k is TeacherPowerKey => !!k && TEACHER_POWERS.some((p) => p.key === k);
+      if (isKnownPower(powerParam)) {
+        const powers = await getTeacherExtraPowers(auth);
+        if (powers?.[powerParam] === true && powers.scope.length > 0) {
+          const allClasses = await Class.find({ school: auth.schoolId }).select("name section").lean();
+          for (const c of allClasses) {
+            const stage = classifyStage(c.name);
+            if (stage && powers.scope.includes(stage)) orClauses.push({ name: c.name, section: c.section });
+          }
+        }
+      }
+
+      classQuery.$or = orClauses.length > 0 ? orClauses : [{ _id: null }];
     }
 
     const classes = await Class.find(classQuery)

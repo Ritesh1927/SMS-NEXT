@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { ScheduledExam } from "@/models/ScheduledExam";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import { Class } from "@/models/Class";
 import { Admin } from "@/models/Admin";
+import type { IRole } from "@/models/Role";
 import { getTeacherAccessibleClasses, teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
@@ -49,8 +50,12 @@ export async function GET(req: Request) {
     const query: Record<string, unknown> = { school: auth.schoolId };
     if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-      if (accessible.length === 0) return NextResponse.json({ success: true, data: [] });
-      query.$or = accessible.map((c) => ({ class: c.name, section: c.section }));
+      const orClauses: Record<string, unknown>[] = accessible.map((c) => ({ class: c.name, section: c.section }));
+      // A Power Role can let a teacher create a term for a class they don't
+      // otherwise have access to -- also let them see it afterward, without
+      // re-deriving the full stage-matched class list for a read path.
+      orClauses.push({ createdBy: auth.id });
+      query.$or = orClauses;
     } else if (cls) {
       query.class = cls;
     }
@@ -78,18 +83,13 @@ export async function POST(req: Request) {
     await connectDB();
 
     const staffSectionsForCreate = await getNonTeachingStaffSections(auth);
-    if (auth.role === "teacher") {
-      if (staffSectionsForCreate) {
-        if (!staffSectionsForCreate.exams?.create) {
-          return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
-        }
-      } else {
-        const teacher = await Teacher.findById(auth.id).select("permissions");
-        if (!teacher?.permissions?.canCreateExam) {
-          return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
-        }
-      }
+    if (auth.role === "teacher" && staffSectionsForCreate && !staffSectionsForCreate.exams?.create) {
+      return NextResponse.json({ success: false, message: "You don't have permission to create exams." }, { status: 403 });
     }
+    // A genuine teacher's authorization (blanket canCreateExam flag AND
+    // class ownership, OR a Power Role's examCreate grant) needs `cls`,
+    // which isn't known until the body below is parsed -- resolved together
+    // with the ownership check further down, not here.
 
     const { title, class: cls, section: requestedSection, examType, startDate, endDate, description, subjects } = await req.json();
     if (!title || !cls || !examType || !startDate || !endDate) {
@@ -120,9 +120,21 @@ export async function POST(req: Request) {
     }
 
     if (auth.role === "teacher" && !staffSectionsForCreate) {
-      const allowed = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
-      if (!allowed) {
-        return NextResponse.json({ success: false, message: "You can only create exams for your classes." }, { status: 403 });
+      const teacher = await Teacher.findById(auth.id)
+        .select("permissions staffType powerRole")
+        .populate<{ powerRole: IRole | null }>("powerRole");
+      const hasPower = teacherPowerAllows(await getTeacherExtraPowers(auth, teacher), "examCreate", cls);
+      if (!hasPower) {
+        // Preserves the exact pre-existing rule: the blanket canCreateExam
+        // flag is necessary but not sufficient on its own -- a teacher still
+        // needs ownership of the target class too (stricter than standalone
+        // Tests, which let the blanket flag bypass ownership). A granted
+        // Power Role is an independent bypass of both.
+        const hasBlanket = !!teacher?.permissions?.canCreateExam;
+        const hasOwnership = await teacherHasAccessToClass(auth.id, auth.schoolId, cls);
+        if (!(hasBlanket && hasOwnership)) {
+          return NextResponse.json({ success: false, message: "You can only create exams for your classes." }, { status: 403 });
+        }
       }
     }
 

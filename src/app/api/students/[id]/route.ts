@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, requireStaffSectionAccess } from "@/lib/auth-server";
+import { getAuthUser, requireStaffSectionAccess, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
+import type { TokenPayload } from "@/lib/helpers";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { resequenceRollNumbers } from "@/lib/rollNumber";
@@ -41,7 +42,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const staffGate = await requireStaffSectionAccess(req, "students", "view");
       if ("error" in staffGate) {
         const isClassTeacher = await isClassTeacherOfSection(auth.id, auth.schoolId, student.class, student.section);
-        if (!isClassTeacher) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
+        if (!isClassTeacher) {
+          const powers = await getTeacherExtraPowers(auth);
+          if (!teacherPowerAllows(powers, "studentsEdit", student.class)) {
+            return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
+          }
+        }
       }
     }
 
@@ -58,12 +64,27 @@ const PARENT_SYNC_FIELDS = ["parentName", "motherName", "motherPhone", "parentPh
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
+  const { id } = await params;
+
+  // No genuine teacher path existed here at all before Teacher Power Roles
+  // -- the Role gate is tried first (schooladmin or non-teaching staff with
+  // "edit"), and only on its failure does a teacher's Power Role get a
+  // chance, scoped to the specific student's class.
   const gate = await requireStaffSectionAccess(req, "students", "edit");
-  if ("error" in gate) return gate.error;
-  const { auth } = gate;
+  let auth: TokenPayload;
+  if ("error" in gate) {
+    const teacherAuth = getAuthUser(req);
+    if (!teacherAuth || teacherAuth.role !== "teacher") return gate.error;
+    const target = await Student.findOne({ _id: id, school: teacherAuth.schoolId }).select("class");
+    if (!target) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
+    const powers = await getTeacherExtraPowers(teacherAuth);
+    if (!teacherPowerAllows(powers, "studentsEdit", target.class)) return gate.error;
+    auth = teacherAuth;
+  } else {
+    auth = gate.auth;
+  }
 
   try {
-    const { id } = await params;
     const body = await req.json();
 
     // PATCH is a partial update, so every check here only fires for a field

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { TimetableEntry } from "@/models/TimetableEntry";
 import { Class } from "@/models/Class";
 import { isClassTeacherOfSection } from "@/lib/teacherClasses";
@@ -25,7 +25,11 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         }
       } else {
         const cls = await Class.findOne({ _id: entry.classId, school: auth.schoolId }).select("name section").lean();
-        const allowed = !!cls && (await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section));
+        let allowed = !!cls && (await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section));
+        if (!allowed && cls) {
+          const powers = await getTeacherExtraPowers(auth);
+          allowed = teacherPowerAllows(powers, "timetableEdit", cls.name);
+        }
         if (!allowed) return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
       }
     }

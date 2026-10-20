@@ -4,7 +4,8 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Role } from "@/models/Role";
 import { Teacher } from "@/models/Teacher";
-import { sanitizeSections } from "@/lib/roles";
+import { sanitizeSections, sanitizeTeacherPowers } from "@/lib/roles";
+import type { RoleType } from "@/models/Role";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -23,11 +24,21 @@ export async function GET(req: Request) {
     const roles = await Role.find({ school: auth.schoolId }).sort({ name: 1 }).lean();
     // Aggregate pipelines skip Mongoose's automatic string->ObjectId
     // casting, unlike find(), so schoolId has to be cast explicitly here.
-    const counts = await Teacher.aggregate([
-      { $match: { school: new mongoose.Types.ObjectId(auth.schoolId), staffRole: { $ne: null } } },
-      { $group: { _id: "$staffRole", count: { $sum: 1 } } },
+    // A role is referenced by exactly one of staffRole/powerRole depending
+    // on its own roleType, so the two counts never overlap -- summed below.
+    const schoolObjectId = new mongoose.Types.ObjectId(auth.schoolId);
+    const [staffCounts, powerCounts] = await Promise.all([
+      Teacher.aggregate([
+        { $match: { school: schoolObjectId, staffRole: { $ne: null } } },
+        { $group: { _id: "$staffRole", count: { $sum: 1 } } },
+      ]),
+      Teacher.aggregate([
+        { $match: { school: schoolObjectId, powerRole: { $ne: null } } },
+        { $group: { _id: "$powerRole", count: { $sum: 1 } } },
+      ]),
     ]);
-    const countMap = new Map(counts.map((c) => [String(c._id), c.count]));
+    const countMap = new Map<string, number>();
+    for (const c of [...staffCounts, ...powerCounts]) countMap.set(String(c._id), c.count);
     const data = roles.map((r) => ({ ...r, _id: String(r._id), staffCount: countMap.get(String(r._id)) || 0 }));
     return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
@@ -49,6 +60,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) return NextResponse.json({ success: false, message: "Role name is required." }, { status: 400 });
+    const roleType: RoleType = body.roleType === "teaching" ? "teaching" : "nonTeaching";
 
     await connectDB();
     if (await Role.findOne({ school: auth.schoolId, name })) {
@@ -59,7 +71,12 @@ export async function POST(req: Request) {
       school: auth.schoolId,
       name,
       description: typeof body.description === "string" ? body.description : "",
-      sections: sanitizeSections(body.sections),
+      roleType,
+      // Only the shape matching roleType is ever meaningfully populated --
+      // the other stays zeroed, so a role is never ambiguous about which
+      // system it belongs to.
+      sections: roleType === "nonTeaching" ? sanitizeSections(body.sections) : sanitizeSections(undefined),
+      teacherPowers: roleType === "teaching" ? sanitizeTeacherPowers(body.teacherPowers) : sanitizeTeacherPowers(undefined),
     });
 
     return NextResponse.json({ success: true, message: "Role created.", data: role }, { status: 201 });

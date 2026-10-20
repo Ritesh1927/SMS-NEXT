@@ -19,12 +19,15 @@ import { StatFilterCard } from "@/components/StatFilterCard";
 import { StudentAttendanceCalendar } from "@/components/dashboard/StudentAttendanceCalendar";
 import { PageLoader } from "@/components/PageLoader";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { classifyStage } from "@/lib/classStage";
+import type { ITeacherPowers } from "@/models/Role";
 
 type Status = "present" | "absent" | "late";
 
 interface ClassOption {
   _id: string;
   label: string;
+  name: string;
 }
 
 interface RosterEntry {
@@ -57,6 +60,12 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isPowerScopedClassName(powers: ITeacherPowers | null, className: string, power: "attendanceMark" | "attendanceEditPast" = "attendanceMark"): boolean {
+  if (!powers?.[power]) return false;
+  const stage = classifyStage(className);
+  return !!stage && powers.scope.includes(stage);
+}
+
 export default function AttendancePage() {
   const { user } = useAuth();
   const [classOptions, setClassOptions] = useState<ClassOption[] | null>(null);
@@ -73,16 +82,27 @@ export default function AttendancePage() {
   const [allowAttendanceEdit, setAllowAttendanceEdit] = useState(false);
 
   const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
   const [staffPerms, setStaffPerms] = useState<{ view: boolean; create: boolean; extras: { editPastAttendance: boolean } } | null>(null);
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers | null>(null);
 
   useEffect(() => {
-    if (!isNonTeachingStaff) return;
+    if (!isNonTeachingStaff && !isTeacher) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; extras: { editPastAttendance: boolean } }> } }>("/roles/my-permissions", token)
-      .then((res) => setStaffPerms(res.data.sections.attendance || { view: false, create: false, extras: { editPastAttendance: false } }))
-      .catch(() => setStaffPerms({ view: false, create: false, extras: { editPastAttendance: false } }));
-  }, [isNonTeachingStaff]);
+    apiGet<{
+      success: boolean;
+      data: { sections: Record<string, { view: boolean; create: boolean; extras: { editPastAttendance: boolean } }>; teacherPowers: ITeacherPowers };
+    }>("/roles/my-permissions", token)
+      .then((res) => {
+        if (isNonTeachingStaff) setStaffPerms(res.data.sections.attendance || { view: false, create: false, extras: { editPastAttendance: false } });
+        if (isTeacher) setTeacherPowers(res.data.teacherPowers);
+      })
+      .catch(() => {
+        setStaffPerms({ view: false, create: false, extras: { editPastAttendance: false } });
+        setTeacherPowers(null);
+      });
+  }, [isNonTeachingStaff, isTeacher]);
 
   useEffect(() => {
     const token = getToken();
@@ -92,7 +112,7 @@ export default function AttendancePage() {
       // as admin -- they're not anyone's classTeacher, so the teacher
       // branch's ownership filter below would always leave them with none.
       apiGet<ClassesResponse>("/classes", token)
-        .then((res) => setClassOptions(res.data.map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` }))))
+        .then((res) => setClassOptions(res.data.map((c) => ({ _id: c._id, label: `${c.name}-${c.section}`, name: c.name }))))
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
     }
     if (user.role === "schooladmin") {
@@ -103,20 +123,24 @@ export default function AttendancePage() {
       apiGet<{ success: boolean; data: { settings: { allowAttendanceEdit: boolean } } }>("/school/profile", token)
         .then((res) => setAllowAttendanceEdit(!!res.data.settings.allowAttendanceEdit))
         .catch(() => {});
-    } else if (user.role === "teacher" && !isNonTeachingStaff) {
+    } else if (isTeacher) {
       // /api/attendance/class/[classId] only allows the class's actual
       // classTeacher, not every class a teacher is merely assigned to
       // teach a subject in -- so the picker here must be scoped the same
-      // way, or picking one of those other classes would 403.
-      apiGet<ClassesResponse>("/classes", token)
+      // way, plus any class a granted Power Role's "attendanceMark" extends
+      // to (not merely assignedClasses, which the power doesn't cover).
+      const url = teacherPowers?.attendanceMark ? "/classes?power=attendanceMark" : "/classes";
+      apiGet<ClassesResponse>(url, token)
         .then((res) =>
           setClassOptions(
-            res.data.filter((c) => c.classTeacher?._id === user.id).map((c) => ({ _id: c._id, label: `${c.name}-${c.section}` })),
+            res.data
+              .filter((c) => c.classTeacher?._id === user.id || isPowerScopedClassName(teacherPowers, c.name))
+              .map((c) => ({ _id: c._id, label: `${c.name}-${c.section}`, name: c.name })),
           ),
         )
         .catch((err) => setError(err instanceof Error ? err.message : "Failed to load classes."));
     }
-  }, [user, isNonTeachingStaff]);
+  }, [user, isNonTeachingStaff, isTeacher, teacherPowers]);
 
   const loadRoster = useCallback(() => {
     const token = getToken();
@@ -196,8 +220,16 @@ export default function AttendancePage() {
   // a teacher, instead of the page letting every click through and only
   // discovering the rejection when Save is clicked. A non-teaching staffer's
   // "editPastAttendance" grant is authoritative on its own, independent of
-  // that school-wide admin setting.
-  const locked = alreadyMarked && (isNonTeachingStaff ? !staffPerms?.extras.editPastAttendance : user.role === "teacher" || !allowAttendanceEdit);
+  // that school-wide admin setting -- a genuine teacher's Power Role grant
+  // works the same way, scoped to the selected class's stage.
+  const selectedClassName = classOptions?.find((c) => c._id === classId)?.name || "";
+  const locked =
+    alreadyMarked &&
+    (isNonTeachingStaff
+      ? !staffPerms?.extras.editPastAttendance
+      : isTeacher
+        ? !isPowerScopedClassName(teacherPowers, selectedClassName, "attendanceEditPast")
+        : !allowAttendanceEdit);
 
   return (
     <div>

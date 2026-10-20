@@ -18,6 +18,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
 import { statusPillClass } from "@/lib/statusStyles";
+import { classifyStage } from "@/lib/classStage";
+import type { ITeacherPowers } from "@/models/Role";
 
 interface StudentRow {
   _id: string;
@@ -82,6 +84,7 @@ export default function StudentsPage() {
   const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
   const isAdmin = user?.role === "schooladmin";
   const [staffPerms, setStaffPerms] = useState<{ view: boolean; create: boolean; edit: boolean; delete: boolean } | null>(null);
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers | null>(null);
 
   const load = () => {
     const token = getToken();
@@ -95,13 +98,22 @@ export default function StudentsPage() {
   };
 
   useEffect(() => {
-    if (!isNonTeachingStaff) return;
+    if (!isNonTeachingStaff && !isTeacher) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean }> } }>("/roles/my-permissions", token)
-      .then((res) => setStaffPerms(res.data.sections.students || { view: false, create: false, edit: false, delete: false }))
-      .catch(() => setStaffPerms({ view: false, create: false, edit: false, delete: false }));
-  }, [isNonTeachingStaff]);
+    apiGet<{
+      success: boolean;
+      data: { sections: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean }>; teacherPowers: ITeacherPowers };
+    }>("/roles/my-permissions", token)
+      .then((res) => {
+        if (isNonTeachingStaff) setStaffPerms(res.data.sections.students || { view: false, create: false, edit: false, delete: false });
+        if (isTeacher) setTeacherPowers(res.data.teacherPowers);
+      })
+      .catch(() => {
+        setStaffPerms({ view: false, create: false, edit: false, delete: false });
+        setTeacherPowers(null);
+      });
+  }, [isNonTeachingStaff, isTeacher]);
 
   useEffect(() => {
     load();
@@ -200,6 +212,16 @@ export default function StudentsPage() {
   // for the class they're the actual *class teacher* of, matching what
   // /api/students/[id] itself allows a teacher to fetch.
   const isMyClassTeacherClass = (s: StudentRow) => (user?.classTeacherOf || []).includes(`${s.class}-${s.section || ""}`);
+
+  // A Power Role's "studentsEdit" grant broadens access to every class in
+  // its stage scope, not just a class-teacher's own -- the backing
+  // /teachers/my-students list already includes these students; this just
+  // decides whether the row's buttons show for them.
+  const isPowerScopedClass = (s: StudentRow) => {
+    if (!teacherPowers?.studentsEdit) return false;
+    const stage = classifyStage(s.class);
+    return !!stage && teacherPowers.scope.includes(stage);
+  };
 
   return (
     <div>
@@ -373,9 +395,14 @@ export default function StudentsPage() {
               </div>
 
               <div className="flex items-center justify-end gap-1 w-[136px] shrink-0 ml-auto">
-                {isTeacher && isMyClassTeacherClass(s) && (
+                {isTeacher && (isMyClassTeacherClass(s) || isPowerScopedClass(s)) && (
                   <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}`)} aria-label="View" title="View this student's full details">
                     <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {isTeacher && isPowerScopedClass(s) && (
+                  <Button variant="ghost" size="icon-sm" onClick={() => router.push(`/dashboard/students/${s._id}/edit`)} aria-label="Edit" title="Edit this student's details">
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 {isAdmin && (

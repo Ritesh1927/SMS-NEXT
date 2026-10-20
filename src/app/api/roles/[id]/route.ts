@@ -4,12 +4,24 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Role } from "@/models/Role";
 import { Teacher } from "@/models/Teacher";
-import { sanitizeSections } from "@/lib/roles";
+import { sanitizeSections, sanitizeTeacherPowers } from "@/lib/roles";
+import type { RoleType } from "@/models/Role";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
   if (!auth || auth.role !== "schooladmin") return null;
   return auth;
+}
+
+// A role is referenced by exactly one of staffRole/powerRole depending on
+// its own roleType, so summing both counts is safe -- they never overlap
+// for the same role id.
+async function countRoleAssignees(schoolId: string, roleId: string): Promise<number> {
+  const [staffCount, powerCount] = await Promise.all([
+    Teacher.countDocuments({ school: schoolId, staffRole: roleId }),
+    Teacher.countDocuments({ school: schoolId, powerRole: roleId }),
+  ]);
+  return staffCount + powerCount;
 }
 
 type Params = { params: Promise<{ id: string }> };
@@ -58,7 +70,29 @@ export async function PATCH(req: Request, { params }: Params) {
       role.name = name;
     }
     if (body.description !== undefined) role.description = typeof body.description === "string" ? body.description : "";
-    if (body.sections !== undefined) role.sections = sanitizeSections(body.sections);
+
+    if (body.roleType !== undefined) {
+      const newRoleType: RoleType = body.roleType === "teaching" ? "teaching" : "nonTeaching";
+      if (newRoleType !== role.roleType) {
+        // Switching roleType out from under active assignees would silently
+        // void their grants -- the admin has to unassign everyone first.
+        const assignees = await countRoleAssignees(auth.schoolId, id);
+        if (assignees > 0) {
+          return NextResponse.json(
+            { success: false, message: `${assignees} staff member${assignees === 1 ? "" : "s"} still ${assignees === 1 ? "is" : "are"} assigned to this role. Reassign them before changing its type.` },
+            { status: 409 },
+          );
+        }
+        role.roleType = newRoleType;
+      }
+    }
+
+    if (body.sections !== undefined || body.roleType !== undefined) {
+      role.sections = role.roleType === "nonTeaching" ? sanitizeSections(body.sections) : sanitizeSections(undefined);
+    }
+    if (body.teacherPowers !== undefined || body.roleType !== undefined) {
+      role.teacherPowers = role.roleType === "teaching" ? sanitizeTeacherPowers(body.teacherPowers) : sanitizeTeacherPowers(undefined);
+    }
 
     await role.save();
     return NextResponse.json({ success: true, message: "Role updated.", data: role });
@@ -85,7 +119,7 @@ export async function DELETE(req: Request, { params }: Params) {
     const role = await Role.findOne({ _id: id, school: auth.schoolId });
     if (!role) return NextResponse.json({ success: false, message: "Role not found." }, { status: 404 });
 
-    const staffCount = await Teacher.countDocuments({ school: auth.schoolId, staffRole: id });
+    const staffCount = await countRoleAssignees(auth.schoolId, id);
     if (staffCount > 0) {
       return NextResponse.json(
         { success: false, message: `${staffCount} staff member${staffCount === 1 ? "" : "s"} still ${staffCount === 1 ? "has" : "have"} this role. Reassign them first.` },

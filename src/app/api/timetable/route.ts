@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { TimetableEntry, WEEKDAYS, type Weekday } from "@/models/TimetableEntry";
 import { SchoolPeriod } from "@/models/SchoolPeriod";
 import { Class } from "@/models/Class";
@@ -49,9 +49,12 @@ export async function POST(req: Request) {
           return NextResponse.json({ success: false, message: "You don't have permission to edit the timetable." }, { status: 403 });
         }
       } else {
-        const allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
-        if (!allowed) {
-          return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+        const ownClass = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
+        if (!ownClass) {
+          const powers = await getTeacherExtraPowers(auth);
+          if (!teacherPowerAllows(powers, "timetableEdit", cls.name)) {
+            return NextResponse.json({ success: false, message: "You can only edit the timetable for your own class." }, { status: 403 });
+          }
         }
       }
     }

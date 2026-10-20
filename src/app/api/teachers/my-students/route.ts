@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth-server";
+import { getAuthUser, getTeacherExtraPowers } from "@/lib/auth-server";
 import { Student } from "@/models/Student";
+import { Class } from "@/models/Class";
 import { getTeacherAccessibleClasses } from "@/lib/teacherClasses";
 import { withAttendancePercent } from "@/lib/studentAttendance";
+import { classifyStage } from "@/lib/classStage";
 import "@/models/Parent";
 
 // GET /api/teachers/my-students — read-only student list scoped to classes
@@ -24,14 +26,29 @@ export async function GET(req: Request) {
     await connectDB();
 
     const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
-    if (accessible.length === 0) {
+    const orClauses: { name: string; section: string }[] = [...accessible];
+
+    // A Power Role's "studentsEdit" grant broadens this roster beyond
+    // ownership (class teacher / assignedClasses) to every class in the
+    // role's chosen stage scope -- this is also what makes the Edit button
+    // appear for those students on the Students page.
+    const powers = await getTeacherExtraPowers(auth);
+    if (powers?.studentsEdit === true && powers.scope.length > 0) {
+      const allClasses = await Class.find({ school: auth.schoolId }).select("name section").lean();
+      for (const c of allClasses) {
+        const stage = classifyStage(c.name);
+        if (stage && powers.scope.includes(stage)) orClauses.push({ name: c.name, section: c.section });
+      }
+    }
+
+    if (orClauses.length === 0) {
       return NextResponse.json({ success: true, count: 0, data: [] });
     }
 
     const students = await Student.find({
       school: auth.schoolId,
       isActive: true,
-      $or: accessible.map((c) => ({ class: c.name, section: c.section })),
+      $or: orClauses.map((c) => ({ class: c.name, section: c.section })),
     })
       .select("-password")
       .populate("parent", "name motherName motherPhone email phone occupation motherOccupation")

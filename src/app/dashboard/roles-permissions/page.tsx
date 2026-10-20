@@ -18,8 +18,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageLoader } from "@/components/PageLoader";
 import { EmptyState, EmptyStateCompact } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
-import { ROLE_SECTIONS, buildEmptySections, type SectionAction } from "@/lib/roles";
-import type { ISectionPermission } from "@/models/Role";
+import { ROLE_SECTIONS, buildEmptySections, TEACHER_POWERS, buildEmptyTeacherPowers, type SectionAction, type TeacherPowerKey } from "@/lib/roles";
+import type { ISectionPermission, ITeacherPowers, RoleType } from "@/models/Role";
+import { STAGE_KEYS, STAGE_LABELS, classifyStage, type StageKey } from "@/lib/classStage";
 import { cn } from "@/lib/utils";
 
 const ACTION_LABELS: Record<SectionAction, string> = { open: "Open", view: "View", create: "Create", edit: "Edit", delete: "Delete" };
@@ -49,7 +50,9 @@ interface RoleItem {
   _id: string;
   name: string;
   description: string;
+  roleType: RoleType;
   sections: Record<string, ISectionPermission>;
+  teacherPowers: ITeacherPowers;
   staffCount: number;
 }
 
@@ -58,14 +61,31 @@ interface ListResponse {
   data: RoleItem[];
 }
 
+interface ClassOption {
+  _id: string;
+  name: string;
+  section: string;
+}
+
+interface ClassesResponse {
+  success: boolean;
+  data: ClassOption[];
+}
+
 const NEW_ROLE = "__new__";
 
 export default function RolesPermissionsPage() {
+  // Non-teaching Roles (sections checklist) and Teacher Power Roles
+  // (stage scope + the 7 powers) are different shapes entirely, so they get
+  // their own tab rather than living in one undifferentiated list.
+  const [activeTab, setActiveTab] = useState<RoleType>("nonTeaching");
   const [roles, setRoles] = useState<RoleItem[] | null>(null);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sections, setSections] = useState<Record<string, ISectionPermission>>(buildEmptySections());
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers>(buildEmptyTeacherPowers());
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -81,19 +101,32 @@ export default function RolesPermissionsPage() {
     apiGet<ListResponse>("/roles", token)
       .then((res) => setRoles(res.data))
       .catch(() => toast.error("Failed to load roles."));
+    // Full class list, for the Teacher Power Role editor's live stage-scope
+    // preview -- admin sees every class regardless of tab.
+    apiGet<ClassesResponse>("/classes", token)
+      .then((res) => setClasses(res.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const visibleRoles = (roles || []).filter((r) => r.roleType === activeTab);
   const selected = roles?.find((r) => r._id === selectedId) || null;
+
+  const switchTab = (tab: RoleType) => {
+    setActiveTab(tab);
+    setSelectedId(null);
+    setEditable(false);
+  };
 
   const selectRole = (r: RoleItem) => {
     setSelectedId(r._id);
     setName(r.name);
     setDescription(r.description);
     setSections({ ...buildEmptySections(), ...r.sections });
+    setTeacherPowers({ ...buildEmptyTeacherPowers(), ...r.teacherPowers });
     setEditable(false);
   };
 
@@ -102,11 +135,13 @@ export default function RolesPermissionsPage() {
     setName("");
     setDescription("");
     setSections(buildEmptySections());
+    setTeacherPowers(buildEmptyTeacherPowers());
     setEditable(true);
   };
 
   const cancelEdit = () => {
     if (selected) selectRole(selected);
+    else setSelectedId(null);
   };
 
   const toggleAction = (sectionKey: string, action: SectionAction) => {
@@ -134,6 +169,26 @@ export default function RolesPermissionsPage() {
     });
   };
 
+  const toggleStage = (stage: StageKey) => {
+    setTeacherPowers((prev) => {
+      const has = prev.scope.includes(stage);
+      const scope = has ? prev.scope.filter((s) => s !== stage) : [...prev.scope, stage];
+      // A power with nothing to apply to is meaningless -- clearing the last
+      // stage takes every power with it, mirroring how "open" cascades the
+      // non-teaching checklist's deeper actions off.
+      if (scope.length === 0) {
+        const cleared = { ...prev, scope };
+        for (const p of TEACHER_POWERS) cleared[p.key] = false;
+        return cleared;
+      }
+      return { ...prev, scope };
+    });
+  };
+
+  const togglePower = (key: TeacherPowerKey) => {
+    setTeacherPowers((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const save = async () => {
     const token = getToken();
     if (!token || !name.trim()) {
@@ -143,10 +198,11 @@ export default function RolesPermissionsPage() {
     setSaving(true);
     try {
       const isNew = selectedId === NEW_ROLE;
+      const roleType: RoleType = isNew ? activeTab : selected?.roleType || activeTab;
       const res = await fetch(isNew ? "/api/roles" : `/api/roles/${selectedId}`, {
         method: isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim(), description, sections }),
+        body: JSON.stringify({ name: name.trim(), description, roleType, sections, teacherPowers }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || "Failed to save.");
@@ -183,24 +239,56 @@ export default function RolesPermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Shield} title="Roles & Permissions" subtitle="Create roles for non-teaching staff and control what each one can access" accent="slate" />
+      <PageHeader
+        icon={Shield}
+        title="Roles & Permissions"
+        subtitle={
+          activeTab === "nonTeaching"
+            ? "Create roles for non-teaching staff and control what each one can access"
+            : "Grant teachers extra powers beyond their own class, limited to the school stages you choose"
+        }
+        accent="slate"
+      />
+
+      <div className="inline-flex w-fit items-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1.5 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
+        <button
+          type="button"
+          onClick={() => switchTab("nonTeaching")}
+          className={cn(
+            "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+            activeTab === "nonTeaching" ? "bg-card text-foreground shadow-sm" : "hover:text-foreground",
+          )}
+        >
+          Non-Teaching Staff Roles
+        </button>
+        <button
+          type="button"
+          onClick={() => switchTab("teaching")}
+          className={cn(
+            "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+            activeTab === "teaching" ? "bg-card text-foreground shadow-sm" : "hover:text-foreground",
+          )}
+        >
+          Teacher Power Roles
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Role list */}
         <div className="rounded-2xl border border-border bg-card">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Roles</h2>
+            <h2 className="text-sm font-semibold text-foreground">{activeTab === "nonTeaching" ? "Roles" : "Power Roles"}</h2>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={startNew}>
               <Plus className="h-3.5 w-3.5" /> New Role
             </Button>
           </div>
           {!roles ? (
             <PageLoader compact label="Loading roles..." />
-          ) : roles.length === 0 ? (
-            <EmptyStateCompact message="No roles yet. Create one to get started." />
+          ) : visibleRoles.length === 0 ? (
+            <EmptyStateCompact message={activeTab === "nonTeaching" ? "No roles yet. Create one to get started." : "No power roles yet. Create one to get started."} />
           ) : (
             <div className="divide-y divide-border">
-              {roles.map((r) => (
+              {visibleRoles.map((r) => (
                 <button
                   key={r._id}
                   onClick={() => selectRole(r)}
@@ -272,6 +360,15 @@ export default function RolesPermissionsPage() {
                 </div>
               </div>
 
+              {activeTab === "teaching" ? (
+                <TeacherPowersEditor
+                  teacherPowers={teacherPowers}
+                  classes={classes}
+                  editable={editable}
+                  onToggleStage={toggleStage}
+                  onTogglePower={togglePower}
+                />
+              ) : (
               <div className="p-4 space-y-3">
                 <p className="text-xs text-muted-foreground mb-1">
                   <strong className="text-foreground">Open</strong> shows the section in the sidebar with its basic list view. View/Create/Edit/Delete each unlock one more capability within it.
@@ -336,6 +433,7 @@ export default function RolesPermissionsPage() {
                   );
                 })}
               </div>
+              )}
             </div>
           )}
         </div>
@@ -385,5 +483,86 @@ function PermissionChip({
       {checked ? <Check className="h-3 w-3" /> : variant === "extra" ? <Zap className="h-3 w-3 opacity-50" /> : null}
       {label}
     </label>
+  );
+}
+
+function TeacherPowersEditor({
+  teacherPowers,
+  classes,
+  editable,
+  onToggleStage,
+  onTogglePower,
+}: {
+  teacherPowers: ITeacherPowers;
+  classes: ClassOption[];
+  editable: boolean;
+  onToggleStage: (stage: StageKey) => void;
+  onTogglePower: (key: TeacherPowerKey) => void;
+}) {
+  // Group real classes by stage for a live preview, and collect anything
+  // that doesn't classify -- surfaced as a warning, never silently included
+  // in any scope. Deduped by standard name, since sections of the same
+  // standard (e.g. "9-A", "9-B") always share one stage.
+  const byStage: Record<StageKey, string[]> = { prePrimary: [], primary: [], middle: [], high: [] };
+  const unmapped: string[] = [];
+  const seen = new Set<string>();
+  for (const c of classes) {
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    const stage = classifyStage(c.name);
+    if (stage) byStage[stage].push(c.name);
+    else unmapped.push(c.name);
+  }
+
+  const hasScope = teacherPowers.scope.length > 0;
+
+  return (
+    <div className="p-4 space-y-5">
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">
+          <strong className="text-foreground">Scope</strong> — the school stages these powers apply to. A teacher with this role can use every power below for any class in the stages you tick, not just their own.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {STAGE_KEYS.map((stage) => (
+            <div key={stage} className="rounded-[14px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)] px-3.5 py-2.5 flex-1 min-w-[180px]">
+              <PermissionChip
+                label={STAGE_LABELS[stage]}
+                checked={teacherPowers.scope.includes(stage)}
+                locked={!editable}
+                variant="action"
+                onToggle={() => onToggleStage(stage)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5 truncate" title={byStage[stage].join(", ")}>
+                {byStage[stage].length > 0 ? byStage[stage].join(", ") : "No classes in this stage yet"}
+              </p>
+            </div>
+          ))}
+        </div>
+        {unmapped.length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <strong>Unmapped classes — not covered by any scope:</strong> {unmapped.join(", ")}. Rename these (e.g. to a plain grade number, or LKG/UKG for pre-primary) if a teacher&apos;s extra powers should cover them.
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">
+          <strong className="text-foreground">Powers</strong> — each applies only within the scope above, on top of everything a teacher can already do for their own class/subject.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {TEACHER_POWERS.map((power) => (
+            <PermissionChip
+              key={power.key}
+              label={power.label}
+              checked={teacherPowers[power.key]}
+              locked={!editable || !hasScope}
+              variant="extra"
+              onToggle={() => onTogglePower(power.key)}
+            />
+          ))}
+        </div>
+        {!hasScope && <p className="text-[11px] text-muted-foreground mt-2">Tick at least one stage above to enable these.</p>}
+      </div>
+    </div>
   );
 }

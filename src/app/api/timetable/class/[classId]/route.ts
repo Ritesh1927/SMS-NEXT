@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { TimetableEntry } from "@/models/TimetableEntry";
 import { Class } from "@/models/Class";
 import { Teacher } from "@/models/Teacher";
@@ -34,7 +34,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ classId:
           return NextResponse.json({ success: false, message: "You don't have permission to do this." }, { status: 403 });
         }
       } else {
-        const allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
+        let allowed = await isClassTeacherOfSection(auth.id, auth.schoolId, cls.name, cls.section);
+        if (!allowed) {
+          const powers = await getTeacherExtraPowers(auth);
+          allowed = teacherPowerAllows(powers, "timetableEdit", cls.name);
+        }
         if (!allowed) return NextResponse.json({ success: false, message: "Access denied." }, { status: 403 });
       }
     }

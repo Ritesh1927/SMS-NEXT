@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { Result } from "@/models/Result";
 import { Teacher } from "@/models/Teacher";
 import { Exam } from "@/models/Exam";
@@ -43,11 +43,20 @@ export async function PATCH(req: Request) {
           return NextResponse.json({ success: false, message: "You don't have permission to publish results." }, { status: 403 });
         }
       } else {
+        const powers = await getTeacherExtraPowers(auth);
+        const distinctClassesForPower = new Set([...uniqueExams.values()].map((e) => e.class));
+        const powerCoversAll =
+          distinctClassesForPower.size > 0 && [...distinctClassesForPower].every((c) => teacherPowerAllows(powers, "resultsPublish", c));
+
         const distinctSubjects = new Set(
           [...uniqueExams.values()].map((e) => `${e.class}::${e.section}::${e.subject.toLowerCase()}`),
         );
 
-        if (distinctSubjects.size > 1) {
+        if (powerCoversAll) {
+          // A granted "resultsPublish" power covers both the single-subject
+          // and cross-subject bulk cases below, same precedent as the
+          // non-teaching Role system's publishResults extra just above.
+        } else if (distinctSubjects.size > 1) {
           // Spans every subject of an exam at once -- reserved for the class
           // teacher (or admin) regardless of canEnterMarks/subject-teacher
           // status, so one subject teacher can't publish everyone else's

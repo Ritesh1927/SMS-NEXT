@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { AttendanceRecord, type IAttendanceRecord } from "@/models/AttendanceRecord";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
@@ -33,15 +33,20 @@ export async function POST(req: Request) {
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 
     const staffSections = await getNonTeachingStaffSections(auth);
+    // Extra powers only ever matter for a genuine teacher (staffSections
+    // null) -- fetched once here and reused below for the edit-past check.
+    const extraPowers = auth.role === "teacher" && !staffSections ? await getTeacherExtraPowers(auth) : null;
     // Attendance can only be marked by the school admin, that class's own
-    // class teacher, or a non-teaching staffer with "create" on Attendance
-    // — matches SMS-BACKEND's isClassTeacher restriction for the teacher case.
+    // class teacher, a Power Role grant, or a non-teaching staffer with
+    // "create" on Attendance — matches SMS-BACKEND's isClassTeacher
+    // restriction for the teacher case, with the Power Role as an additive
+    // bypass of class-teacher identity.
     if (auth.role === "teacher") {
       if (staffSections) {
         if (!staffSections.attendance?.create) {
           return NextResponse.json({ success: false, message: "You don't have permission to mark attendance." }, { status: 403 });
         }
-      } else if (String(cls.classTeacher) !== auth.id) {
+      } else if (String(cls.classTeacher) !== auth.id && !teacherPowerAllows(extraPowers, "attendanceMark", cls.name)) {
         return NextResponse.json(
           { success: false, message: "Only the class teacher can mark attendance." },
           { status: 403 },
@@ -80,7 +85,9 @@ export async function POST(req: Request) {
           return NextResponse.json({ success: false, message: "You don't have permission to edit saved attendance." }, { status: 403 });
         }
       } else if (auth.role === "teacher") {
-        return NextResponse.json({ success: false, message: "Cannot edit saved attendance." }, { status: 403 });
+        if (!teacherPowerAllows(extraPowers, "attendanceEditPast", cls.name)) {
+          return NextResponse.json({ success: false, message: "Cannot edit saved attendance." }, { status: 403 });
+        }
       } else {
         const adminDoc = await Admin.findById(auth.schoolId).select("settings.allowAttendanceEdit").lean();
         if (!adminDoc?.settings?.allowAttendanceEdit) {

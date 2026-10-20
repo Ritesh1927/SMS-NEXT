@@ -24,7 +24,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const teacher = await Teacher.findOne({ _id: id, school: auth.schoolId })
       .select("-password")
       .populate("assignedClasses", "name section")
-      .populate("staffRole", "name");
+      .populate("staffRole", "name")
+      .populate("powerRole", "name");
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, data: teacher });
@@ -74,9 +75,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (body[key] !== undefined) updates[key] = body[key];
     }
 
-    // staffRole: validated against this school (not just passed through)
-    // so a teacher can never end up pointing at another school's Role doc.
-    // Empty string/null clears it; omitting the field leaves it untouched.
+    // staffRole/powerRole: validated against this school (not just passed
+    // through) so a teacher can never end up pointing at another school's
+    // Role doc. Empty string/null clears it; omitting the field leaves it
+    // untouched. staffRole is non-teaching staff only; powerRole is
+    // teaching staff only -- the frontend only ever sends one or the other
+    // based on staffType, but both are independently validated here.
     if (body.staffRole !== undefined) {
       if (!body.staffRole) {
         updates.staffRole = null;
@@ -84,6 +88,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const role = await Role.findOne({ _id: body.staffRole, school: auth.schoolId });
         if (!role) return NextResponse.json({ success: false, message: "That role doesn't exist." }, { status: 400 });
         updates.staffRole = role._id;
+      }
+    }
+    if (body.powerRole !== undefined) {
+      if (!body.powerRole) {
+        updates.powerRole = null;
+      } else {
+        const role = await Role.findOne({ _id: body.powerRole, school: auth.schoolId, roleType: "teaching" });
+        if (!role) return NextResponse.json({ success: false, message: "That power role doesn't exist." }, { status: 400 });
+        updates.powerRole = role._id;
       }
     }
 
@@ -106,7 +119,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     })
       .select("-password")
       .populate("assignedClasses", "name section")
-      .populate("staffRole", "name");
+      .populate("staffRole", "name")
+      .populate("powerRole", "name");
     if (!teacher) return NextResponse.json({ success: false, message: "Teacher not found." }, { status: 404 });
 
     return NextResponse.json({ success: true, message: "Teacher updated.", data: teacher });

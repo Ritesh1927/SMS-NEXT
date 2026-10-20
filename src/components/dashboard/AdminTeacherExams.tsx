@@ -20,6 +20,15 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { PageLoader } from "@/components/PageLoader";
 import { isStreamStandard } from "@/lib/streamStandards";
+import { classifyStage } from "@/lib/classStage";
+import type { ITeacherPowers } from "@/models/Role";
+import type { TeacherPowerKey } from "@/lib/roles";
+
+function isPowerScopedClassName(powers: ITeacherPowers | null, className: string | undefined, power: TeacherPowerKey): boolean {
+  if (!className || !powers?.[power]) return false;
+  const stage = classifyStage(className);
+  return !!stage && powers.scope.includes(stage);
+}
 
 type ExamType = "class-test" | "unit-test" | "mid-term" | "final" | "practical" | "assignment";
 type ExamStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -295,26 +304,44 @@ export function AdminTeacherExams() {
   // enterMarks/publishResults extras substituting for the teaching-staff
   // canEnterMarks/canCreateExam blanket flags below.
   const isNonTeachingStaff = user?.role === "teacher" && user?.staffType === "non-teaching";
+  const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
   const [staffExamPerms, setStaffExamPerms] = useState<{
     create: boolean; edit: boolean; delete: boolean; extras: { enterMarks: boolean; publishResults: boolean };
   } | null>(null);
+  // A genuine teacher's Power Role grant, additive on top of everything
+  // below -- never a replacement for the blanket canCreateExam/canEnterMarks
+  // flags or subjectTeacherOf ownership, just a third, scope-limited path.
+  const [teacherPowers, setTeacherPowers] = useState<ITeacherPowers | null>(null);
 
   useEffect(() => {
-    if (!isNonTeachingStaff) return;
+    if (!isNonTeachingStaff && !isTeacher) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { sections: Record<string, { create: boolean; edit: boolean; delete: boolean; extras: { enterMarks: boolean; publishResults: boolean } }> } }>(
-      "/roles/my-permissions",
-      token,
-    )
-      .then((res) => setStaffExamPerms(res.data.sections.exams || { create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } }))
-      .catch(() => setStaffExamPerms({ create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } }));
-  }, [isNonTeachingStaff]);
+    apiGet<{
+      success: boolean;
+      data: {
+        sections: Record<string, { create: boolean; edit: boolean; delete: boolean; extras: { enterMarks: boolean; publishResults: boolean } }>;
+        teacherPowers: ITeacherPowers;
+      };
+    }>("/roles/my-permissions", token)
+      .then((res) => {
+        if (isNonTeachingStaff) setStaffExamPerms(res.data.sections.exams || { create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } });
+        if (isTeacher) setTeacherPowers(res.data.teacherPowers);
+      })
+      .catch(() => {
+        setStaffExamPerms({ create: false, edit: false, delete: false, extras: { enterMarks: false, publishResults: false } });
+        setTeacherPowers(null);
+      });
+  }, [isNonTeachingStaff, isTeacher]);
 
   // A non-teaching staffer with "edit"/"delete" is treated like admin for
   // the locked-edit-window UI below -- matches the server, which never
   // subjects them to the 2-hour window or class-ownership checks either.
   const staffActsLikeAdmin = isNonTeachingStaff && !!(staffExamPerms?.edit || staffExamPerms?.delete);
+  // Same admin-like treatment for a genuine teacher's Power Role, scoped to
+  // the specific test/term's class -- a teacher granted "examCreate" for a
+  // class isn't subject to the 2-hour edit window there either.
+  const actsLikeAdminFor = (className: string | undefined) => staffActsLikeAdmin || isPowerScopedClassName(teacherPowers, className, "examCreate");
 
   // Teachers can enter/publish marks either via the blanket canEnterMarks
   // grant (Roles & Permissions → Exams) or, without needing that grant at
@@ -345,7 +372,9 @@ export function AdminTeacherExams() {
   }, [user?.role, user?.id]);
 
   const canEnterMarksFor = (className?: string, section?: string, subject?: string) =>
-    hasBlanketMarksPermission || (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject)));
+    hasBlanketMarksPermission ||
+    (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject))) ||
+    isPowerScopedClassName(teacherPowers, className, "marksEnter");
 
   // Same two-path shape as marks entry: the blanket canCreateExam grant
   // (Roles & Permissions → Exams), or -- without needing that grant at all --
@@ -357,7 +386,9 @@ export function AdminTeacherExams() {
   const hasBlanketExamCreatePermission =
     isAdmin || Boolean((user?.permissions as { canCreateExam?: boolean } | undefined)?.canCreateExam) || !!staffExamPerms?.create;
   const canCreateTestFor = (className?: string, section?: string, subject?: string) =>
-    hasBlanketExamCreatePermission || (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject)));
+    hasBlanketExamCreatePermission ||
+    (!!className && !!subject && subjectTeacherOf.has(subjectTeacherKey(className, section || "", subject))) ||
+    isPowerScopedClassName(teacherPowers, className, "examCreate");
 
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [terms, setTerms] = useState<TermRow[] | null>(null);
@@ -450,6 +481,18 @@ export function AdminTeacherExams() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // A granted "examCreate" power broadens the class picker beyond this
+    // teacher's own/subject-taught classes -- re-fetch once teacherPowers is
+    // known, since the initial load() above ran before it arrived.
+    if (!isTeacher || !teacherPowers?.examCreate) return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: ClassOption[] }>("/classes?power=examCreate", token)
+      .then((res) => setClasses(res.data))
+      .catch(() => {});
+  }, [isTeacher, teacherPowers]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected class changes.
@@ -1122,10 +1165,17 @@ export function AdminTeacherExams() {
   // tab, so switching subject tabs on a multi-subject exam re-evaluates
   // permission per subject rather than once for the whole exam.
   const activeTermSubject = rTermSubjects?.find((s) => s._id === rActiveSubjectId);
+  const currentClassName = rSourceType === "test" ? rTestMeta?.class : activeTermSubject?.class;
   const currentCanEnterMarks =
     rSourceType === "test"
       ? canEnterMarksFor(rTestMeta?.class, rTestMeta?.section, rTestMeta?.subject)
       : canEnterMarksFor(activeTermSubject?.class, activeTermSubject?.section, activeTermSubject?.subject);
+  // Pure publish/unpublish (no marks editing involved) additionally opens up
+  // to a teacher granted "resultsPublish" for this class, independent of
+  // whether they can also enter marks -- matches PATCH /api/results/publish,
+  // where the Power Role check is a standalone bypass of both the
+  // single-subject and cross-subject branches.
+  const currentCanPublish = currentCanEnterMarks || isPowerScopedClassName(teacherPowers, currentClassName, "resultsPublish");
 
   // Publishing/unpublishing every subject of an exam at once is reserved for
   // the class teacher or admin (matches PATCH /api/results/publish's own
@@ -1134,6 +1184,7 @@ export function AdminTeacherExams() {
   const canPublishAllSubjects =
     isAdmin ||
     !!staffExamPerms?.extras.publishResults ||
+    isPowerScopedClassName(teacherPowers, activeTermSubject?.class, "resultsPublish") ||
     (!!activeTermSubject?.class &&
       classes.some(
         (c) =>
@@ -1294,7 +1345,7 @@ export function AdminTeacherExams() {
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(exam.status, exam.date).className}`}>
                         {displayExamStatus(exam.status, exam.date).label}
                       </span>
-                      {locked && !isAdmin && !staffActsLikeAdmin ? (
+                      {locked && !isAdmin && !actsLikeAdminFor(exam.class) ? (
                         <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "exam", id: exam._id, title: exam.title })} aria-label="Request change" title="This test starts within 2 hours, so changes need admin approval — request one">
                           <FileEdit className="h-3.5 w-3.5" />
                         </Button>
@@ -1382,7 +1433,7 @@ export function AdminTeacherExams() {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mr-2 ${displayExamStatus(termEffectiveStatus(term, exams), term.endDate).className}`}>
                           {displayExamStatus(termEffectiveStatus(term, exams), term.endDate).label}
                         </span>
-                        {locked && !isAdmin && !staffActsLikeAdmin ? (
+                        {locked && !isAdmin && !actsLikeAdminFor(term.class) ? (
                           <Button variant="ghost" size="icon-sm" onClick={() => setRequestTarget({ kind: "term", id: term._id, title: term.title })} aria-label="Request change" title="This exam starts within 2 hours, so changes need admin approval — request one">
                             <FileEdit className="h-3.5 w-3.5" />
                           </Button>
@@ -1491,11 +1542,11 @@ export function AdminTeacherExams() {
             </div>
           </div>
 
-          {rSourceId && !currentCanEnterMarks && (
+          {rSourceId && !currentCanEnterMarks && !currentCanPublish && (
             <div className="rounded-[18px] bg-amber-50 border border-amber-200 p-4 mb-4 flex items-start gap-3">
               <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800">
-                You don&apos;t have permission to enter or publish marks for this subject/class — either ask your school admin to enable <span className="font-semibold">&quot;Enter marks&quot;</span> for you under Roles &amp; Permissions → Exams, or check that you&apos;re assigned to teach this subject for this class in the Timetable. You can still view results below.
+                You don&apos;t have permission to enter or publish marks for this subject/class — either ask your school admin to enable <span className="font-semibold">&quot;Enter marks&quot;</span> or <span className="font-semibold">&quot;Publish results&quot;</span> for you under Roles &amp; Permissions, or check that you&apos;re assigned to teach this subject for this class in the Timetable. You can still view results below.
               </p>
             </div>
           )}
@@ -1533,11 +1584,11 @@ export function AdminTeacherExams() {
                     <Button
                       size="sm"
                       onClick={() => handlePublishAllTest(true)}
-                      disabled={rPublishing || !currentCanEnterMarks || !testRowsComplete || allTestRowsPublished}
+                      disabled={rPublishing || !currentCanPublish || !testRowsComplete || allTestRowsPublished}
                       title={
                         allTestRowsPublished
                           ? "Already published"
-                          : currentCanEnterMarks && !testRowsComplete
+                          : currentCanPublish && !testRowsComplete
                             ? "Every student needs a mark or Absent checked before you can publish all"
                             : undefined
                       }
@@ -1549,7 +1600,7 @@ export function AdminTeacherExams() {
                       size="sm"
                       variant="outline"
                       onClick={() => handlePublishAllTest(false)}
-                      disabled={rPublishing || !currentCanEnterMarks || !anyTestRowsPublished}
+                      disabled={rPublishing || !currentCanPublish || !anyTestRowsPublished}
                       className="text-red-600 hover:text-red-700"
                     >
                       Unpublish All
@@ -1655,7 +1706,7 @@ export function AdminTeacherExams() {
                               <span className="text-[11px] text-muted-foreground/70">Enter marks first</span>
                             )
                           ) : (
-                            <Button size="xs" variant="outline" onClick={() => handleRowTogglePublish(row)} disabled={busyId === row.student._id || !currentCanEnterMarks} className="gap-1">
+                            <Button size="xs" variant="outline" onClick={() => handleRowTogglePublish(row)} disabled={busyId === row.student._id || !currentCanPublish} className="gap-1">
                               {busyId === row.student._id ? <Loader2 className="h-3 w-3 animate-spin" /> : row.isPublished ? <XCircle className="h-3 w-3" /> : <Send className="h-3 w-3" />}
                               {row.isPublished ? "Unpublish" : "Publish"}
                             </Button>

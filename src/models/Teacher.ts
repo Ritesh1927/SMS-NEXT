@@ -67,6 +67,8 @@ export interface ITeacher extends Document {
   department: string;
   /** Non-teaching staff only -- assigns them to a Role & Permissions role. Teaching staff keep using `permissions` above instead. */
   staffRole: mongoose.Types.ObjectId | null;
+  /** Teaching staff only -- assigns extra powers beyond class/subject-teacher ownership via a "teaching" Role. Separate field from staffRole, which stays non-teaching-only. */
+  powerRole: mongoose.Types.ObjectId | null;
   assignedClasses: mongoose.Types.ObjectId[];
   permissions: IPermissions;
   gender: "male" | "female" | "other";
@@ -119,6 +121,7 @@ const teacherSchema = new Schema<ITeacher>(
     staffType: { type: String, enum: ["teaching", "non-teaching"], default: "teaching" },
     department: { type: String, default: "" },
     staffRole: { type: Schema.Types.ObjectId, ref: "Role", default: null },
+    powerRole: { type: Schema.Types.ObjectId, ref: "Role", default: null },
     assignedClasses: [{ type: Schema.Types.ObjectId, ref: "Class" }],
     permissions: { type: permissionsSchema, default: () => ({}) },
     gender: { type: String, enum: ["male", "female", "other"], default: "male" },

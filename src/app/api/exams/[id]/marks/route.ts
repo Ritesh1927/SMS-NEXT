@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Result } from "@/models/Result";
 import { Student } from "@/models/Student";
 import { Teacher } from "@/models/Teacher";
+import type { IRole } from "@/models/Role";
 import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 
 // POST /api/exams/[id]/marks — bulk-save marks for an exam (upsert per
@@ -31,9 +32,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           return NextResponse.json({ success: false, message: "You don't have permission to enter marks." }, { status: 403 });
         }
       } else {
-        const teacher = await Teacher.findById(auth.id).select("permissions");
+        const teacher = await Teacher.findById(auth.id)
+          .select("permissions staffType powerRole")
+          .populate<{ powerRole: IRole | null }>("powerRole");
         const isSubjectTeacher = await isSubjectTeacherOf(auth.id, auth.schoolId, exam.class, exam.section, exam.subject);
-        if (!teacher?.permissions?.canEnterMarks && !isSubjectTeacher) {
+        const hasPower = teacherPowerAllows(await getTeacherExtraPowers(auth, teacher), "marksEnter", exam.class);
+        if (!teacher?.permissions?.canEnterMarks && !isSubjectTeacher && !hasPower) {
           return NextResponse.json(
             { success: false, message: "You don't have permission to enter marks for this subject/class." },
             { status: 403 },

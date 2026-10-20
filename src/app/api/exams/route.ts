@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { getAuthUser, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teacherPowerAllows } from "@/lib/auth-server";
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import { Admin } from "@/models/Admin";
+import type { IRole } from "@/models/Role";
 import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
@@ -89,15 +90,17 @@ export async function POST(req: Request) {
           return NextResponse.json({ success: false, message: "You don't have permission to create tests." }, { status: 403 });
         }
       } else {
-        const teacher = await Teacher.findById(auth.id).select("permissions");
-        if (!teacher?.permissions?.canCreateExam) {
-          // No blanket grant -- fall back to per-subject Timetable access, the
-          // same auto-grant isSubjectTeacherOf already gives for marks entry
-          // (see /api/exams/[id]/marks). Every subject in this request must
-          // pass, not just one, since a single Test submission can cover
-          // several subjects at once. Scoped to standalone Tests only -- a
-          // multi-subject Exam term (/api/scheduled-exams) still requires the
-          // blanket grant, unchanged.
+        const teacher = await Teacher.findById(auth.id)
+          .select("permissions staffType powerRole")
+          .populate<{ powerRole: IRole | null }>("powerRole");
+        const hasPower = teacherPowerAllows(await getTeacherExtraPowers(auth, teacher), "examCreate", cls);
+        if (!teacher?.permissions?.canCreateExam && !hasPower) {
+          // No blanket grant and no Power Role for this class -- fall back to
+          // per-subject Timetable access, the same auto-grant
+          // isSubjectTeacherOf already gives for marks entry (see
+          // /api/exams/[id]/marks). Every subject in this request must pass,
+          // not just one, since a single Test submission can cover several
+          // subjects at once.
           const uniqueSubjects = [...new Set(subjectList.map((s) => s.name))];
           const checks = await Promise.all(
             uniqueSubjects.map((name) => isSubjectTeacherOf(auth.id, auth.schoolId, cls, section || "", name)),

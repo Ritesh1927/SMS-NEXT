@@ -39,6 +39,7 @@ interface SubjectsResponse {
 interface RoleOption {
   _id: string;
   name: string;
+  roleType?: "nonTeaching" | "teaching";
 }
 
 interface RolesResponse {
@@ -56,6 +57,7 @@ interface TeacherDetail {
   staffType: string;
   department: string;
   staffRole: RoleOption | null;
+  powerRole: RoleOption | null;
   subjects: string[];
   primarySubject: string;
   secondarySubject: string;
@@ -93,7 +95,7 @@ interface ApiMessageResponse {
 
 const EMPTY_FORM = {
   name: "", email: "", phone: "", qualification: "", experience: "", designation: "Teacher",
-  staffType: "teaching", department: "", staffRoleId: "",
+  staffType: "teaching", department: "", staffRoleId: "", powerRoleId: "",
   subjects: "",
   primarySubject: "", secondarySubject: "",
   gender: "male", dateOfBirth: "", address: "", bloodGroup: "",
@@ -150,7 +152,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
           name: t.name || "", email: t.email || "", phone: t.phone || "",
           qualification: t.qualification || "", experience: t.experience || "",
           designation: t.designation || "Teacher",
-          staffType: t.staffType || "teaching", department: t.department || "", staffRoleId: t.staffRole?._id || "",
+          staffType: t.staffType || "teaching", department: t.department || "", staffRoleId: t.staffRole?._id || "", powerRoleId: t.powerRole?._id || "",
           subjects: (t.subjects || []).join(", "),
           primarySubject: t.primarySubject || "",
           secondarySubject: t.secondarySubject || "",
@@ -172,6 +174,11 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
       .catch(() => toast.error("Failed to load teacher."))
       .finally(() => setLoading(false));
   }, [teacherId, isEdit]);
+
+  // /api/roles returns both non-teaching Roles and Teacher Power Roles
+  // together -- each staffType's dropdown only ever offers its own kind.
+  const nonTeachingRoleOptions = roleOptions.filter((r) => r.roleType !== "teaching");
+  const teachingRoleOptions = roleOptions.filter((r) => r.roleType === "teaching");
 
   const update = (key: keyof typeof EMPTY_FORM, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -261,6 +268,7 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
         salary: form.salary ? Number(form.salary) : 0,
         classIds: form.staffType === "teaching" ? selectedClassIds : [],
         staffRole: form.staffType === "non-teaching" ? form.staffRoleId || null : null,
+        powerRole: form.staffType === "teaching" ? form.powerRoleId || null : null,
       };
       if (isEdit && teacherId) {
         const res = await fetch(`/api/teachers/${teacherId}`, {
@@ -361,15 +369,32 @@ export function TeacherForm({ teacherId }: { teacherId?: string }) {
                   if (roleName) update("designation", roleName);
                 }}
               >
-                <SelectTrigger className="w-full"><SelectValue placeholder={roleOptions.length ? "Select role" : "No roles yet -- create one in Roles & Permissions"} /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder={nonTeachingRoleOptions.length ? "Select role" : "No roles yet -- create one in Roles & Permissions"} /></SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map((r) => (
+                  {nonTeachingRoleOptions.map((r) => (
                     <SelectItem key={r._id} value={r._id}>{r.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
                 Controls what this staff member can access. Manage roles from{" "}
+                <a href="/dashboard/roles-permissions" className="text-primary hover:underline" target="_blank" rel="noreferrer">Roles & Permissions</a>.
+              </p>
+            </div>
+          )}
+          {form.staffType === "teaching" && (
+            <div className="mt-4 space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Power Role (optional)</label>
+              <Select value={form.powerRoleId} onValueChange={(v) => update("powerRoleId", v || "")}>
+                <SelectTrigger className="w-full"><SelectValue placeholder={teachingRoleOptions.length ? "No extra powers" : "No power roles yet -- create one in Roles & Permissions"} /></SelectTrigger>
+                <SelectContent>
+                  {teachingRoleOptions.map((r) => (
+                    <SelectItem key={r._id} value={r._id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Grants extra powers beyond this teacher&apos;s own class, scoped to whatever stages the role allows. Leave unset for a regular teacher. Manage power roles from{" "}
                 <a href="/dashboard/roles-permissions" className="text-primary hover:underline" target="_blank" rel="noreferrer">Roles & Permissions</a>.
               </p>
             </div>
