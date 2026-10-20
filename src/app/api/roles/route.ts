@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Role } from "@/models/Role";
 import { Teacher } from "@/models/Teacher";
-import { sanitizeSections, sanitizeTeacherPowers } from "@/lib/roles";
+import { sanitizeSections, sanitizeTeacherPowers, buildEmptyTeacherPowers } from "@/lib/roles";
 import type { RoleType } from "@/models/Role";
 
 function requireSchoolAdmin(req: Request) {
@@ -39,7 +39,20 @@ export async function GET(req: Request) {
     ]);
     const countMap = new Map<string, number>();
     for (const c of [...staffCounts, ...powerCounts]) countMap.set(String(c._id), c.count);
-    const data = roles.map((r) => ({ ...r, _id: String(r._id), staffCount: countMap.get(String(r._id)) || 0 }));
+    // .lean() returns raw stored documents with no schema-default filling --
+    // any role created before `roleType`/`teacherPowers` existed on the
+    // schema has neither field in its actual stored document, not even as
+    // "nonTeaching"/empty. Normalized here so every consumer (this list,
+    // the staff form's Role dropdown) sees a consistent shape regardless of
+    // when the role was created, rather than each caller having to guess
+    // what a missing roleType means.
+    const data = roles.map((r) => ({
+      ...r,
+      _id: String(r._id),
+      roleType: r.roleType || "nonTeaching",
+      teacherPowers: r.teacherPowers || buildEmptyTeacherPowers(),
+      staffCount: countMap.get(String(r._id)) || 0,
+    }));
     return NextResponse.json({ success: true, count: data.length, data });
   } catch (err) {
     return NextResponse.json(

@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth-server";
 import { Role } from "@/models/Role";
 import { Teacher } from "@/models/Teacher";
-import { sanitizeSections, sanitizeTeacherPowers } from "@/lib/roles";
+import { sanitizeSections, sanitizeTeacherPowers, buildEmptyTeacherPowers } from "@/lib/roles";
 import type { RoleType } from "@/models/Role";
 
 function requireSchoolAdmin(req: Request) {
@@ -37,7 +37,11 @@ export async function GET(req: Request, { params }: Params) {
     await connectDB();
     const role = await Role.findOne({ _id: id, school: auth.schoolId }).lean();
     if (!role) return NextResponse.json({ success: false, message: "Role not found." }, { status: 404 });
-    return NextResponse.json({ success: true, data: role });
+    // .lean() skips schema-default filling -- a role created before
+    // roleType/teacherPowers existed has neither field in its stored
+    // document at all. Normalized here same as the list route.
+    const data = { ...role, roleType: role.roleType || "nonTeaching", teacherPowers: role.teacherPowers || buildEmptyTeacherPowers() };
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     return NextResponse.json(
       { success: false, message: err instanceof Error ? err.message : "Failed to load role." },
