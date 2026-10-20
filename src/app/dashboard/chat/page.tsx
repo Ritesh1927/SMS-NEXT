@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, MessageCircle, Search, Users, GraduationCap, X } from "lucide-react";
+import { ArrowLeft, Send, Loader2, MessageCircle, Search, Users, GraduationCap, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -253,6 +253,14 @@ export default function ChatPage() {
     }
   };
 
+  /** Mobile: leave the open thread and go back to the contact list. Also stops the message poll. */
+  const closeThread = () => {
+    setActive(null);
+    setConversationId(null);
+    setMessages([]);
+    setDraft("");
+  };
+
   if (!user) return null;
 
   const isAdmin = user.role === "schooladmin";
@@ -261,8 +269,11 @@ export default function ChatPage() {
   return (
     <div>
       <PageHeader icon={MessageCircle} title="Communication" subtitle="Message teachers, students and parents." accent="amber" className="mb-6" />
-      <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden flex h-[70vh]">
-      <div className="w-72 shrink-0 border-r border-border flex flex-col">
+      {/* Mobile (< md): one pane at a time. The contact list fills the card, and
+          opening a contact swaps in the full-width thread with a back button.
+          Desktop: list and thread side by side. */}
+      <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden flex h-[calc(100dvh-17rem)] min-h-[420px] md:h-[70vh] md:min-h-0">
+      <div className={`${active ? "hidden md:flex" : "flex"} w-full md:w-72 shrink-0 md:border-r border-border flex-col`}>
         {isAdmin && (
           <div className="px-3 py-2.5 border-b border-border space-y-2">
             <div className="inline-flex w-full items-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1 text-muted-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]">
@@ -393,7 +404,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
+      <div className={`${active ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col`}>
         {!active ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
             <div className="icon-chip h-14 w-14 bg-primary/8 mb-3">
@@ -403,7 +414,15 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-2.5 px-5 py-3 border-b border-border">
+            <div className="flex items-center gap-2.5 px-3 py-3 border-b border-border md:px-5">
+              <button
+                type="button"
+                onClick={closeThread}
+                aria-label="Back to contacts"
+                className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
               <div
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white text-xs font-bold"
                 style={{ background: `linear-gradient(135deg, ${ROLE_PALETTE[active.role].color}, ${ROLE_PALETTE[active.role].colorDark})` }}
@@ -415,7 +434,7 @@ export default function ChatPage() {
                 <p className="text-xs text-muted-foreground truncate">{active.subtitle}</p>
               </div>
             </div>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3 md:px-5">
               {loadingThread ? (
                 <PageLoader compact label="Loading messages..." />
               ) : messages.length === 0 ? (
@@ -426,7 +445,7 @@ export default function ChatPage() {
                   return (
                     <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
+                        className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm ${
                           mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                         }`}
                       >
@@ -445,7 +464,7 @@ export default function ChatPage() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-2 px-4 py-3 border-t border-border"
+              className="flex items-center gap-2 px-3 py-3 border-t border-border md:px-4"
             >
               <Input
                 value={draft}
