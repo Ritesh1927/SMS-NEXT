@@ -4,12 +4,14 @@ import { getAuthUser, getNonTeachingStaffSections, getTeacherExtraPowers, teache
 import { Exam } from "@/models/Exam";
 import { Teacher } from "@/models/Teacher";
 import { Admin } from "@/models/Admin";
+import { Class } from "@/models/Class";
 import type { IRole } from "@/models/Role";
 import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
 import { holidayRejectionMessage } from "@/lib/holidays";
 import { getCurrentAcademicYear } from "@/lib/academicYear";
+import { classifyStage } from "@/lib/classStage";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
@@ -28,11 +30,42 @@ export async function GET(req: Request) {
     const cls = searchParams.get("class");
     const subject = searchParams.get("subject");
     const status = searchParams.get("status");
+    const academicYear = searchParams.get("academicYear");
 
     const query: Record<string, unknown> = { school: auth.schoolId };
     if (cls) query.class = cls;
     if (subject) query.subject = subject;
     if (status) query.status = status;
+    if (academicYear) query.academicYear = { $in: [academicYear, ""] };
+
+    // Past-year exam data is out of scope for a genuine teacher unless their
+    // Role grants the viewPastYears Power -- current-year visibility is
+    // unaffected (this route has never class-scoped teachers for that).
+    if (academicYear && auth.role === "teacher" && !staffSections) {
+      const currentYear = await getCurrentAcademicYear(auth.schoolId);
+      if (academicYear !== currentYear) {
+        const teacher = await Teacher.findById(auth.id)
+          .select("staffType powerRole")
+          .populate<{ powerRole: IRole | null }>("powerRole");
+        const powers = await getTeacherExtraPowers(auth, teacher);
+        if (!powers?.viewPastYears) {
+          return NextResponse.json({ success: false, message: "You don't have permission to view past-year exam data." }, { status: 403 });
+        }
+        if (cls) {
+          const stage = classifyStage(cls);
+          if (!stage || !powers.scope.includes(stage)) {
+            return NextResponse.json({ success: false, message: "You don't have permission to view past-year exam data for this class." }, { status: 403 });
+          }
+        } else {
+          const classDocs = await Class.find({ school: auth.schoolId }).select("name").lean();
+          const permittedNames = [...new Set(classDocs.map((c) => c.name))].filter((name) => {
+            const stage = classifyStage(name);
+            return stage && powers.scope.includes(stage);
+          });
+          query.class = { $in: permittedNames };
+        }
+      }
+    }
 
     const exams = await Exam.find(query).populate("createdBy", "name teacherId").sort({ date: 1 });
     return NextResponse.json({ success: true, data: exams });

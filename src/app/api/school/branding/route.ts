@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   try {
     await connectDB();
     const admin = await Admin.findById(auth.schoolId).select(
-      "schoolName schoolAddress schoolPhone schoolEmail logo themeColor secondaryColor settings.sessionStartMonth settings.academicYear settings.yearSwitch",
+      "schoolName schoolAddress schoolPhone schoolEmail logo themeColor secondaryColor settings.sessionStartMonth settings.academicYear settings.yearSwitch settings.pastAcademicYears",
     );
     if (!admin) return NextResponse.json({ success: false, message: "School not found." }, { status: 404 });
 

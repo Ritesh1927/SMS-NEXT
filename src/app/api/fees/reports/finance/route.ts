@@ -1,7 +1,8 @@
 import type { QueryFilter } from "mongoose";
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { requireFeeAccess } from "@/lib/auth-server";
+import { requireFeeAccess, getNonTeachingStaffSections } from "@/lib/auth-server";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 import { Class } from "@/models/Class";
 import { Student } from "@/models/Student";
 import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
@@ -76,6 +77,19 @@ export async function GET(req: Request) {
     }
     if (!classId) {
       return NextResponse.json({ success: false, message: "classId is required." }, { status: 400 });
+    }
+
+    // A past year's fee data needs the new viewPastYears extra specifically
+    // for non-teaching staff -- a genuine teacher's existing blanket
+    // canManageFees flag (checked above by requireFeeAccess) is untouched.
+    if (!result.isAdmin) {
+      const currentYear = await getCurrentAcademicYear(auth.schoolId);
+      if (academicYear !== currentYear) {
+        const staffSections = await getNonTeachingStaffSections(auth);
+        if (staffSections && !staffSections.fees?.extras?.viewPastYears) {
+          return NextResponse.json({ success: false, message: "You don't have permission to view past-year fee data." }, { status: 403 });
+        }
+      }
     }
 
     const cls = await Class.findOne({ _id: classId, school: auth.schoolId }).lean();

@@ -13,6 +13,7 @@ import { postExamScheduleNotice } from "@/lib/examNotice";
 import { isStreamStandard } from "@/lib/streamStandards";
 import { holidayRejectionMessage } from "@/lib/holidays";
 import { getCurrentAcademicYear } from "@/lib/academicYear";
+import { classifyStage } from "@/lib/classStage";
 
 const EXAM_TYPE_MAP: Record<string, string> = {
   midterm: "mid-term",
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const cls = searchParams.get("class");
+    const academicYear = searchParams.get("academicYear");
 
     const staffSections = await getNonTeachingStaffSections(auth);
     if (staffSections && !staffSections.exams?.open) {
@@ -49,6 +51,8 @@ export async function GET(req: Request) {
     }
 
     const query: Record<string, unknown> = { school: auth.schoolId };
+    if (academicYear) query.academicYear = { $in: [academicYear, ""] };
+
     if (auth.role === "teacher" && !staffSections) {
       const accessible = await getTeacherAccessibleClasses(auth.id, auth.schoolId);
       const orClauses: Record<string, unknown>[] = accessible.map((c) => ({ class: c.name, section: c.section }));
@@ -56,6 +60,26 @@ export async function GET(req: Request) {
       // otherwise have access to -- also let them see it afterward, without
       // re-deriving the full stage-matched class list for a read path.
       orClauses.push({ createdBy: auth.id });
+
+      // Past-year terms outside a teacher's normal class access are only
+      // visible with the viewPastYears Power, scoped to the same stages --
+      // current-year visibility above is unaffected either way.
+      if (academicYear) {
+        const currentYear = await getCurrentAcademicYear(auth.schoolId);
+        if (academicYear !== currentYear) {
+          const teacher = await Teacher.findById(auth.id)
+            .select("staffType powerRole")
+            .populate<{ powerRole: IRole | null }>("powerRole");
+          const powers = await getTeacherExtraPowers(auth, teacher);
+          if (powers?.viewPastYears) {
+            const classDocs = await Class.find({ school: auth.schoolId }).select("name section").lean();
+            for (const c of classDocs) {
+              const stage = classifyStage(c.name);
+              if (stage && powers.scope.includes(stage)) orClauses.push({ class: c.name, section: c.section });
+            }
+          }
+        }
+      }
       query.$or = orClauses;
     } else if (cls) {
       query.class = cls;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db";
-import { requireFeeAccess } from "@/lib/auth-server";
+import { requireFeeAccess, getNonTeachingStaffSections } from "@/lib/auth-server";
 import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
@@ -62,6 +62,17 @@ export async function GET(req: Request) {
     const storedCurrentYear = await getCurrentAcademicYear(auth.schoolId);
     const curStartYear = parseInt(storedCurrentYear.slice(0, 4), 10) || (now.getMonth() >= startIdx ? curYear : curYear - 1);
     const fyStartYear = isFy ? parseInt(fyRaw!.slice(0, 4), 10) || curStartYear : curStartYear;
+
+    // A past year's fee data needs the new viewPastYears extra specifically
+    // for non-teaching staff -- a genuine teacher's existing blanket
+    // canManageFees flag (checked above by requireFeeAccess) is untouched,
+    // fees stays out of scope for teachers either way per the feature's spec.
+    if (!result.isAdmin && isFy && fyStartYear !== curStartYear) {
+      const staffSections = await getNonTeachingStaffSections(auth);
+      if (staffSections && !staffSections.fees?.extras?.viewPastYears) {
+        return NextResponse.json({ success: false, message: "You don't have permission to view past-year fee data." }, { status: 403 });
+      }
+    }
 
     const winStart = isFy ? new Date(fyStartYear, startIdx, 1) : new Date(curYear, 0, 1);
     const winEnd = isFy ? new Date(fyStartYear, startIdx + 12, 0, 23, 59, 59, 999) : new Date(curYear, 11, 31, 23, 59, 59, 999);
