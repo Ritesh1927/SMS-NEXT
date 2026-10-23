@@ -278,7 +278,7 @@ export default function AdminFeesPage() {
         apiGet<ClassesResponse>("/classes", token).catch(() => ({ success: true, data: [] as ClassOption[] })),
         apiGet<StudentsResponse>("/students", token).catch(() => ({ success: true, data: [] as StudentOption[] })),
         apiGet<StructuresResponse>("/fees/structures", token).catch(() => ({ success: true, data: [] as StructureRow[] })),
-        apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null),
+        apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string; academicYear?: string } } }>("/school/branding", token).catch(() => null),
       ]);
       setClasses(clsR.data);
       setStructClass((prev) => prev || clsR.data[0]?.name || "");
@@ -294,17 +294,20 @@ export default function AdminFeesPage() {
       const startMonth = branding?.data.settings?.sessionStartMonth || "April";
       const startIdx = MONTHS.indexOf(startMonth);
       const now = new Date();
+      // The admin-controlled stored current year when the school has one set
+      // (see src/lib/academicYear.ts); only falls back to a live recompute
+      // for a school whose first-deploy migration hasn't run yet.
+      const storedAY = branding?.data.settings?.academicYear;
       const startYear = now.getFullYear();
       const endMonthIdx = (startIdx + 11) % 12;
       const endYear = endMonthIdx < startIdx ? startYear + 1 : startYear;
-      setAcademicYear(`${startYear}-${endYear}`);
+      const currentAY = storedAY || `${startYear}-${endYear}`;
+      setAcademicYear(currentAY);
 
       // The Dashboard always shows the session today falls into (current FY
       // only) — no picker. Analytics loads for that session via the [fy] effect.
       setSessionStart(startMonth);
-      const sIdx = startIdx >= 0 ? startIdx : 3;
-      const curStartYear = now.getMonth() >= sIdx ? startYear : startYear - 1;
-      setFy((prev) => prev || `${curStartYear}-${curStartYear + 1}`);
+      setFy((prev) => prev || currentAY);
       // A manual refresh re-runs loadAll but not the [fy] effect, so
       // re-fetch analytics here too when a FY is already selected.
       if (fyRef.current) loadAnalytics(fyRef.current);

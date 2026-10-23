@@ -29,6 +29,8 @@ interface SchoolProfile {
   name: string;
   phone: string;
   settings: {
+    /** The admin-controlled stored current year, e.g. "2025-2026" -- see src/lib/academicYear.ts. */
+    academicYear: string;
     sessionStartMonth: string;
     establishedYear: string;
     affiliation: string;
@@ -75,7 +77,14 @@ interface ApiMessageResponse {
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function getSessionRange(sessionStartMonth: string) {
+// storedAcademicYear is the admin-controlled current year (settings.academicYear,
+// see src/lib/academicYear.ts) -- used whenever present. The live recompute
+// below only covers a school whose first-deploy migration hasn't run yet.
+function getSessionRange(sessionStartMonth: string, storedAcademicYear?: string) {
+  if (storedAcademicYear) {
+    const [startYear, endYear] = storedAcademicYear.split("-");
+    return { startYear, endYear, label: `${sessionStartMonth} ${startYear} to ${MONTHS[(MONTHS.indexOf(sessionStartMonth) + 11) % 12] || ""} ${endYear}` };
+  }
   const startIdx = MONTHS.indexOf(sessionStartMonth);
   if (startIdx < 0) return { startYear: "", endYear: "", label: "" };
   const now = new Date();
@@ -324,7 +333,7 @@ export default function SettingsPage() {
     return <PageLoader label="Loading settings..." />;
   }
 
-  const sessionRange = getSessionRange(profile.settings.sessionStartMonth);
+  const sessionRange = getSessionRange(profile.settings.sessionStartMonth, profile.settings.academicYear);
 
   const calFirstWeekday = new Date(calYear, calMonth, 1).getDay();
   const calDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();

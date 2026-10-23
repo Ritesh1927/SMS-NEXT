@@ -44,9 +44,17 @@ export async function PATCH(req: Request) {
 
     if (settings) {
       const current = await Admin.findById(auth.id).select("settings").lean();
+      // academicYear/pastAcademicYears/yearSwitch are never accepted here,
+      // even if the client echoes them back from a stale GET -- they're
+      // only ever written by the dedicated POST /api/school/year-switch,
+      // same reasoning as allowAttendanceEdit having its own endpoint. A
+      // blind merge here could silently revert a switch that happened in
+      // another tab/session after this page's last load.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- deliberately discarding these 3 keys, keeping the rest.
+      const { academicYear: _ay, pastAcademicYears: _pay, yearSwitch: _ys, ...safeSettings } = settings;
       update.settings = {
         ...(current?.settings || {}),
-        ...settings,
+        ...safeSettings,
         notifications: { ...(current?.settings?.notifications || {}), ...(settings.notifications || {}) },
         security: { ...(current?.settings?.security || {}), ...(settings.security || {}) },
         lateFee: { ...(current?.settings?.lateFee || {}), ...(settings.lateFee || {}) },

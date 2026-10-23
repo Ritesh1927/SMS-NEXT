@@ -23,7 +23,22 @@ export interface IAdmin extends Document {
   resetOTP: string | null;
   resetOTPExpire: Date | null;
   settings: {
+    /** The real, admin-controlled current academic year, e.g. "2025-2026" -- see src/lib/academicYear.ts. */
     academicYear: string;
+    /** Old years pushed here, newest-first, each time the school switches. */
+    pastAcademicYears: string[];
+    /**
+     * Written only by POST /api/school/year-switch, never the generic
+     * settings PATCH -- same reasoning as allowAttendanceEdit below having
+     * its own dedicated endpoint: too consequential for a blind merge.
+     */
+    yearSwitch: {
+      classTeacherPromotionAllowed: boolean;
+      powerRoleTeacherPromotionAllowed: boolean;
+      lastSwitchedAt: Date | null;
+      /** The year that was just ended, e.g. for "promote students from 2025-2026" copy. */
+      lastSwitchedYear: string;
+    };
     sessionStartMonth: string;
     establishedYear: string;
     affiliation: string;
@@ -88,6 +103,13 @@ const adminSchema = new Schema<IAdmin>(
     resetOTPExpire: { type: Date, default: null },
     settings: {
       academicYear: { type: String, default: "" },
+      pastAcademicYears: { type: [String], default: [] },
+      yearSwitch: {
+        classTeacherPromotionAllowed: { type: Boolean, default: false },
+        powerRoleTeacherPromotionAllowed: { type: Boolean, default: false },
+        lastSwitchedAt: { type: Date, default: null },
+        lastSwitchedYear: { type: String, default: "" },
+      },
       sessionStartMonth: { type: String, default: "April" },
       establishedYear: { type: String, default: "" },
       affiliation: { type: String, default: "" },

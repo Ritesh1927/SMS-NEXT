@@ -124,8 +124,12 @@ const fmtDue = (iso: string) => {
 
 const freqLabel = (f: string) => (f === "one-time" ? "One-time" : f.charAt(0).toUpperCase() + f.slice(1));
 
-// The academic year the given session start month puts "today" in — for an
-// April session in Oct 2026 that's "2026-2027" (Apr 2026 – Mar 2027).
+// Fallback only -- the academic year the given session start month puts
+// "today" in, e.g. an April session in Oct 2026 is "2026-2027" (Apr 2026 –
+// Mar 2027). Used only when /school/branding hasn't returned the school's
+// actual stored settings.academicYear yet (e.g. before that request
+// resolves) -- see resolveAcademicYear below, which is the one real source
+// of truth once the school has switched years at least once.
 const currentAcademicYear = (sessionStartMonth: string) => {
   const now = new Date();
   const startIdx = MONTHS_FULL.indexOf(sessionStartMonth);
@@ -134,8 +138,14 @@ const currentAcademicYear = (sessionStartMonth: string) => {
   return `${startYear}-${startYear + 1}`;
 };
 
-const academicYearOptions = (sessionStartMonth: string) => {
-  const start = Number(currentAcademicYear(sessionStartMonth).slice(0, 4));
+// The admin-controlled stored current year when available, else the natural
+// fallback above -- this is what every place on this page meaning "today's
+// academic year" should call.
+const resolveAcademicYear = (settings?: { sessionStartMonth?: string; academicYear?: string }) =>
+  settings?.academicYear || currentAcademicYear(settings?.sessionStartMonth || "April");
+
+const academicYearOptions = (currentYear: string) => {
+  const start = Number(currentYear.slice(0, 4));
   return [`${start - 2}-${start - 1}`, `${start - 1}-${start}`, `${start}-${start + 1}`, `${start + 1}-${start + 2}`];
 };
 
@@ -249,7 +259,7 @@ export default function ReportsPage() {
   const [finAY, setFinAY] = useState("");
   const [finMonth, setFinMonth] = useState("");
   const [finClassId, setFinClassId] = useState("");
-  const [finMeta, setFinMeta] = useState<{ sessionStartMonth: string } | null>(null);
+  const [finMeta, setFinMeta] = useState<{ sessionStartMonth: string; academicYear: string } | null>(null);
   const [finData, setFinData] = useState<FinanceData | null>(null);
   // Snapshot of the AY/month the last Apply actually loaded — the selects can
   // be moved without applying, and the view must not relabel old data.
@@ -280,9 +290,9 @@ export default function ReportsPage() {
       // can see Finance.
       const branding =
         isAdmin || canSeeFinance
-          ? await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token).catch(() => null)
+          ? await apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string; academicYear?: string } } }>("/school/branding", token).catch(() => null)
           : null;
-      const feeFy = currentAcademicYear(branding?.data?.settings?.sessionStartMonth || "April");
+      const feeFy = resolveAcademicYear(branding?.data?.settings);
       const [classesRes, statsRes, analyticsRes, attYearlyRes] = await Promise.allSettled([
         apiGet<{ success: boolean; data: ClassDoc[] }>("/classes", token),
         isAdmin ? apiGet<{ success: boolean; data: { stats: { totalStudents: number; totalTeachers: number; newStudentsThisMonth?: number; newTeachersThisMonth?: number } } }>("/dashboard/schooladmin", token) : Promise.resolve(null),
@@ -403,15 +413,15 @@ export default function ReportsPage() {
     if (activeTab !== "finance" || finMeta) return;
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string } } }>("/school/branding", token)
+    apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string; academicYear?: string } } }>("/school/branding", token)
       .catch(() => null)
       .then((res) => {
         const startMonth = res?.data?.settings?.sessionStartMonth || "April";
-        const ay = currentAcademicYear(startMonth);
+        const ay = resolveAcademicYear(res?.data?.settings);
         const months = generateSessionMonths(startMonth, Number(ay.slice(0, 4)));
         const now = new Date();
         const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        setFinMeta({ sessionStartMonth: startMonth });
+        setFinMeta({ sessionStartMonth: startMonth, academicYear: ay });
         setFinAY((prev) => prev || ay);
         setFinMonth((prev) => prev || (months.includes(todayKey) ? todayKey : months[0] || todayKey));
       });
@@ -424,8 +434,9 @@ export default function ReportsPage() {
   }, [activeTab, finMeta, finClassId]);
 
   const sessionStart = finMeta?.sessionStartMonth || "April";
-  const finYears = academicYearOptions(sessionStart);
-  const finMonths = generateSessionMonths(sessionStart, Number((finAY || currentAcademicYear(sessionStart)).slice(0, 4)));
+  const currentAY = finMeta?.academicYear || currentAcademicYear(sessionStart);
+  const finYears = academicYearOptions(currentAY);
+  const finMonths = generateSessionMonths(sessionStart, Number((finAY || currentAY).slice(0, 4)));
   const finClassPct = (n: number) => (finData && finData.stats.totalStudents > 0 ? Math.round((n / finData.stats.totalStudents) * 100) : 0);
 
   // Rows shown by the table / CSV / footer: the full set, or the name match.

@@ -6,6 +6,7 @@ import { FeePayment } from "@/models/FeePayment";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
 import { computeFeeDues, type FeeDueEntry } from "@/lib/feeDues";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_NAMES = [
@@ -54,7 +55,12 @@ export async function GET(req: Request) {
 
     const now = new Date();
     const curYear = now.getFullYear();
-    const curStartYear = now.getMonth() >= startIdx ? curYear : curYear - 1;
+    // Fallback for a missing/unparseable ?fy= -- the school's stored
+    // current academic year (not a live recompute; see src/lib/academicYear.ts),
+    // so this agrees with what Settings/Reports/the Fees dashboard show as
+    // "current" everywhere else once a school has explicitly switched years.
+    const storedCurrentYear = await getCurrentAcademicYear(auth.schoolId);
+    const curStartYear = parseInt(storedCurrentYear.slice(0, 4), 10) || (now.getMonth() >= startIdx ? curYear : curYear - 1);
     const fyStartYear = isFy ? parseInt(fyRaw!.slice(0, 4), 10) || curStartYear : curStartYear;
 
     const winStart = isFy ? new Date(fyStartYear, startIdx, 1) : new Date(curYear, 0, 1);
