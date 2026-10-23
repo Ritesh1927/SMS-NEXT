@@ -6,6 +6,8 @@ import { FeeStructure, type IFeeStructure } from "@/models/FeeStructure";
 import { Concession, type IConcession } from "@/models/Concession";
 import { Student } from "@/models/Student";
 import { Admin } from "@/models/Admin";
+import { AttendanceYearSummary } from "@/models/AttendanceYearSummary";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 import {
   generateSessionMonths,
   filterMonthsByAdmission,
@@ -29,8 +31,16 @@ interface MonthRow {
   paymentMode: string | null;
 }
 
-// GET /api/fees/reports/student-ledger/[studentId] — per-fee-head month
-// tables plus a grand summary, for the "Student Ledger" sub-tab.
+// GET /api/fees/reports/student-ledger/[studentId]?academicYear= —
+// per-fee-head month tables plus a grand summary, for the "Student Ledger"
+// sub-tab. Defaults to the school's stored current year (and, doing so,
+// correctly derives the session's start year from that stored value instead
+// of today's calendar year -- the old `now.getFullYear()` mis-derived the
+// Jan-Mar tail of a session that started the previous calendar year). A
+// past year resolves the student's class AT THAT YEAR from
+// AttendanceYearSummary rather than their current (possibly since-promoted)
+// Student.class, and drops the isActive filter on FeeStructure so a head
+// deactivated since still shows for the year it was actually collected.
 export async function GET(req: Request, { params }: { params: Promise<{ studentId: string }> }) {
   const auth = getAuthUser(req);
   if (!auth || (auth.role !== "schooladmin" && auth.role !== "teacher")) {
@@ -39,6 +49,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
   try {
     const { studentId } = await params;
+    const requestedYear = new URL(req.url).searchParams.get("academicYear");
     await connectDB();
     const staffSections = await getNonTeachingStaffSections(auth);
     if (staffSections && !staffSections.fees?.open) {
@@ -48,7 +59,39 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const student = await Student.findOne({ _id: studentId, school: auth.schoolId });
     if (!student) return NextResponse.json({ success: false, message: "Student not found." }, { status: 404 });
 
-    const structures = await FeeStructure.find({ school: auth.schoolId, class: student.class, isActive: true }).lean<IFeeStructure[]>();
+    const currentYear = await getCurrentAcademicYear(auth.schoolId);
+    const targetYear = requestedYear || currentYear;
+    const isPastYear = targetYear !== currentYear;
+
+    // Non-teaching staff need the fees extra specifically for a past year;
+    // a genuine teacher's existing blanket canManageFees access (already
+    // the only gate above) is untouched either way.
+    if (isPastYear && staffSections && !staffSections.fees?.extras?.viewPastYears) {
+      return NextResponse.json({ success: false, message: "You don't have permission to view past-year fee data." }, { status: 403 });
+    }
+
+    let targetClass = student.class;
+    if (isPastYear) {
+      const summary = await AttendanceYearSummary.findOne({ school: auth.schoolId, studentId, academicYear: targetYear });
+      if (!summary) {
+        return NextResponse.json({
+          success: true,
+          data: [],
+          grandSummary: null,
+          message: `No record found for ${student.name} in ${targetYear}.`,
+        });
+      }
+      targetClass = summary.classAtYearEnd;
+    }
+
+    const structureQuery: Record<string, unknown> = {
+      school: auth.schoolId,
+      class: targetClass,
+      academicYear: { $in: [targetYear, ""] },
+    };
+    if (!isPastYear) structureQuery.isActive = true;
+
+    const structures = await FeeStructure.find(structureQuery).lean<IFeeStructure[]>();
     const payments = await FeePayment.find({ school: auth.schoolId, student: studentId }).lean<IFeePayment[]>();
     const concessions = await Concession.find({ school: auth.schoolId, student: studentId }).lean<IConcession[]>();
     const school = await Admin.findById(auth.schoolId).select("settings");
@@ -56,7 +99,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
 
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const sessionMonths = generateSessionMonths(school?.settings?.sessionStartMonth || "April", now.getFullYear());
+    const sessionMonths = generateSessionMonths(school?.settings?.sessionStartMonth || "April", parseInt(targetYear.slice(0, 4), 10) || now.getFullYear());
     const applicableMonths = filterMonthsByAdmission(sessionMonths, student.admissionDate);
 
     const findPaid = (fsId: unknown, month: string) =>

@@ -12,6 +12,7 @@ import { PageLoader } from "@/components/PageLoader";
 
 interface ClassOption { _id: string; name: string; section: string }
 interface StudentOption { _id: string; name: string; class: string; section: string; studentId: string }
+interface PastYearRosterRow { id: string; name: string; code: string; rollNumber: string; class: string; section: string }
 
 const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN")}`;
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -249,9 +250,10 @@ interface LedgerGroup {
 }
 interface GrandSummary { totalAmount: number; totalLateFee: number; totalConcession: number; totalPaid: number; totalBalance: number }
 
-function RptStudentLedger({ studentId }: { studentId: string }) {
+function RptStudentLedger({ studentId, academicYear }: { studentId: string; academicYear: string }) {
   const [data, setData] = useState<LedgerGroup[]>([]);
   const [grandSummary, setGrandSummary] = useState<GrandSummary | null>(null);
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -260,11 +262,13 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
     if (!token) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: loading flag for the fetch this effect starts.
     setLoading(true);
-    apiGet<{ success: boolean; data: LedgerGroup[]; grandSummary: GrandSummary }>(`/fees/reports/student-ledger/${studentId}`, token)
-      .then((r) => { setData(r.data || []); setGrandSummary(r.grandSummary); })
+    setEmptyMessage(null);
+    const qs = academicYear ? `?academicYear=${encodeURIComponent(academicYear)}` : "";
+    apiGet<{ success: boolean; data: LedgerGroup[]; grandSummary: GrandSummary | null; message?: string }>(`/fees/reports/student-ledger/${studentId}${qs}`, token)
+      .then((r) => { setData(r.data || []); setGrandSummary(r.grandSummary); setEmptyMessage(r.message || null); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [studentId]);
+  }, [studentId, academicYear]);
 
   const getStatusBadge = (status: string) => {
     if (status === "paid") return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">Paid</Badge>;
@@ -279,7 +283,7 @@ function RptStudentLedger({ studentId }: { studentId: string }) {
   if (loading) return <Spinner />;
   return (
     <div className="space-y-4">
-      {data.length === 0 && <div className="p-10 text-center text-sm text-muted-foreground">No fee data for this student</div>}
+      {data.length === 0 && <div className="p-10 text-center text-sm text-muted-foreground">{emptyMessage || "No fee data for this student"}</div>}
       {data.map((group) => {
         const fs = group.feeStructure;
         const months = group.months || [];
@@ -361,7 +365,54 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
   const [rptStudent, setRptStudent] = useState("");
   const [ledgerStudentQuery, setLedgerStudentQuery] = useState("");
 
-  const classFilteredLedgerList = students.filter((s) => rptClass === "all" || `${s.class}-${s.section}` === rptClass);
+  // Year scoping for the Student Ledger sub-tab only -- defaults to the
+  // school's stored current year. A past year switches the class filter and
+  // student search over to a roster of who was ACTUALLY in each class
+  // during that year (AttendanceYearSummary), since a promoted student's
+  // live class/section no longer reflects where they were back then.
+  const [ledgerYear, setLedgerYear] = useState("");
+  const [currentYear, setCurrentYear] = useState("");
+  const [pastYears, setPastYears] = useState<string[]>([]);
+  const [pastRoster, setPastRoster] = useState<PastYearRosterRow[] | null>(null);
+  const [loadingPastRoster, setLoadingPastRoster] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { settings?: { academicYear?: string; pastAcademicYears?: string[] } } }>("/school/branding", token)
+      .then((res) => {
+        const cy = res.data.settings?.academicYear || "";
+        setCurrentYear(cy);
+        setPastYears(res.data.settings?.pastAcademicYears || []);
+        setLedgerYear((prev) => prev || cy);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isPastLedgerYear = !!ledgerYear && !!currentYear && ledgerYear !== currentYear;
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected year changes.
+    if (!isPastLedgerYear) { setPastRoster(null); return; }
+    const token = getToken();
+    if (!token) return;
+    setLoadingPastRoster(true);
+    apiGet<{ success: boolean; data: PastYearRosterRow[] }>(`/fees/reports/past-year-roster?academicYear=${encodeURIComponent(ledgerYear)}`, token)
+      .then((res) => setPastRoster(res.data))
+      .catch(() => setPastRoster([]))
+      .finally(() => setLoadingPastRoster(false));
+  }, [isPastLedgerYear, ledgerYear]);
+
+  const ledgerStudentSource: StudentOption[] = isPastLedgerYear
+    ? (pastRoster || []).map((r) => ({ _id: r.id, name: r.name, class: r.class, section: r.section, studentId: r.code }))
+    : students;
+  const ledgerClassOptions = isPastLedgerYear
+    ? Array.from(new Map((pastRoster || []).map((r) => [`${r.class}::${r.section}`, { name: r.class, section: r.section }])).values()).sort(
+        (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.section.localeCompare(b.section),
+      )
+    : classes;
+
+  const classFilteredLedgerList = ledgerStudentSource.filter((s) => rptClass === "all" || `${s.class}-${s.section}` === rptClass);
   const selectedLedgerStudent = classFilteredLedgerList.find((s) => s._id === rptStudent) || null;
   const getLedgerStudentLabel = (s: StudentOption) => `${s.name} — Class ${s.class}-${s.section}`;
   const isRestingLedgerLabel = !!selectedLedgerStudent && ledgerStudentQuery === getLedgerStudentLabel(selectedLedgerStudent);
@@ -404,11 +455,25 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
         <div className="rounded-[18px] bg-card shadow-[0_0_0_1px_rgba(15,23,42,0.07)]">
           <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3 sm:flex-wrap">
             <h3 className="text-base font-semibold text-foreground">Student Ledger</h3>
+            {pastYears.length > 0 && (
+              <Select
+                value={ledgerYear}
+                onValueChange={(v) => { setLedgerYear(v || currentYear); setRptClass("all"); setRptStudent(""); setLedgerStudentQuery(""); }}
+              >
+                <SelectTrigger className="w-full sm:w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={currentYear}>{currentYear} (Current)</SelectItem>
+                  {pastYears.map((y) => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={rptClass} onValueChange={(v) => { setRptClass(v || "all"); setRptStudent(""); setLedgerStudentQuery(""); }}>
               <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Classes</SelectItem>
-                {classes.map((c) => <SelectItem key={c._id} value={`${c.name}-${c.section}`}>Class {c.name}-{c.section}</SelectItem>)}
+                {ledgerClassOptions.map((c) => <SelectItem key={`${c.name}-${c.section}`} value={`${c.name}-${c.section}`}>Class {c.name}-{c.section}</SelectItem>)}
               </SelectContent>
             </Select>
             <Combobox<StudentOption | null>
@@ -434,7 +499,16 @@ export default function ReportsTab({ classes, students }: { classes: ClassOption
               </ComboboxContent>
             </Combobox>
           </div>
-          {rptStudent ? <RptStudentLedger studentId={rptStudent} /> : (
+          {isPastLedgerYear && (
+            <div className="px-4 pt-3 text-xs font-medium text-amber-600 flex items-center gap-1.5">
+              Viewing {ledgerYear} -- a past educational year.
+            </div>
+          )}
+          {loadingPastRoster ? (
+            <Spinner />
+          ) : rptStudent ? (
+            <RptStudentLedger studentId={rptStudent} academicYear={ledgerYear} />
+          ) : (
             <div className="p-10 text-center text-sm text-muted-foreground">Select a student to view ledger</div>
           )}
         </div>
