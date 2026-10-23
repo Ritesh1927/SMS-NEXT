@@ -731,8 +731,10 @@ function StudentLookup() {
   );
 }
 
-interface PreviousYearSummary {
-  academicYear: string;
+interface PreviousYearRow {
+  studentId: string;
+  name: string;
+  rollNumber: string;
   classAtYearEnd: string;
   sectionAtYearEnd: string;
   totalDays: number;
@@ -740,32 +742,31 @@ interface PreviousYearSummary {
   percentage: number;
 }
 
-interface PreviousYearsResponse {
+interface PreviousYearsListResponse {
   success: boolean;
-  data: { student: { id: string; name: string; rollNumber: string }; summary: PreviousYearSummary | null };
+  data: PreviousYearRow[];
 }
 
+const ALL_CLASSES = "__all__";
+
 // No daily/monthly detail exists for a past year by design (see
-// AttendanceYearSummary) -- a single stat card, not a calendar, is the
-// whole point of this tab.
+// AttendanceYearSummary) -- a single stat card per student, not a
+// calendar, is the whole point of this tab. The class filter narrows by
+// classAtYearEnd/sectionAtYearEnd -- who was in that class DURING the
+// selected year, not who's there today (a promoted student is found under
+// their old class here, not their current one).
 function PreviousYearsLookup() {
-  const { user } = useAuth();
-  const isTeacher = user?.role === "teacher" && user?.staffType !== "non-teaching";
-  const [students, setStudents] = useState<LookupStudentRow[] | null>(null);
   const [pastYears, setPastYears] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<LookupStudentRow | null>(null);
   const [year, setYear] = useState("");
-  const [summary, setSummary] = useState<PreviousYearSummary | null | undefined>(undefined);
-  const [loadingSummary, setLoadingSummary] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [rows, setRows] = useState<PreviousYearRow[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState(ALL_CLASSES);
+  const [selected, setSelected] = useState<PreviousYearRow | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    apiGet<LookupStudentsResponse>(isTeacher ? "/teachers/my-students" : "/students", token)
-      .then((res) => setStudents(res.data))
-      .catch(() => setStudents([]));
     apiGet<{ success: boolean; data: { settings?: { pastAcademicYears?: string[] } } }>("/school/branding", token)
       .then((res) => {
         const years = res.data.settings?.pastAcademicYears || [];
@@ -773,113 +774,128 @@ function PreviousYearsLookup() {
         setYear((prev) => prev || years[0] || "");
       })
       .catch(() => {});
-  }, [isTeacher]);
-
-  const filtered = (students || []).filter((s) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return s.name.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.rollNumber || "").toLowerCase().includes(q);
-  });
+  }, []);
 
   useEffect(() => {
-    if (!selected || !year) return;
+    if (!year) return;
     const token = getToken();
     if (!token) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: showing the loading state for the summary fetch this student/year pick kicks off.
-    setLoadingSummary(true);
-    setSummaryError(null);
-    apiGet<PreviousYearsResponse>(`/attendance/previous-years?studentId=${selected._id}&year=${encodeURIComponent(year)}`, token)
-      .then((res) => setSummary(res.data.summary))
-      .catch((err) => setSummaryError(err instanceof Error ? err.message : "Failed to load."))
-      .finally(() => setLoadingSummary(false));
-  }, [selected, year]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate: reset + refetch whenever the selected year changes.
+    setRows(null);
+    setLoadError(null);
+    setSelected(null);
+    setClassFilter(ALL_CLASSES);
+    apiGet<PreviousYearsListResponse>(`/attendance/previous-years?year=${encodeURIComponent(year)}`, token)
+      .then((res) => setRows(res.data))
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load."));
+  }, [year]);
+
+  const classOptions = Array.from(
+    new Map((rows || []).map((r) => [`${r.classAtYearEnd}::${r.sectionAtYearEnd}`, { class: r.classAtYearEnd, section: r.sectionAtYearEnd }])).values(),
+  ).sort((a, b) => a.class.localeCompare(b.class, undefined, { numeric: true }) || a.section.localeCompare(b.section));
+
+  const filtered = (rows || []).filter((r) => {
+    if (classFilter !== ALL_CLASSES && `${r.classAtYearEnd}::${r.sectionAtYearEnd}` !== classFilter) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return r.name.toLowerCase().includes(q) || (r.rollNumber || "").toLowerCase().includes(q);
+  });
+
+  if (pastYears.length === 0) {
+    return (
+      <div className="rounded-2xl bg-card border border-border shadow-sm">
+        <EmptyState icon={History} message="This school hasn't switched educational years yet, so there's no past data." />
+      </div>
+    );
+  }
 
   if (selected) {
     return (
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => { setSelected(null); setSummary(undefined); }}
+          onClick={() => setSelected(null)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
-          <ChevronLeft className="h-4 w-4" /> Back to search
+          <ChevronLeft className="h-4 w-4" /> Back to list
         </button>
-        <div className="rounded-2xl bg-card border border-border shadow-sm p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold shrink-0">
-              {selected.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{selected.name}</p>
-              <p className="text-xs text-muted-foreground">Roll {selected.rollNumber || "—"}</p>
-            </div>
+        <div className="rounded-2xl bg-card border border-border shadow-sm p-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold shrink-0">
+            {selected.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
-          {pastYears.length > 0 && (
-            <Select value={year} onValueChange={(v) => setYear(v || year)}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {pastYears.map((y) => (
-                  <SelectItem key={y} value={y}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div>
+            <p className="text-sm font-semibold text-foreground">{selected.name}</p>
+            <p className="text-xs text-muted-foreground">Roll {selected.rollNumber || "—"} · {year}</p>
+          </div>
         </div>
-
-        {pastYears.length === 0 ? (
-          <div className="rounded-2xl bg-card border border-border shadow-sm">
-            <EmptyState icon={History} message="This school hasn't switched educational years yet, so there's no past data." />
-          </div>
-        ) : loadingSummary ? (
-          <PageLoader label="Loading..." />
-        ) : summaryError ? (
-          <div className="rounded-2xl bg-card border border-border shadow-sm">
-            <EmptyState icon={AlertCircle} message={summaryError} />
-          </div>
-        ) : !summary ? (
-          <div className="rounded-2xl bg-card border border-border shadow-sm">
-            <EmptyState icon={History} message={`No attendance recorded for ${selected.name} in ${year}.`} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatFilterCard icon={TrendingUp} color="#16A34A" colorDark="#15803D" value={`${summary.percentage}%`} label="Attendance" sublabel={year} />
-            <StatFilterCard icon={CheckCircle2} color="#0EA5E9" colorDark="#0284C7" value={summary.presentDays} label="Present/Late Days" sublabel={`of ${summary.totalDays}`} />
-            <StatFilterCard icon={Users} color="#8B5CF6" colorDark="#7C3AED" value={`${summary.classAtYearEnd}${summary.sectionAtYearEnd ? `-${summary.sectionAtYearEnd}` : ""}`} label="Class that year" />
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatFilterCard icon={TrendingUp} color="#16A34A" colorDark="#15803D" value={`${selected.percentage}%`} label="Attendance" sublabel={year} />
+          <StatFilterCard icon={CheckCircle2} color="#0EA5E9" colorDark="#0284C7" value={selected.presentDays} label="Present/Late Days" sublabel={`of ${selected.totalDays}`} />
+          <StatFilterCard icon={Users} color="#8B5CF6" colorDark="#7C3AED" value={`${selected.classAtYearEnd}${selected.sectionAtYearEnd ? `-${selected.sectionAtYearEnd}` : ""}`} label="Class that year" />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search by name, ID, or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Select value={year} onValueChange={(v) => setYear(v || year)}>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {pastYears.map((y) => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by name or roll number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={classFilter} onValueChange={(v) => setClassFilter(v || ALL_CLASSES)}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Classes" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CLASSES}>All Classes</SelectItem>
+            {classOptions.map((c) => (
+              <SelectItem key={`${c.class}::${c.section}`} value={`${c.class}::${c.section}`}>
+                Class {c.class}{c.section ? `-${c.section}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {students === null ? (
-        <PageLoader label="Loading students..." />
+      {loadError ? (
+        <div className="rounded-2xl bg-card border border-border shadow-sm">
+          <EmptyState icon={AlertCircle} message={loadError} />
+        </div>
+      ) : rows === null ? (
+        <PageLoader label="Loading..." />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl bg-card border border-border shadow-sm">
-          <EmptyState icon={UserSearch} message="No students match your search." />
+          <EmptyState icon={UserSearch} message={rows.length === 0 ? `No attendance data for ${year}.` : "No students match your search."} />
         </div>
       ) : (
         <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
-          {filtered.map((s) => (
+          {filtered.map((r) => (
             <button
-              key={s._id}
+              key={r.studentId}
               type="button"
-              onClick={() => setSelected(s)}
+              onClick={() => setSelected(r)}
               className="w-full flex items-center justify-between px-5 py-3.5 border-b border-border last:border-0 hover:bg-muted/40 transition-colors text-left"
             >
               <div>
-                <p className="text-sm font-medium text-foreground">{s.name}</p>
+                <p className="text-sm font-medium text-foreground">{r.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Class {s.class}{s.section ? `-${s.section}` : ""} · Roll {s.rollNumber || "—"}
+                  Class {r.classAtYearEnd}{r.sectionAtYearEnd ? `-${r.sectionAtYearEnd}` : ""} · Roll {r.rollNumber || "—"}
                 </p>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+              <div className="flex items-center gap-3">
+                <span className={`text-sm font-semibold ${r.percentage >= 75 ? "text-success" : r.percentage >= 50 ? "text-warning" : "text-destructive"}`}>
+                  {r.percentage}%
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+              </div>
             </button>
           ))}
         </div>

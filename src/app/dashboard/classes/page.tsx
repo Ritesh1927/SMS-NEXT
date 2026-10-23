@@ -36,6 +36,7 @@ interface ClassRow {
   assignedSubjects?: { _id: string; name: string; code: string }[];
   studentCount: number;
   classTeacher?: { _id: string; name: string; teacherId: string } | null;
+  lastPromotedForYear?: string;
 }
 
 interface TeacherOption {
@@ -88,7 +89,7 @@ export default function ClassesPage() {
   // their own studentsPromote Power + scope. The server re-checks all of
   // this independently on every promotion route call; this only drives
   // whether the icon is shown.
-  const [yearSwitchToggles, setYearSwitchToggles] = useState<{ classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean } | null>(null);
+  const [yearSwitchToggles, setYearSwitchToggles] = useState<{ classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean; lastSwitchedYear: string } | null>(null);
   const [teacherPowers, setTeacherPowers] = useState<{ studentsPromote: boolean; scope: string[] } | null>(null);
   const [promotingClass, setPromotingClass] = useState<ClassRow | null>(null);
 
@@ -104,8 +105,8 @@ export default function ClassesPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: { settings?: { yearSwitch?: { classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean } } } }>("/school/branding", token)
-      .then((res) => setYearSwitchToggles(res.data.settings?.yearSwitch || { classTeacherPromotionAllowed: false, powerRoleTeacherPromotionAllowed: false }))
+    apiGet<{ success: boolean; data: { settings?: { yearSwitch?: { classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean; lastSwitchedYear: string } } } }>("/school/branding", token)
+      .then((res) => setYearSwitchToggles(res.data.settings?.yearSwitch || { classTeacherPromotionAllowed: false, powerRoleTeacherPromotionAllowed: false, lastSwitchedYear: "" }))
       .catch(() => {});
     if (isTeacher) {
       apiGet<{ success: boolean; data: { teacherPowers: { studentsPromote: boolean; scope: string[] } } }>("/roles/my-permissions", token)
@@ -115,8 +116,14 @@ export default function ClassesPage() {
   }, [isTeacher]);
 
   const canPromote = (c: ClassRow) => {
+    // Only ever shows up as a follow-up to a year switch, and only once per
+    // switch cycle -- re-promoting isn't offered, a mistake is fixed by
+    // editing the affected students directly. Applies to admin too, not
+    // just teachers, so nobody can double-promote a class.
+    if (!yearSwitchToggles?.lastSwitchedYear) return false;
+    if ((c.lastPromotedForYear || "") === yearSwitchToggles.lastSwitchedYear) return false;
     if (isAdmin) return true;
-    if (!isTeacher || !yearSwitchToggles) return false;
+    if (!isTeacher) return false;
     if (yearSwitchToggles.classTeacherPromotionAllowed && c.classTeacher?._id === user?.id) return true;
     if (yearSwitchToggles.powerRoleTeacherPromotionAllowed && teacherPowers?.studentsPromote) {
       const stage = classifyStage(c.name);

@@ -31,11 +31,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     await connectDB();
     const { id } = await params;
-    const cls = await Class.findOne({ _id: id, school: auth.schoolId }).select("name section");
+    const cls = await Class.findOne({ _id: id, school: auth.schoolId }).select("name section lastPromotedForYear");
     if (!cls) return NextResponse.json({ success: false, message: "Class not found." }, { status: 404 });
 
     if (!(await canPromoteClass(auth, auth.schoolId, cls))) {
       return NextResponse.json({ success: false, message: "You don't have permission to promote this class." }, { status: 403 });
+    }
+
+    const admin = await Admin.findById(auth.schoolId).select("settings.academicYear settings.yearSwitch").lean();
+    const endingYear = admin?.settings?.yearSwitch?.lastSwitchedYear || "";
+    // Promotion only exists as a follow-up to a year switch -- same rule the
+    // Classes page's icon visibility already enforces, re-checked here since
+    // the UI is never trusted on its own.
+    if (!endingYear) {
+      return NextResponse.json({ success: false, message: "Promotion is only available after an educational year switch." }, { status: 400 });
+    }
+    // Strictly one-shot per switch cycle -- re-promoting isn't offered; a
+    // mistake is fixed by editing the affected students directly instead.
+    if (cls.lastPromotedForYear === endingYear) {
+      return NextResponse.json({ success: false, message: `This class has already been promoted for ${endingYear}.` }, { status: 400 });
     }
 
     const { students } = (await req.json()) as { students: StudentDecision[] };
@@ -53,9 +67,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const roster = await Student.find({ school: auth.schoolId, class: cls.name, section: cls.section, isActive: true }).select("name rollNumber");
     const rosterMap = new Map(roster.map((s) => [String(s._id), s]));
     const valid = students.filter((s) => rosterMap.has(s.studentId));
-
-    const admin = await Admin.findById(auth.schoolId).select("settings.academicYear settings.yearSwitch").lean();
-    const endingYear = admin?.settings?.yearSwitch?.lastSwitchedYear || admin?.settings?.academicYear || "";
 
     let promotedCount = 0;
     let graduatedCount = 0;
@@ -161,6 +172,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Whoever's left behind in the old section needs renumbering now that
     // the promoted/graduated students have left it.
     await resequenceRollNumbers(auth.schoolId, cls.name, cls.section);
+
+    // Marks this class done for the cycle -- the Classes page hides the
+    // promote icon once this matches yearSwitch.lastSwitchedYear, and a
+    // second POST here is rejected by the check above.
+    await Class.findByIdAndUpdate(cls._id, { $set: { lastPromotedForYear: endingYear } });
 
     return NextResponse.json({
       success: true,

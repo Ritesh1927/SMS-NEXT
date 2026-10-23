@@ -13,6 +13,7 @@ import { Homework } from "@/models/Homework";
 import { StudyMaterial } from "@/models/StudyMaterial";
 import { Notice } from "@/models/Notice";
 import { deleteAsset } from "@/lib/cloudinary";
+import { postYearSwitchNotice } from "@/lib/yearSwitchNotice";
 
 function requireSchoolAdmin(req: Request) {
   const auth = getAuthUser(req);
@@ -205,6 +206,16 @@ export async function POST(req: Request) {
     } finally {
       await session.endSession();
     }
+
+    // Best-effort, after the transaction has committed -- a notice failure
+    // must never undo or fail the switch itself.
+    await postYearSwitchNotice({
+      schoolId,
+      previousYear: currentYear,
+      nextYear,
+      classTeacherPromotionAllowed: !!classTeacherPromotionAllowed,
+      powerRoleTeacherPromotionAllowed: !!powerRoleTeacherPromotionAllowed,
+    });
 
     return NextResponse.json({
       success: true,
