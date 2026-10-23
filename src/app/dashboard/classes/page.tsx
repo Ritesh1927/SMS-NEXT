@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search, School, UserX, X } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, Users, Home, BookOpen, Search, School, UserX, X, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { getToken } from "@/contexts/AuthContext";
@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatFilterCard } from "@/components/StatFilterCard";
 import { statusPillClass } from "@/lib/statusStyles";
 import { PageLoader } from "@/components/PageLoader";
+import { classifyStage } from "@/lib/classStage";
+import { PromoteStudentsDialog } from "@/components/dashboard/classes/PromoteStudentsDialog";
 
 const CARD_PALETTE = [
   { color: "#4F46E5", colorDark: "#4338CA" },
@@ -81,6 +83,14 @@ export default function ClassesPage() {
   const isTeacher = user?.role === "teacher" && !isNonTeachingStaff;
   const isAdmin = user?.role === "schooladmin";
   const [staffPerms, setStaffPerms] = useState<{ create: boolean; edit: boolean; delete: boolean } | null>(null);
+  // Promotion visibility -- the switch's 2 toggles (anyone can read them,
+  // same as /school/branding's other fields) and, for a genuine teacher,
+  // their own studentsPromote Power + scope. The server re-checks all of
+  // this independently on every promotion route call; this only drives
+  // whether the icon is shown.
+  const [yearSwitchToggles, setYearSwitchToggles] = useState<{ classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean } | null>(null);
+  const [teacherPowers, setTeacherPowers] = useState<{ studentsPromote: boolean; scope: string[] } | null>(null);
+  const [promotingClass, setPromotingClass] = useState<ClassRow | null>(null);
 
   useEffect(() => {
     if (!isNonTeachingStaff) return;
@@ -90,6 +100,30 @@ export default function ClassesPage() {
       .then((res) => setStaffPerms(res.data.sections.classes || { create: false, edit: false, delete: false }))
       .catch(() => setStaffPerms({ create: false, edit: false, delete: false }));
   }, [isNonTeachingStaff]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { settings?: { yearSwitch?: { classTeacherPromotionAllowed: boolean; powerRoleTeacherPromotionAllowed: boolean } } } }>("/school/branding", token)
+      .then((res) => setYearSwitchToggles(res.data.settings?.yearSwitch || { classTeacherPromotionAllowed: false, powerRoleTeacherPromotionAllowed: false }))
+      .catch(() => {});
+    if (isTeacher) {
+      apiGet<{ success: boolean; data: { teacherPowers: { studentsPromote: boolean; scope: string[] } } }>("/roles/my-permissions", token)
+        .then((res) => setTeacherPowers(res.data.teacherPowers))
+        .catch(() => {});
+    }
+  }, [isTeacher]);
+
+  const canPromote = (c: ClassRow) => {
+    if (isAdmin) return true;
+    if (!isTeacher || !yearSwitchToggles) return false;
+    if (yearSwitchToggles.classTeacherPromotionAllowed && c.classTeacher?._id === user?.id) return true;
+    if (yearSwitchToggles.powerRoleTeacherPromotionAllowed && teacherPowers?.studentsPromote) {
+      const stage = classifyStage(c.name);
+      if (stage && teacherPowers.scope.includes(stage)) return true;
+    }
+    return false;
+  };
 
   // Teachers already serving as class teacher of ANOTHER class (the class
   // being edited is excluded so its own teacher stays selectable) — kept as
@@ -314,8 +348,13 @@ export default function ClassesPage() {
                       )}
                     </div>
                   </div>
-                  {(isAdmin || staffPerms?.edit || staffPerms?.delete) && (
+                  {(isAdmin || staffPerms?.edit || staffPerms?.delete || canPromote(c)) && (
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canPromote(c) && (
+                        <Button variant="ghost" size="icon-sm" onClick={() => setPromotingClass(c)} aria-label="Promote students" className="hover:text-primary">
+                          <GraduationCap className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {(isAdmin || staffPerms?.edit) && (
                         <Button variant="ghost" size="icon-sm" onClick={() => openEdit(c)} aria-label="Edit">
                           <Pencil className="h-3.5 w-3.5" />
@@ -402,6 +441,17 @@ export default function ClassesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {promotingClass && (
+        <PromoteStudentsDialog
+          classId={promotingClass._id}
+          fromLabel={`${promotingClass.name}-${promotingClass.section}`}
+          token={getToken() || ""}
+          open={!!promotingClass}
+          onOpenChange={(o) => { if (!o) setPromotingClass(null); }}
+          onDone={load}
+        />
+      )}
     </div>
   );
 }

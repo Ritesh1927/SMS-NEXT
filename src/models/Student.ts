@@ -44,6 +44,16 @@ export interface IStudent extends Document {
   streakDays: number;
   lastAttendance: Date | null;
   moodHistory: { mood: string; date: Date }[];
+  // Set by the Grade-12 promotion path (POST /api/classes/[id]/promote) --
+  // distinct from isActive=false, which also covers transfers/dropouts.
+  // Graduating still sets isActive=false too, so every existing "active
+  // students" query keeps excluding them with zero changes needed there.
+  isGraduated: boolean;
+  graduatedAt: Date | null;
+  graduatedYear: string;
+  lastPromotedAt: Date | null;
+  /** Display-only breadcrumb, e.g. "10-A" -- not used for any query. */
+  lastPromotedFromClass: string;
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -91,6 +101,11 @@ const studentSchema = new Schema<IStudent>(
     streakDays: { type: Number, default: 0 },
     lastAttendance: { type: Date, default: null },
     moodHistory: [{ mood: String, date: Date }],
+    isGraduated: { type: Boolean, default: false },
+    graduatedAt: { type: Date, default: null },
+    graduatedYear: { type: String, default: "" },
+    lastPromotedAt: { type: Date, default: null },
+    lastPromotedFromClass: { type: String, default: "" },
   },
   { timestamps: true },
 );
