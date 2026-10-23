@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
   Plus, Loader2, Trash2, ClipboardList, GraduationCap, BarChart3, CheckCircle2, FileText, CalendarClock, CheckSquare,
-  ChevronDown, ChevronRight, Pencil, Ban, FileEdit, Layers, ShieldCheck, X, Save, Send, SendHorizonal, XCircle,
+  ChevronDown, ChevronRight, Pencil, Ban, FileEdit, Layers, ShieldCheck, X, Save, Send, SendHorizonal, XCircle, History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -430,6 +430,19 @@ export function AdminTeacherExams() {
   const [reviewReply, setReviewReply] = useState("");
   const [reviewing, setReviewing] = useState(false);
 
+  // Year scoping -- defaults to the school's stored current year so
+  // standalone Tests from a year that's already ended don't keep showing up
+  // by default; exam-term-linked Exams aren't deleted by a year switch but
+  // still get scoped the same way for a consistent "what's current" view.
+  // A past year is only ever selectable for admin, non-teaching staff
+  // (their existing exams grant already covers past years), or a teacher
+  // with the viewPastYears Power -- matches GET /api/exams' own gate.
+  const [currentYear, setCurrentYear] = useState("");
+  const [pastYears, setPastYears] = useState<string[]>([]);
+  const [yearFilter, setYearFilter] = useState("");
+  const [yearReady, setYearReady] = useState(false);
+  const canViewPastYears = isAdmin || isNonTeachingStaff || !!teacherPowers?.viewPastYears;
+
   const [activeTab, setActiveTab] = useState("tests");
   // Deep link from the dashboard's Upcoming Exams card (?tab=&term=&exam=);
   // consumed once the matching list has loaded — see the effects below.
@@ -455,10 +468,18 @@ export function AdminTeacherExams() {
   const load = () => {
     const token = getToken();
     if (!token) return;
-    apiGet<{ success: boolean; data: ExamRow[] }>("/exams", token)
+    const yearQs = yearFilter ? `?academicYear=${encodeURIComponent(yearFilter)}` : "";
+    apiGet<{ success: boolean; data: ExamRow[] }>(`/exams${yearQs}`, token)
       .then((res) => setExams(res.data))
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load exams."));
-    apiGet<{ success: boolean; data: TermRow[] }>("/scheduled-exams", token)
+      .catch((err) => {
+        setExams([]);
+        if (yearFilter && yearFilter !== currentYear) {
+          toast.error("Failed to load that year's exams.", { description: err instanceof Error ? err.message : undefined });
+        } else {
+          setError(err instanceof Error ? err.message : "Failed to load exams.");
+        }
+      });
+    apiGet<{ success: boolean; data: TermRow[] }>(`/scheduled-exams${yearQs}`, token)
       .then((res) => setTerms(res.data))
       .catch(() => setTerms([]));
     apiGet<{ success: boolean; data: ClassOption[] }>("/classes", token)
@@ -472,15 +493,27 @@ export function AdminTeacherExams() {
   };
 
   useEffect(() => {
-    load();
     const token = getToken();
-    if (token) {
-      apiGet<{ success: boolean; data: { settings?: { passPercentage?: number } } }>("/school/profile", token)
-        .then((res) => { if (res.data?.settings?.passPercentage) setPassPercentage(res.data.settings.passPercentage); })
-        .catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!token) return;
+    apiGet<{ success: boolean; data: { settings?: { passPercentage?: number } } }>("/school/profile", token)
+      .then((res) => { if (res.data?.settings?.passPercentage) setPassPercentage(res.data.settings.passPercentage); })
+      .catch(() => {});
+    apiGet<{ success: boolean; data: { settings?: { academicYear?: string; pastAcademicYears?: string[] } } }>("/school/branding", token)
+      .then((res) => {
+        const cy = res.data.settings?.academicYear || "";
+        setCurrentYear(cy);
+        setPastYears(res.data.settings?.pastAcademicYears || []);
+        setYearFilter(cy);
+      })
+      .catch(() => {})
+      .finally(() => setYearReady(true));
   }, []);
+
+  useEffect(() => {
+    if (!yearReady) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: load() is redefined each render and always closes over the latest state; only a year change should retrigger this effect.
+  }, [yearFilter, yearReady]);
 
   useEffect(() => {
     // A granted "examCreate" power broadens the class picker beyond this
@@ -1226,9 +1259,35 @@ export function AdminTeacherExams() {
 
   return (
     <div>
-      <PageHeader icon={FileText} title="Exams" subtitle="Create tests and exams, and enter and publish results." accent="violet" className="mb-6" />
+      <PageHeader
+        icon={FileText}
+        title="Exams"
+        subtitle="Create tests and exams, and enter and publish results."
+        accent="violet"
+        className="mb-6"
+        actions={
+          canViewPastYears && pastYears.length > 0 ? (
+            <Select value={yearFilter} onValueChange={(v) => setYearFilter(v || currentYear)}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={currentYear}>{currentYear} (Current)</SelectItem>
+                {pastYears.map((y) => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : undefined
+        }
+      />
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
+
+      {yearFilter && yearFilter !== currentYear && (
+        <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 text-amber-700 px-4 py-2.5 text-sm font-medium mb-5">
+          <History className="h-4 w-4 shrink-0" />
+          Viewing {yearFilter} -- a past educational year.
+        </div>
+      )}
 
       {exams && exams.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
