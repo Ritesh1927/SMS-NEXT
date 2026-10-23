@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { PageHeader } from "@/components/PageHeader";
 import { PageLoader } from "@/components/PageLoader";
 import { getHolidayInfo, getEventInfo } from "@/lib/holidays";
+import { YearSwitchWizard } from "@/components/dashboard/settings/YearSwitchWizard";
 
 interface SchoolProfile {
   schoolName: string;
@@ -493,10 +494,27 @@ export default function SettingsPage() {
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label="Current Year (Auto)">
+                <Field label="Current Educational Year">
                   <Input value={sessionRange.startYear && sessionRange.endYear ? `${sessionRange.startYear}-${sessionRange.endYear}` : ""} disabled className="bg-muted/50 font-mono" />
                 </Field>
               </div>
+
+              {profile.settings.academicYear && (
+                <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Promote to the next educational year. This permanently clears homework, study materials, notices, tests and the leaderboard for {profile.settings.academicYear} -- cannot be undone.
+                  </p>
+                  <YearSwitchWizard
+                    token={getToken() || ""}
+                    currentYear={profile.settings.academicYear}
+                    onSwitched={() => {
+                      const token = getToken();
+                      if (!token) return;
+                      apiGet<ProfileResponse>("/school/profile", token).then((res) => setProfile(res.data));
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Established Year">

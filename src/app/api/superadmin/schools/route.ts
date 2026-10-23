@@ -7,6 +7,7 @@ import { Teacher } from "@/models/Teacher";
 import { Student } from "@/models/Student";
 import { Parent } from "@/models/Parent";
 import { escapeRegex, generatePassword, hashPassword } from "@/lib/helpers";
+import { computeNaturalAcademicYear } from "@/lib/academicYear";
 
 export async function GET(req: Request) {
   const auth = requireSuperAdmin(req);
@@ -142,6 +143,10 @@ export async function POST(req: Request) {
       name: adminName, email: adminEmailLower,
       password: hashedPassword,
       phone: adminPhoneClean || adminPhone || "", role: "schooladmin", isVerified: true, isActive: true,
+      // Seed the real stored current year (src/lib/academicYear.ts) so a
+      // brand-new school's Settings page can show the Year-Switch button
+      // right away, same value today's live recompute would've shown.
+      settings: { academicYear: computeNaturalAcademicYear("April") },
     });
 
     school.adminUserId = admin._id;
