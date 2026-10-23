@@ -25,6 +25,11 @@ export interface IExam extends Document {
   // field/route (roster, marks entry, results, publish) works identically
   // either way, since both are just Exam + Result records underneath.
   scheduledExamId: mongoose.Types.ObjectId | null;
+  // The academic year this exam was created in, e.g. "2025-2026" (src/lib/academicYear.ts).
+  // Default "" for docs created before this field existed -- year-scoped
+  // queries must match `$in: [year, ""]`, never a bare equality, so those
+  // legacy docs don't silently vanish from the current-year view.
+  academicYear: string;
 }
 
 const examSchema = new Schema<IExam>(
@@ -46,6 +51,7 @@ const examSchema = new Schema<IExam>(
     instructions: { type: String, default: "" },
     status: { type: String, enum: ["upcoming", "ongoing", "completed", "cancelled"], default: "upcoming" },
     scheduledExamId: { type: Schema.Types.ObjectId, ref: "ScheduledExam", default: null },
+    academicYear: { type: String, default: "" },
   },
   { timestamps: true },
 );

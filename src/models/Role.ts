@@ -23,6 +23,10 @@ export interface ITeacherPowers {
   resultsPublish: boolean;
   studentsEdit: boolean;
   studentsCreate: boolean;
+  /** View attendance & exam data from past educational years (fees stays out of scope for teachers). */
+  viewPastYears: boolean;
+  /** Promote students of their scoped classes to the next class -- see the educational year switch feature. */
+  studentsPromote: boolean;
 }
 
 export interface IRole extends Document {
@@ -48,6 +52,8 @@ const teacherPowersSchema = new Schema<ITeacherPowers>(
     resultsPublish: { type: Boolean, default: false },
     studentsEdit: { type: Boolean, default: false },
     studentsCreate: { type: Boolean, default: false },
+    viewPastYears: { type: Boolean, default: false },
+    studentsPromote: { type: Boolean, default: false },
   },
   { _id: false },
 );

@@ -10,6 +10,7 @@ import { teacherHasAccessToClass } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { Class } from "@/models/Class";
 import { holidayRejectionMessage } from "@/lib/holidays";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 
 // Teachers can freely edit/delete a term up to 2 hours before it starts;
 // past that they must go through the ExamChangeRequest workflow. Matches
@@ -130,6 +131,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       const examTypeMap: Record<string, string> = { midterm: "mid-term", final: "final", unit: "unit-test", annual: "final" };
       const mappedType = examTypeMap[term.examType] || "unit-test";
+      // New subject slots belong to the term's own year, not necessarily
+      // "today's" -- falls back only for a legacy term created before this field existed.
+      const academicYear = term.academicYear || (await getCurrentAcademicYear(auth.schoolId));
 
       // A standard-wide term (term.section === "") spans every section of
       // its standard -- resolve the real section list from the standard's
@@ -163,6 +167,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
             status: "upcoming",
             scheduledExamId: term._id,
+            academicYear,
           })),
         ),
       );

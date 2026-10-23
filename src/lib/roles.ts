@@ -54,6 +54,7 @@ export const ROLE_SECTIONS: RoleSectionConfig[] = [
     extras: [
       { key: "collectPayment", label: "Collect payment" },
       { key: "manageFeeStructure", label: "Manage fee structure" },
+      { key: "viewPastYears", label: "View past educational years' fee data" },
     ],
   },
   { key: "notices", label: "Notices", actions: ["open", "view", "create", "edit", "delete"] },
@@ -111,7 +112,7 @@ export function openSectionKeys(sections: Record<string, ISectionPermission> | n
 }
 
 // Teacher Power Roles -- a parallel, much smaller concept to ROLE_SECTIONS
-// above: a fixed set of 8 extra capabilities a genuine teacher doesn't have
+// above: a fixed set of 10 extra capabilities a genuine teacher doesn't have
 // by default, all gated by one shared stage scope (not per-power), additive
 // on top of their existing class-teacher/subject-teacher ownership and
 // built-in Teacher.permissions flags -- never replacing either.
@@ -126,6 +127,8 @@ export const TEACHER_POWERS: { key: TeacherPowerKey; label: string }[] = [
   { key: "resultsPublish", label: "Publish results" },
   { key: "studentsCreate", label: "Add & delete students" },
   { key: "studentsEdit", label: "Edit student details" },
+  { key: "viewPastYears", label: "View past-year attendance & exam data" },
+  { key: "studentsPromote", label: "Promote students of their scoped classes to the next class" },
 ];
 
 export const EMPTY_TEACHER_POWERS: ITeacherPowers = {
@@ -138,6 +141,8 @@ export const EMPTY_TEACHER_POWERS: ITeacherPowers = {
   resultsPublish: false,
   studentsEdit: false,
   studentsCreate: false,
+  viewPastYears: false,
+  studentsPromote: false,
 };
 
 export function buildEmptyTeacherPowers(): ITeacherPowers {

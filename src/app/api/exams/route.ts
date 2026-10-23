@@ -9,6 +9,7 @@ import { isSubjectTeacherOf } from "@/lib/teacherClasses";
 import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
 import { holidayRejectionMessage } from "@/lib/holidays";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 
 export async function GET(req: Request) {
   const auth = getAuthUser(req);
@@ -115,11 +116,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const academicYear = await getCurrentAcademicYear(auth.schoolId);
     const created = await Promise.all(
       subjectList.map((slot) => {
         const hasTimes = !!slot.startTime && !!slot.endTime;
         return Exam.create({
           school: auth.schoolId,
+          academicYear,
           title,
           class: cls,
           section: section || "",

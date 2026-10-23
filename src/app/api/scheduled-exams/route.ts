@@ -12,6 +12,7 @@ import { calcDurationMinutes } from "@/lib/examTime";
 import { postExamScheduleNotice } from "@/lib/examNotice";
 import { isStreamStandard } from "@/lib/streamStandards";
 import { holidayRejectionMessage } from "@/lib/holidays";
+import { getCurrentAcademicYear } from "@/lib/academicYear";
 
 const EXAM_TYPE_MAP: Record<string, string> = {
   midterm: "mid-term",
@@ -153,6 +154,7 @@ export async function POST(req: Request) {
     }
     const sections = sectionDocs.map((c) => c.section);
 
+    const academicYear = await getCurrentAcademicYear(auth.schoolId);
     const term = await ScheduledExam.create({
       school: auth.schoolId,
       title,
@@ -164,6 +166,7 @@ export async function POST(req: Request) {
       description: description || "",
       createdBy: auth.id,
       createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
+      academicYear,
     });
 
     const examType_ = EXAM_TYPE_MAP[examType] || "unit-test";
@@ -186,6 +189,7 @@ export async function POST(req: Request) {
           createdByModel: auth.role === "schooladmin" ? "Admin" : "Teacher",
           status: "upcoming",
           scheduledExamId: term._id,
+          academicYear,
         })),
       ),
     );

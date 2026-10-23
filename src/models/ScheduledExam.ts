@@ -20,6 +20,8 @@ export interface IScheduledExam extends Document {
   status: ScheduledExamStatus;
   createdBy: mongoose.Types.ObjectId;
   createdByModel: "Teacher" | "Admin";
+  // See IExam.academicYear -- same tolerant "" default / $in matching for legacy docs.
+  academicYear: string;
 }
 
 const scheduledExamSchema = new Schema<IScheduledExam>(
@@ -35,6 +37,7 @@ const scheduledExamSchema = new Schema<IScheduledExam>(
     status: { type: String, enum: ["upcoming", "ongoing", "completed", "cancelled"], default: "upcoming" },
     createdBy: { type: Schema.Types.ObjectId, required: true, refPath: "createdByModel" },
     createdByModel: { type: String, enum: ["Teacher", "Admin"], default: "Teacher" },
+    academicYear: { type: String, default: "" },
   },
   { timestamps: true },
 );
