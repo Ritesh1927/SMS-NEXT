@@ -114,7 +114,7 @@ export function MobileShell({
             }`}
           >
             {academicYearWarning.state === "countdown"
-              ? `Educational year ends in ${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} -- complete all transactions and switch from Settings.`
+              ? `${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} until the educational year ends -- complete all transactions and switch from Settings.`
               : "Educational year has ended -- all data changes are paused until you switch from Settings."}
           </p>
         </div>

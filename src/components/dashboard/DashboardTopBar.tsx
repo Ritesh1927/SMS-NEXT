@@ -375,7 +375,7 @@ export function DashboardTopBar({
                   }`}
                 >
                   {academicYearWarning.state === "countdown"
-                    ? `Educational year ends in ${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} (${academicYearWarning.endDateLabel})`
+                    ? `${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} until the educational year ends (${academicYearWarning.endDateLabel})`
                     : `${academicYearWarning.academicYear} educational year has ended`}
                 </p>
                 <p
