@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatDate, formatINR, saRequest, type PlanRecord, type SchoolRecord } from "@/lib/superAdminApi";
 import { PRIMARY_CTA } from "../ui";
@@ -68,7 +69,20 @@ const STEPS = [
   { id: "license", label: "License", icon: Calendar },
 ] as const;
 
-const EMPTY_CREATE = { name: "", address: "", phone: "", email: "", adminName: "", adminEmail: "", adminPhone: "", startDate: "", endDate: "", extraUsers: 0 };
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function makeEmptyCreate() {
+  return {
+    name: "", address: "", phone: "", email: "", adminName: "", adminEmail: "", adminPhone: "", startDate: "", endDate: "", extraUsers: 0,
+    sessionStartMonth: "April",
+    // The school's starting educational year, e.g. "2026" for "2026-2027" --
+    // defaults to the real current year so most admins can just confirm it.
+    academicStartYear: String(new Date().getFullYear()),
+  };
+}
 
 export function RegisterSchoolDialog({
   open, onOpenChange, plans, onCreated, initialPlanId,
@@ -83,7 +97,7 @@ export function RegisterSchoolDialog({
   const activePlans = plans.filter((p) => p.isActive);
   const [step, setStep] = useState(0);
   const [plan, setPlan] = useState<PlanRecord | null>(null);
-  const [form, setForm] = useState(EMPTY_CREATE);
+  const [form, setForm] = useState(makeEmptyCreate);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ code: string; password: string } | null>(null);
@@ -96,13 +110,13 @@ export function RegisterSchoolDialog({
       const preset = initialPlanId ? activePlans.find((p) => p._id === initialPlanId) ?? null : null;
       setStep(preset ? 1 : 0);
       setPlan(preset);
-      setForm(EMPTY_CREATE);
+      setForm(makeEmptyCreate());
       setErrors({});
       setCreated(null);
     }
   }
 
-  const set = (key: keyof typeof EMPTY_CREATE, value: string | number) => {
+  const set = (key: keyof ReturnType<typeof makeEmptyCreate>, value: string | number) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => ({ ...e, [key]: "" }));
   };
@@ -120,7 +134,10 @@ export function RegisterSchoolDialog({
   const validateStep = (index: number): boolean => {
     const next: Record<string, string> = {};
     if (index === 0 && !plan) next.plan = "Choose a plan to continue.";
-    if (index === 1 && !form.name.trim()) next.name = "School name is required.";
+    if (index === 1) {
+      if (!form.name.trim()) next.name = "School name is required.";
+      if (!/^\d{4}$/.test(form.academicStartYear)) next.academicStartYear = "Enter a 4-digit year.";
+    }
     if (index === 2) {
       if (!form.adminName.trim()) next.adminName = "Admin name is required.";
       // Required-only, exactly as the original form (no extra format rule).
@@ -269,6 +286,31 @@ export function RegisterSchoolDialog({
                   </Field>
                   <Field label="Address" className="sm:col-span-2">
                     <Input placeholder="Full address" value={form.address} onChange={(e) => set("address", e.target.value)} className={fieldClass} />
+                  </Field>
+                  <Field label="Educational session starts in" required hint="When each educational year begins, e.g. April.">
+                    <Select value={form.sessionStartMonth} onValueChange={(v) => set("sessionStartMonth", v || form.sessionStartMonth)}>
+                      <SelectTrigger className={fieldClass}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MONTHS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field
+                    label="Starting educational year"
+                    required
+                    error={errors.academicStartYear}
+                    hint={`Runs ${form.sessionStartMonth} ${form.academicStartYear || "----"} to ${MONTHS[(MONTHS.indexOf(form.sessionStartMonth) + 11) % 12]} ${Number(form.academicStartYear || 0) + 1 || "----"}.`}
+                  >
+                    <Input
+                      inputMode="numeric"
+                      placeholder={String(new Date().getFullYear())}
+                      value={form.academicStartYear}
+                      onChange={(e) => set("academicStartYear", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      aria-invalid={!!errors.academicStartYear}
+                      className={fieldClass}
+                    />
                   </Field>
                 </div>
               )}

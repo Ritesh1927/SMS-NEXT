@@ -9,6 +9,11 @@ import { Parent } from "@/models/Parent";
 import { escapeRegex, generatePassword, hashPassword } from "@/lib/helpers";
 import { computeNaturalAcademicYear } from "@/lib/academicYear";
 
+const MONTHS_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 export async function GET(req: Request) {
   const auth = requireSuperAdmin(req);
   if ("error" in auth) return auth.error;
@@ -75,6 +80,7 @@ export async function POST(req: Request) {
     const {
       name, address, phone, email, adminName, adminEmail, adminPhone,
       planId, planName, startDate, endDate, extraUsers, includedUsers, pricePerUser, months, totalAmount, totalUsers,
+      sessionStartMonth, academicStartYear,
     } = body;
 
     if (!name || !adminName || !adminEmail) {
@@ -82,6 +88,12 @@ export async function POST(req: Request) {
         { success: false, message: "School name, admin name and admin email are required." },
         { status: 400 },
       );
+    }
+    if (!MONTHS_FULL.includes(sessionStartMonth)) {
+      return NextResponse.json({ success: false, message: "A valid educational session start month is required." }, { status: 400 });
+    }
+    if (!/^\d{4}$/.test(String(academicStartYear || ""))) {
+      return NextResponse.json({ success: false, message: "A valid 4-digit starting educational year is required." }, { status: 400 });
     }
     if (!EMAIL_REGEX.test(adminEmail)) {
       return NextResponse.json({ success: false, message: "Invalid admin email format." }, { status: 400 });
@@ -143,10 +155,15 @@ export async function POST(req: Request) {
       name: adminName, email: adminEmailLower,
       password: hashedPassword,
       phone: adminPhoneClean || adminPhone || "", role: "schooladmin", isVerified: true, isActive: true,
-      // Seed the real stored current year (src/lib/academicYear.ts) so a
-      // brand-new school's Settings page can show the Year-Switch button
-      // right away, same value today's live recompute would've shown.
-      settings: { academicYear: computeNaturalAcademicYear("April") },
+      // Super Admin now explicitly picks both of these at creation (see
+      // SchoolDialogs.tsx) rather than always guessing "April" + today's
+      // date -- computeNaturalAcademicYear stays only as a defense-in-depth
+      // fallback if a caller somehow omits academicStartYear despite the
+      // validation above already requiring it.
+      settings: {
+        sessionStartMonth,
+        academicYear: academicStartYear ? `${academicStartYear}-${Number(academicStartYear) + 1}` : computeNaturalAcademicYear(sessionStartMonth),
+      },
     });
 
     school.adminUserId = admin._id;

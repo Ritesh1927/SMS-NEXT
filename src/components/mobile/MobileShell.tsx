@@ -34,11 +34,13 @@ export function MobileShell({
   user,
   unreadChat,
   licenseWarning,
+  academicYearWarning,
   onLogout,
 }: {
   user: AuthUser;
   unreadChat: number;
   licenseWarning: { state: "countdown" | "expired" | "suspended"; daysLeft: number | null; endDate: string | null } | null;
+  academicYearWarning: { state: "countdown" | "locked"; daysLeft: number; endDateLabel: string; academicYear: string } | null;
   onLogout: () => void;
 }) {
   const [activeSheet, setActiveSheet] = useState<MobileSheet>(null);
@@ -94,6 +96,26 @@ export function MobileShell({
               : licenseWarning.state === "suspended"
                 ? `License suspended${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`
                 : `License expired${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`}
+          </p>
+        </div>
+      )}
+      {academicYearWarning && (
+        <div
+          className={`flex items-center gap-2.5 border-b px-4 py-2 ${
+            academicYearWarning.state === "countdown" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"
+          }`}
+        >
+          <AlertTriangle
+            className={`h-3.5 w-3.5 shrink-0 ${academicYearWarning.state === "countdown" ? "text-amber-600" : "text-red-600"}`}
+          />
+          <p
+            className={`text-[11px] font-semibold leading-tight ${
+              academicYearWarning.state === "countdown" ? "text-amber-800" : "text-red-800"
+            }`}
+          >
+            {academicYearWarning.state === "countdown"
+              ? `Educational year ends in ${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} -- complete all transactions and switch from Settings.`
+              : "Educational year has ended -- all data changes are paused until you switch from Settings."}
           </p>
         </div>
       )}

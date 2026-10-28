@@ -59,6 +59,13 @@ interface LicenseWarning {
   endDate: string | null;
 }
 
+interface AcademicYearWarning {
+  state: "countdown" | "locked";
+  daysLeft: number;
+  endDateLabel: string;
+  academicYear: string;
+}
+
 interface SearchResult {
   id: string;
   label: string;
@@ -86,10 +93,12 @@ interface ClassRow {
 export function DashboardTopBar({
   user,
   licenseWarning,
+  academicYearWarning,
   onLogout,
 }: {
   user: AuthUser;
   licenseWarning: LicenseWarning | null;
+  academicYearWarning: AcademicYearWarning | null;
   onLogout: () => void;
 }) {
   const router = useRouter();
@@ -314,41 +323,77 @@ export function DashboardTopBar({
         </div>
       )}
 
-      {licenseWarning && (
-        <div
-          className={`flex items-center gap-3 rounded-xl border px-4 py-2 shrink-0 max-w-md ml-auto ${
-            licenseWarning.state === "countdown" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"
-          }`}
-        >
-          <AlertTriangle
-            className={`h-4 w-4 shrink-0 ${licenseWarning.state === "countdown" ? "text-amber-600" : "text-red-600"}`}
-          />
-          <div className="min-w-0">
-            <p
-              className={`text-xs font-semibold leading-tight ${
-                licenseWarning.state === "countdown" ? "text-amber-800" : "text-red-800"
+      {(licenseWarning || academicYearWarning) && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0 ml-auto">
+          {licenseWarning && (
+            <div
+              className={`flex items-center gap-3 rounded-xl border px-4 py-2 max-w-md ${
+                licenseWarning.state === "countdown" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"
               }`}
             >
-              {licenseWarning.state === "countdown"
-                ? `License expires in ${licenseWarning.daysLeft} day${licenseWarning.daysLeft !== 1 ? "s" : ""} (${licenseWarning.endDate})`
-                : licenseWarning.state === "suspended"
-                  ? `License suspended${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`
-                  : `License expired${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`}
-            </p>
-            <p
-              className={`text-[10px] leading-tight mt-0.5 ${
-                licenseWarning.state === "countdown" ? "text-amber-600" : "text-red-600"
+              <AlertTriangle
+                className={`h-4 w-4 shrink-0 ${licenseWarning.state === "countdown" ? "text-amber-600" : "text-red-600"}`}
+              />
+              <div className="min-w-0">
+                <p
+                  className={`text-xs font-semibold leading-tight ${
+                    licenseWarning.state === "countdown" ? "text-amber-800" : "text-red-800"
+                  }`}
+                >
+                  {licenseWarning.state === "countdown"
+                    ? `License expires in ${licenseWarning.daysLeft} day${licenseWarning.daysLeft !== 1 ? "s" : ""} (${licenseWarning.endDate})`
+                    : licenseWarning.state === "suspended"
+                      ? `License suspended${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`
+                      : `License expired${licenseWarning.endDate ? ` (${licenseWarning.endDate})` : ""}`}
+                </p>
+                <p
+                  className={`text-[10px] leading-tight mt-0.5 ${
+                    licenseWarning.state === "countdown" ? "text-amber-600" : "text-red-600"
+                  }`}
+                >
+                  {licenseWarning.state === "countdown"
+                    ? "Contact administrator to renew and avoid disruption."
+                    : "Contact the super-admin to renew."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {academicYearWarning && (
+            <div
+              className={`flex items-center gap-3 rounded-xl border px-4 py-2 max-w-md ${
+                academicYearWarning.state === "countdown" ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50"
               }`}
             >
-              {licenseWarning.state === "countdown"
-                ? "Contact administrator to renew and avoid disruption."
-                : "Contact the super-admin to renew."}
-            </p>
-          </div>
+              <AlertTriangle
+                className={`h-4 w-4 shrink-0 ${academicYearWarning.state === "countdown" ? "text-amber-600" : "text-red-600"}`}
+              />
+              <div className="min-w-0">
+                <p
+                  className={`text-xs font-semibold leading-tight ${
+                    academicYearWarning.state === "countdown" ? "text-amber-800" : "text-red-800"
+                  }`}
+                >
+                  {academicYearWarning.state === "countdown"
+                    ? `Educational year ends in ${academicYearWarning.daysLeft} day${academicYearWarning.daysLeft !== 1 ? "s" : ""} (${academicYearWarning.endDateLabel})`
+                    : `${academicYearWarning.academicYear} educational year has ended`}
+                </p>
+                <p
+                  className={`text-[10px] leading-tight mt-0.5 ${
+                    academicYearWarning.state === "countdown" ? "text-amber-600" : "text-red-600"
+                  }`}
+                >
+                  {academicYearWarning.state === "countdown"
+                    ? "Clear/Complete all your transactions (edit/delete/create/add) for the current educational year before the end of the educational year and switch the educational year from the settings."
+                    : "All data changes are paused until you switch the educational year from Settings."}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className={`flex items-center gap-2.5 shrink-0 ${licenseWarning ? "" : "ml-auto"}`}>
+      <div className={`flex items-center gap-2.5 shrink-0 ${licenseWarning || academicYearWarning ? "" : "ml-auto"}`}>
         {pathname !== REPORT_PAGE.school && (
           <Button
             variant="ghost"

@@ -11,6 +11,7 @@ import { PageLoader } from "@/components/PageLoader";
 import { MobileShell } from "@/components/mobile/MobileShell";
 import { InstallPromptGate } from "@/components/pwa/InstallPromptGate";
 import { ReportBugButton } from "@/components/bugs/ReportBugButton";
+import { getAcademicYearEndDate, daysUntil } from "@/lib/academicYearDate";
 
 interface UnreadResponse {
   success: boolean;
@@ -31,6 +32,19 @@ interface LicenseWarning {
   endDate: string | null;
 }
 
+// countdown = the 2-week window before the current educational year's last
+// day; locked = that day has passed without a switch -- every write across
+// the whole app is rejected (see src/proxy.ts) until the admin switches,
+// which is also the only thing that makes this warning go away (the lock
+// is derived from settings.academicYear, never stored, so a fresh fetch
+// right after switching naturally stops matching this state).
+interface AcademicYearWarning {
+  state: "countdown" | "locked";
+  daysLeft: number;
+  endDateLabel: string;
+  academicYear: string;
+}
+
 const UNREAD_POLL_MS = 15000;
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -39,6 +53,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [unread, setUnread] = useState(0);
   const [licenseWarning, setLicenseWarning] = useState<LicenseWarning | null>(null);
+  const [academicYearWarning, setAcademicYearWarning] = useState<AcademicYearWarning | null>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -96,6 +111,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       .catch(() => {});
   }, [user]);
 
+  useEffect(() => {
+    if (user?.role !== "schooladmin") return;
+    const token = getToken();
+    if (!token) return;
+    apiGet<{ success: boolean; data: { settings?: { sessionStartMonth?: string; academicYear?: string } } }>("/school/branding", token)
+      .then((res) => {
+        const sessionStartMonth = res.data.settings?.sessionStartMonth;
+        const academicYear = res.data.settings?.academicYear;
+        if (!sessionStartMonth || !academicYear) return;
+        const endDate = getAcademicYearEndDate(sessionStartMonth, academicYear);
+        if (!endDate) return;
+        const daysLeft = daysUntil(endDate);
+        const endDateLabel = endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+        if (daysLeft <= 0) {
+          setAcademicYearWarning({ state: "locked", daysLeft, endDateLabel, academicYear });
+        } else if (daysLeft <= 14) {
+          setAcademicYearWarning({ state: "countdown", daysLeft, endDateLabel, academicYear });
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
   if (loading || !user) {
     return <PageLoader fullScreen />;
   }
@@ -123,13 +160,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 bg-background">
         {/* Desktop (≥1024px): unchanged sidebar-topbar shell. */}
         <div className="hidden lg:block">
-          <DashboardTopBar user={user} licenseWarning={licenseWarning} onLogout={handleLogout} />
+          <DashboardTopBar user={user} licenseWarning={licenseWarning} academicYearWarning={academicYearWarning} onLogout={handleLogout} />
         </div>
 
         {/* Mobile/tablet (<1024px): sticky top bar, fixed bottom nav, and the
             sheets they open -- a separate chrome layer, not a restyle of
             the desktop one. See components/mobile/MobileShell.tsx. */}
-        <MobileShell user={user} unreadChat={unread} licenseWarning={licenseWarning} onLogout={handleLogout} />
+        <MobileShell user={user} unreadChat={unread} licenseWarning={licenseWarning} academicYearWarning={academicYearWarning} onLogout={handleLogout} />
 
         <main ref={mainRef} className="flex-1 overflow-auto px-4 py-4 pb-28 lg:p-6">
           <div className="mx-auto max-w-6xl w-full space-y-6">{children}</div>
